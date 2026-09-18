@@ -194,6 +194,10 @@ rule in §3.
 
 ### Follow-ups
 
+Status as of Gate G1 (2026-09-18): the first item is done. `ses_` is registered
+in `ID_PREFIXES`, and the `CLAUDE.md` prefix list still omits it. The other two
+remain open.
+
 - **RFX-006 / RFX-007 (G1):** runtime validation must reject, not repair,
   actions that violate §2, and must apply the §4 conflict rule. Split
   `packages/contracts/src/index.ts` into the per-concern files listed in

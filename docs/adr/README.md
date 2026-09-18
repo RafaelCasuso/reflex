@@ -10,14 +10,16 @@ ADR says so explicitly and the same change updates `CLAUDE.md`.
 
 ## Index
 
-| ADR                                            | Title                  | Status   | Date       | Tickets |
-| ---------------------------------------------- | ---------------------- | -------- | ---------- | ------- |
-| [ADR-001](./ADR-001-canonical-action-model.md) | Canonical action model | Accepted | 2026-09-18 | RFX-005 |
+| ADR                                            | Title                                 | Status   | Date       | Tickets |
+| ---------------------------------------------- | ------------------------------------- | -------- | ---------- | ------- |
+| [ADR-001](./ADR-001-canonical-action-model.md) | Canonical action model                | Accepted | 2026-09-18 | RFX-005 |
+| [ADR-009](./ADR-009-contract-versioning.md)    | Contract versioning and compatibility | Accepted | 2026-09-18 | RFX-011 |
 
 ### Planned
 
 `docs/architecture.md` §14 requires these before Gate G2 opens. They are
-listed here so the gap is visible; none of them is decided yet.
+listed here so the gap is visible; none of them is decided yet. Their numbers
+are reserved, which is why the next ADR after ADR-001 is ADR-009.
 
 | ADR     | Title                          |
 | ------- | ------------------------------ |

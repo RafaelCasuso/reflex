@@ -85,13 +85,21 @@ reflex/
 │
 ├── packages/
 │   ├── contracts/
+│   │   ├── fixtures/            # frozen JSON payloads per released minor (ADR-009)
 │   │   └── src/
+│   │       ├── ids.ts
+│   │       ├── primitives.ts
+│   │       ├── limits.ts
+│   │       ├── validation.ts
 │   │       ├── action.ts
 │   │       ├── decision.ts
 │   │       ├── policy.ts
 │   │       ├── semantic.ts
 │   │       ├── feedback.ts
-│   │       └── index.ts
+│   │       ├── parse.ts         # boundary parsers, the only public entry to validation
+│   │       ├── version.ts
+│   │       ├── internal/        # schemas and validation machinery, not exported
+│   │       └── index.ts         # explicit public surface
 │   │
 │   ├── core/
 │   │   └── src/
@@ -513,3 +521,6 @@ Create these before Gate 2:
 - ADR-006 local redaction boundary
 - ADR-007 adapter ASK semantics
 - ADR-008 telemetry persistence strategy
+
+Written since: ADR-009 contract versioning and compatibility
+([accepted](./adr/ADR-009-contract-versioning.md)).
