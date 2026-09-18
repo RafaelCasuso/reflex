@@ -236,6 +236,8 @@ Tickets RFX-041, RFX-042, RFX-044, RFX-052, RFX-053, RFX-056, RFX-057 and RFX-05
 
 ## G2 — Deterministic policy engine
 
+This gate opens with the decisions the policy engine depends on (RFX-112 to RFX-118, RFX-101, RFX-102, RFX-095). Implementation starts at RFX-012, and RFX-105 comes before the matcher so that the engine is built against a corpus from its first ticket.
+
 ### RFX-112 — Write ADR-002 decision precedence and effective effect
 
 **Goal:** Write ADR-002, one of the first architectural ADRs that `docs/architecture.md` §14 requires before Gate G2.
