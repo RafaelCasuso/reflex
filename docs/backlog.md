@@ -106,6 +106,114 @@ Ticket IDs are stable. Claude Code should reference them in commits/PRs.
 
 **Gate status:** Closed (2026-09-18). All six tickets are done, documented and green in CI on GitHub: pull request #2 passed the required check and was merged as three self-contained commits, and [run 35376636374](https://github.com/RafaelCasuso/reflex/actions/runs/35376636374) is green on `main`. No decision logic exists yet, so there is no false-allow surface to regress; the contracts are built so that the later gates cannot create one through the boundary (nothing is defaulted, coerced or repaired). Validation cost on the hot path is about 4 µs for an ordinary request and under 1 ms for the worst input the contract accepts (`packages/contracts/README.md`). Open items carried forward: the meaning of `effectiveEffect` per mode (ADR-002, before G3); integer-millisecond latency loses sub-millisecond resolution (`CLAUDE.md` convention, decide before G3); `ses_` is missing from the ID prefix list in `CLAUDE.md`; Unicode look-alike and invisible characters in names are not filtered at the contract level and belong to the matcher corpus (RFX-018); ADR-002 to ADR-008 are owed before G2.
 
+## G1.5 — Observe walking skeleton
+
+The adoption loop in `docs/product.md` starts with `rfx init` and Observe. This gate delivers that loop end to end, locally, before any decision logic exists. Observe never affects execution, so it is safe to ship without a policy engine, a gateway or a semantic provider. The gate exists to put real host payloads in front of the canonical model before G2 builds on it, to seed the eval corpus with real actions, and to measure what a hook actually costs.
+
+Scope rules for the whole gate: nothing leaves the machine, no decision is made, and no raw argument value is written to disk until the redactor (RFX-031) exists.
+
+Tickets RFX-041, RFX-042, RFX-044, RFX-052, RFX-053, RFX-056, RFX-057 and RFX-058 were moved here from G7 and G9. Their IDs are unchanged.
+
+### RFX-041 — Detect Claude Code installation/config scope
+
+**Goal:** Detect project/user config safely.
+
+**Acceptance:** Detection is read-only and returns exact mutation plan.
+
+### RFX-042 — Implement Claude hook input translator
+
+**Goal:** Translate supported hook payload into CanonicalAction.
+
+**Acceptance:** Fixture tests cover Bash, file edits and MCP calls.
+
+**G1.5 scope:** `sideEffectClass` is `unknown` unless it is trivially known. Classification arrives with the command classifier, and until then unknown is the honest value (ADR-001 §4).
+
+### RFX-044 — Implement reversible Claude installer
+
+**Goal:** Install project-scoped config/hook and create backup.
+
+**Acceptance:** `rfx uninstall` restores original config byte-for-byte.
+
+### RFX-052 — Implement `rfx init` detector
+
+**Goal:** Scan supported agents and MCP configs.
+
+**Acceptance:** Command prints deterministic plan before mutation.
+
+**G1.5 scope:** Claude Code only. Codex and MCP detection are added by their own gates.
+
+### RFX-053 — Implement backup transaction
+
+**Goal:** All config writes participate in reversible transaction.
+
+**Acceptance:** Partial failure rolls back prior modifications.
+
+### RFX-086 — Local Observe recorder
+
+**Goal:** Append one structured record per observed action to a local, size-bounded log that the user owns.
+
+**Acceptance:** The hook never changes what the host does (no block, no auto-approval, no added prompt), including when the recorder itself fails. A record carries tool, operation, side-effect class, timestamps and the shape of the arguments (keys, types, sizes), and never a raw argument value until RFX-031 lands. The log rotates at a fixed size.
+
+**Depends on:** RFX-042.
+
+### RFX-087 — Verify host behavior when the hook fails
+
+**Goal:** Establish, with fixtures against the supported Claude Code version, what the host does when the REFLEX hook crashes, times out, exits non-zero, prints malformed output or is missing.
+
+**Acceptance:** A documented table of failure to host behavior, every row backed by a fixture test. Any row where the host proceeds silently is listed as a fail-open path that a later gate must close or surface.
+
+**Why:** `CLAUDE.md` principle 5 says REFLEX may never silently disappear from the execution path. That only holds if the host cooperates, and it has to be known before Assist or Autopilot rely on it.
+
+### RFX-088 — Measure end-to-end hook overhead
+
+**Goal:** Measure what one governed tool call costs as the host experiences it: process start, payload parse, translation, record, exit.
+
+**Acceptance:** A repeatable benchmark with p50 and p95 on a named machine, committed next to its numbers and compared explicitly with the latency budgets in `CLAUDE.md`.
+
+**Why:** Measured on 2026-09-18 (Apple Silicon, Node 24): an empty Node process takes 29.5 ms p50 to start, and 70.5 ms p50 once it loads the contracts and validates one request. A 10 ms deterministic budget cannot be met end to end with one Node process per call, so where decisions run has to be decided with this baseline in hand.
+
+### RFX-056 — Implement `rfx status`
+
+**Goal:** Show mode, connected adapters, last decision and latency.
+
+**Acceptance:** Works without opening dashboard.
+
+**G1.5 scope:** mode, installed adapters, last recorded action and measured hook overhead. Decision and latency fields appear once a decision engine exists.
+
+### RFX-057 — Implement `rfx uninstall`
+
+**Goal:** Remove hooks/adapter and restore backups.
+
+**Acceptance:** Idempotent; leaves user's unrelated config untouched.
+
+### RFX-058 — Anonymous local Observe identity
+
+**Goal:** Allow first value without signup.
+
+**Acceptance:** User can govern actions locally before creating cloud account.
+
+**G1.5 scope:** the local identity only. Governing arrives with the decision engine.
+
+### RFX-089 — Validate ADR-001 against real payloads
+
+**Goal:** Compare the canonical action model with the payload shapes actually observed for Bash, file edits and MCP calls.
+
+**Acceptance:** A short written review: canonical fields that were never populated, host data that had no canonical home, and candidates for promotion under ADR-001 §3.7. Any resulting contract change follows ADR-009.
+
+**Depends on:** RFX-086.
+
+**Why:** ADR-001 was accepted before a single real payload had been seen.
+
+### RFX-090 — Supply-chain security workflow
+
+**Goal:** Add `.github/workflows/security.yml` (dependency audit, static analysis, secret scanning) and automated update pull requests for the SHA-pinned actions and the npm dependencies.
+
+**Acceptance:** A vulnerable dependency or a committed secret fails a required check. Pinned actions and dependencies receive update pull requests.
+
+**Why:** From this gate on, REFLEX code runs inside every tool call on a developer's machine. `security.yml` is in the architecture layout and had no ticket, and SHA-pinned actions go stale without an updater.
+
+**Gate exit:** all tickets above are green in CI and documented; no known dangerous false-allow regression. **Specifically:** on a clean machine `rfx init` reaches a recorded action in under five minutes; `rfx uninstall` leaves no trace; no observed action was blocked, prompted or auto-approved by REFLEX; the log contains no raw argument value.
+
 ## G2 — Deterministic policy engine
 
 ### RFX-012 — Define policy YAML schema
@@ -302,29 +410,13 @@ Ticket IDs are stable. Claude Code should reference them in commits/PRs.
 
 ## G7 — Claude Code adapter
 
-### RFX-041 — Detect Claude Code installation/config scope
-
-**Goal:** Detect project/user config safely.
-
-**Acceptance:** Detection is read-only and returns exact mutation plan.
-
-### RFX-042 — Implement Claude hook input translator
-
-**Goal:** Translate supported hook payload into CanonicalAction.
-
-**Acceptance:** Fixture tests cover Bash, file edits and MCP calls.
+RFX-041, RFX-042 and RFX-044 moved to G1.5, where the adapter is first exercised in Observe. This gate adds decisions to it.
 
 ### RFX-043 — Implement Claude decision mapper
 
 **Goal:** Map allow/ask/deny to supported native permission behavior.
 
 **Acceptance:** ASK delegates to host approval; DENY reliably blocks where supported.
-
-### RFX-044 — Implement reversible Claude installer
-
-**Goal:** Install project-scoped config/hook and create backup.
-
-**Acceptance:** `rfx uninstall` restores original config byte-for-byte.
 
 ### RFX-045 — Claude Observe mode
 
@@ -376,17 +468,7 @@ Ticket IDs are stable. Claude Code should reference them in commits/PRs.
 
 ## G9 — CLI and zero-friction onboarding
 
-### RFX-052 — Implement `rfx init` detector
-
-**Goal:** Scan supported agents and MCP configs.
-
-**Acceptance:** Command prints deterministic plan before mutation.
-
-### RFX-053 — Implement backup transaction
-
-**Goal:** All config writes participate in reversible transaction.
-
-**Acceptance:** Partial failure rolls back prior modifications.
+RFX-052, RFX-053, RFX-056, RFX-057 and RFX-058 moved to G1.5. This gate completes the CLI once policies and decisions exist.
 
 ### RFX-054 — Generate starter `.reflex/policy.yaml`
 
@@ -399,24 +481,6 @@ Ticket IDs are stable. Claude Code should reference them in commits/PRs.
 **Goal:** Diagnose adapters, gateway, policy, auth and host config.
 
 **Acceptance:** Each failure includes concrete remediation.
-
-### RFX-056 — Implement `rfx status`
-
-**Goal:** Show mode, connected adapters, last decision and latency.
-
-**Acceptance:** Works without opening dashboard.
-
-### RFX-057 — Implement `rfx uninstall`
-
-**Goal:** Remove hooks/adapter and restore backups.
-
-**Acceptance:** Idempotent; leaves user's unrelated config untouched.
-
-### RFX-058 — Anonymous local Observe identity
-
-**Goal:** Allow first value without signup.
-
-**Acceptance:** User can govern actions locally before creating cloud account.
 
 **Gate exit:** all tickets above are green in CI and documented; no known dangerous false-allow regression.
 

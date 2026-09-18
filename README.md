@@ -11,7 +11,7 @@ This package is the implementation bootstrap for REFLEX.
 - `docs/product.md` — product positioning, wedge, adoption loop and pricing hypothesis.
 - `docs/architecture.md` — exact monorepo and system boundaries.
 - `packages/contracts/src/index.ts` — first canonical TypeScript contracts.
-- `docs/backlog.md` — 85 implementation tickets ordered by gates.
+- `docs/backlog.md` — implementation tickets ordered by gates.
 - `docs/adr/` — architecture decision records: index, template and process.
 
 ## Development
