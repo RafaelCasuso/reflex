@@ -358,6 +358,8 @@ Tickets RFX-041, RFX-042, RFX-044, RFX-052, RFX-053, RFX-056, RFX-057 and RFX-05
 
 **Acceptance:** Identical policy content yields identical hash regardless of formatting.
 
+**Note:** design the compiled set so that it can be the payload of the signed snapshot in RFX-083. Signing can come later; the format should not have to change when it does.
+
 ### RFX-017 — Bootstrap coding-agent policy pack
 
 **Goal:** Provide conservative starter rules for common read/test/status operations.
@@ -417,6 +419,22 @@ Tickets RFX-041, RFX-042, RFX-044, RFX-052, RFX-053, RFX-056, RFX-057 and RFX-05
 **Goal:** Implement `POST /v1/decisions`.
 
 **Acceptance:** Validated request returns canonical decision with correlation ID.
+
+### RFX-119 — Gateway rate limiting and request size limits
+
+**Goal:** Bound what one caller can cost the gateway: request rate per key and body size per request.
+
+**Acceptance:** An over-limit request gets a typed rejection before any validation or decision work is done. Losing rate-limit state (a cache flush) fails safe and does not disable the limit.
+
+**Why:** The gateway is a public endpoint on the hot path. `docs/architecture.md` mentions rate limiting under Redis and no ticket built it.
+
+### RFX-120 — Idempotent decisions keyed by `action.id`
+
+**Goal:** Make a retried request with the same action ID return the same decision and count once.
+
+**Acceptance:** Documented in `@reflex/contracts` as an additive clarification under ADR-009. The same ID with different content is rejected, not re-decided. RFX-079 builds its metering on this.
+
+**Why:** Adapters retry on timeouts. Without a stated idempotency key, a retry can be decided twice and billed twice, and RFX-079 would have to invent one later.
 
 ### RFX-022 — Deadline and cancellation support
 
@@ -702,11 +720,37 @@ RFX-052, RFX-053, RFX-056, RFX-057 and RFX-058 moved to G1.5. This gate complete
 
 ## G10 — Persistence and Observe product
 
+### RFX-078 — API key/project auth
+
+**Goal:** Issue scoped keys for decision API.
+
+**Acceptance:** Keys are hashed at rest and revocable.
+
+**G10 scope:** moved here from G14. Multi-tenant persistence needs an authenticated principal before the first row is written, or "tenant IDs mandatory" (RFX-059) has nothing to be checked against.
+
+### RFX-085 — Audit log
+
+**Goal:** Record policy/mode/member/security changes.
+
+**Acceptance:** Audit log is append-only at application layer.
+
+**G10 scope:** moved here from G16, because RFX-066 (G11) requires mode changes to be audited. Policy, mode and security events start here. Member events join in G16 with RFX-082.
+
 ### RFX-059 — Create control-plane DB schema
 
 **Goal:** Organizations/projects/agents/policy versions/decisions/feedback.
 
 **Acceptance:** Migrations are reversible and tenant IDs mandatory.
+
+### RFX-122 — Tenant isolation defence in depth
+
+**Goal:** Enforce tenant isolation in the database as well as in the application, with row-level security keyed on the authenticated organization.
+
+**Acceptance:** A query issued without a tenant context returns no rows. A test attempts cross-tenant reads and writes through every repository function and fails to get any.
+
+**Depends on:** RFX-078, RFX-059.
+
+**Why:** Application-level checks fail open when one query forgets its filter. `CLAUDE.md` lists tenant isolation as security-sensitive code.
 
 ### RFX-060 — Persist redacted decision events
 
@@ -725,6 +769,14 @@ RFX-052, RFX-053, RFX-056, RFX-057 and RFX-058 moved to G1.5. This gate complete
 **Goal:** Paginated/filterable decision event endpoint.
 
 **Acceptance:** Filters by effect, agent, tool, risk, time.
+
+### RFX-121 — Data retention and deletion
+
+**Goal:** Apply per-organization retention to events and arguments, and delete an organization's or a project's data on request.
+
+**Acceptance:** Expired events are removed by a scheduled job with a test that proves it. A deletion request removes decisions, outcomes and feedback, and leaves an audit entry that contains no deleted content.
+
+**Why:** `docs/architecture.md` §10 promises per-organization retention and nothing implemented it. Developers' commands and file paths are personal data in most jurisdictions.
 
 **Gate exit:** all tickets above are green in CI and documented; no known dangerous false-allow regression.
 
@@ -824,6 +876,8 @@ RFX-052, RFX-053, RFX-056, RFX-057 and RFX-058 moved to G1.5. This gate complete
 
 ## G14 — SDKs and public API
 
+RFX-078 moved to G10, ahead of the first multi-tenant persistence.
+
 ### RFX-076 — TypeScript `reflex.guard()`
 
 **Goal:** Wrap tool collections with decision enforcement.
@@ -836,12 +890,6 @@ RFX-052, RFX-053, RFX-056, RFX-057 and RFX-058 moved to G1.5. This gate complete
 
 **Acceptance:** Parity contract tests pass across TS/Python.
 
-### RFX-078 — API key/project auth
-
-**Goal:** Issue scoped keys for decision API.
-
-**Acceptance:** Keys are hashed at rest and revocable.
-
 **Gate exit:** all tickets above are green in CI and documented; no known dangerous false-allow regression.
 
 ## G15 — Billing and paid value
@@ -851,6 +899,8 @@ RFX-052, RFX-053, RFX-056, RFX-057 and RFX-058 moved to G1.5. This gate complete
 **Goal:** Count billable governed actions idempotently.
 
 **Acceptance:** Retries cannot double bill.
+
+**Depends on:** RFX-120.
 
 ### RFX-080 — Plan/limit enforcement
 
@@ -870,6 +920,8 @@ RFX-052, RFX-053, RFX-056, RFX-057 and RFX-058 moved to G1.5. This gate complete
 
 ## G16 — Team foundations
 
+RFX-085 moved to G10, ahead of the audited mode switch in G11.
+
 ### RFX-082 — Organizations and memberships
 
 **Goal:** Owner/admin/member roles.
@@ -887,11 +939,5 @@ RFX-052, RFX-053, RFX-056, RFX-057 and RFX-058 moved to G1.5. This gate complete
 **Goal:** Distinct staging/production rules.
 
 **Acceptance:** Production policy cannot be weakened by local project policy.
-
-### RFX-085 — Audit log
-
-**Goal:** Record policy/mode/member/security changes.
-
-**Acceptance:** Audit log is append-only at application layer.
 
 **Gate exit:** all tickets above are green in CI and documented; no known dangerous false-allow regression.
