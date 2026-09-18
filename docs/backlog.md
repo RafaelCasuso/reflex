@@ -232,6 +232,22 @@ Tickets RFX-041, RFX-042, RFX-044, RFX-052, RFX-053, RFX-056, RFX-057 and RFX-05
 
 ## G2 — Deterministic policy engine
 
+### RFX-101 — Write the threat model
+
+**Goal:** Write `docs/security.md`: assets, adversaries (the governed agent, prompt-injected content, a malicious repository, a malicious MCP server, a network attacker, a compromised dependency), trust boundaries and explicit non-goals.
+
+**Acceptance:** Every adversary has at least one mitigation mapped to a ticket, or is listed as an accepted risk. The document states plainly that REFLEX is not a sandbox.
+
+**Why:** The file is in the architecture layout and had no ticket. For a product whose job is to stop dangerous actions, the adversary list is what decides which tests exist.
+
+### RFX-102 — Decide ADR-012 self-protection and workspace trust
+
+**Goal:** Decide how REFLEX protects its own configuration and hook registration from the agent it governs, and how much a repository's own policy is trusted.
+
+**Acceptance:** ADR-012 is accepted before RFX-017 starts, and ADR-004 accounts for trust as a dimension of precedence.
+
+**Why:** In Autopilot the agent can edit `.reflex/policy.yaml` or remove the hook. A cloned repository can ship an allow-all policy that outranks the user's own rules.
+
 ### RFX-095 — Decide ADR-011 normalized operands and classification ownership
 
 **Goal:** Decide what a policy rule matches against (host-shaped `arguments`, or canonical operands for command, paths and network targets) and who computes `sideEffectClass`.
@@ -297,6 +313,14 @@ Tickets RFX-041, RFX-042, RFX-044, RFX-052, RFX-053, RFX-056, RFX-057 and RFX-05
 **Goal:** Provide conservative starter rules for common read/test/status operations.
 
 **Acceptance:** Default pack never auto-allows destructive/external/privilege actions.
+
+### RFX-103 — Built-in self-protection rules
+
+**Goal:** Ship mandatory rules, above every policy source, covering writes to REFLEX's configuration, policy files, hook registration in host settings, and REFLEX binaries.
+
+**Acceptance:** No policy source can allow these actions without human approval. Adversarial tests cover indirect writes: redirects, `sed -i`, `mv`, symlinks, editor tools, and a script that performs the write. `rfx doctor` and `rfx status` report a removed or altered hook.
+
+**Depends on:** RFX-102, RFX-096.
 
 ### RFX-100 — Policy language reference
 
@@ -563,6 +587,14 @@ RFX-052, RFX-053, RFX-056, RFX-057 and RFX-058 moved to G1.5. This gate complete
 **Depends on:** RFX-015.
 
 **Why:** `CLAUDE.md` principle 6 requires every policy resolution to be explainable through matched rules, precedence and final effect. Nothing exposed that to the user.
+
+### RFX-104 — Workspace trust for project policies
+
+**Goal:** Treat a repository's `.reflex/policy.yaml` as untrusted until the user trusts it.
+
+**Acceptance:** An untrusted project policy can tighten (its deny and ask rules apply) and cannot loosen (its allow rules are ignored). Trust is bound to the policy content hash and asked again when the content changes. The prompt shows what the policy would allow. The agent cannot answer the prompt.
+
+**Depends on:** RFX-102, RFX-016.
 
 **Gate exit:** all tickets above are green in CI and documented; no known dangerous false-allow regression.
 
