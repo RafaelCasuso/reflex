@@ -27,6 +27,14 @@ describe("RFX-001 toolchain", () => {
     expect(root.isPrivate).toBe(true);
   });
 
+  // Turbo's default is a fixed 10 parallel tasks, whatever the machine. A
+  // typed-lint process peaks at 350-500 MB, so on a 2-vCPU CI runner that is
+  // ~4 GB at once and an out-of-memory kill waiting to happen as packages
+  // grow. One task per core is never slower and scales with the runner.
+  it("bounds task concurrency by the number of cores", () => {
+    expect(readJson("turbo.json")).toMatchObject({ concurrency: "100%" });
+  });
+
   // Adversarial: strictness is a safety property of this codebase. Dropping
   // a flag from the shared base must fail a test, not pass silently.
   it("does not let TypeScript strictness weaken silently", () => {
