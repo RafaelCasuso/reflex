@@ -6,6 +6,10 @@ Ticket IDs are stable. Claude Code should reference them in commits/PRs.
 
 **Status convention.** A ticket carries a `**Status:**` line only once work on it has happened. `Done` means every acceptance criterion was verified, and the line says how. `Implemented, verification pending` means the work is complete but a criterion cannot be verified yet, and the line says exactly what is missing. No status line means not started.
 
+**Ticket template.** New tickets carry a Goal and a measurable Acceptance: it names the corpus, the threshold and the machine, so that two people would agree on whether it passed. Where they apply, a ticket also carries Depends on, Out of scope, Why, and the test layers it owes (unit, contract, adapter fixture, adversarial, latency, replay; see `CLAUDE.md`). Older tickets are brought up to the template when their gate starts, not before.
+
+**Gate exits.** Every gate keeps the common exit sentence. The "Specifically" clause after it names what has to be demonstrably true for that gate; it restates the gate's own acceptance criteria as one checkable list and adds nothing new.
+
 ## G0 — Repository foundation
 
 ### RFX-001 — Initialize pnpm/Turborepo workspace
@@ -388,7 +392,7 @@ Tickets RFX-041, RFX-042, RFX-044, RFX-052, RFX-053, RFX-056, RFX-057 and RFX-05
 
 **Acceptance:** Known bypass corpus does not bypass explicit deny rules.
 
-**Gate exit:** all tickets above are green in CI and documented; no known dangerous false-allow regression.
+**Gate exit:** all tickets above are green in CI and documented; no known dangerous false-allow regression. **Specifically:** a mandatory deny is shown by test not to be weakened by any lower source; the bypass corpus and the seeded replay corpus pass; deterministic evaluation meets p95 < 10 ms in-engine on the named benchmark machine.
 
 ## G3 — Decision engine API
 
@@ -462,7 +466,7 @@ Tickets RFX-041, RFX-042, RFX-044, RFX-052, RFX-053, RFX-056, RFX-057 and RFX-05
 
 **Acceptance:** Baseline report produced for deterministic path. Every number states where it was measured: inside the engine, and end to end from the hook (ADR-010).
 
-**Gate exit:** all tickets above are green in CI and documented; no known dangerous false-allow regression.
+**Gate exit:** all tickets above are green in CI and documented; no known dangerous false-allow regression. **Specifically:** a deterministically resolved action never reaches a provider; every failure path ends in an explicit, reported fallback; no telemetry field contains an argument value.
 
 ## G4 — Semantic provider / Jev
 
@@ -528,7 +532,7 @@ Tickets RFX-041, RFX-042, RFX-044, RFX-052, RFX-053, RFX-056, RFX-057 and RFX-05
 
 **Depends on:** RFX-106.
 
-**Gate exit:** all tickets above are green in CI and documented; no known dangerous false-allow regression.
+**Gate exit:** all tickets above are green in CI and documented; no known dangerous false-allow regression. **Specifically:** core compiles and the whole suite runs offline without Jev; malformed or partial provider output never yields allow; p50 and p95 against the real provider are recorded.
 
 ## G5 — Context compiler and redaction
 
@@ -562,7 +566,7 @@ Tickets RFX-041, RFX-042, RFX-044, RFX-052, RFX-053, RFX-056, RFX-057 and RFX-05
 
 **Acceptance:** Corpus reports zero raw known secrets after compiler.
 
-**Gate exit:** all tickets above are green in CI and documented; no known dangerous false-allow regression.
+**Gate exit:** all tickets above are green in CI and documented; no known dangerous false-allow regression. **Specifically:** the redaction corpora report zero surviving known secrets; the median compiled context is under the token budget with the named tokenizer; required action and resource fields are never truncated.
 
 ## G6 — Risk aggregation and evals
 
@@ -616,7 +620,7 @@ Tickets RFX-041, RFX-042, RFX-044, RFX-052, RFX-053, RFX-056, RFX-057 and RFX-05
 
 **Why:** In G1, manual mutation checks caught what ordinary tests did not, including a parser that reordered keys. For the packages where a missed branch is a false allow, that should not depend on someone remembering to do it.
 
-**Gate exit:** all tickets above are green in CI and documented; no known dangerous false-allow regression.
+**Gate exit:** all tickets above are green in CI and documented; no known dangerous false-allow regression. **Specifically:** CI fails on any new dangerous false allow; every threshold lives in one configuration; a low-confidence, high-impact case never auto-allows.
 
 ## G7 — Claude Code adapter
 
@@ -664,7 +668,7 @@ RFX-041, RFX-042 and RFX-044 moved to G1.5, where the adapter is first exercised
 
 **Why:** Human override rate is a product metric and there was no mechanism to override anything. A deny with no exit gets REFLEX uninstalled.
 
-**Gate exit:** all tickets above are green in CI and documented; no known dangerous false-allow regression.
+**Gate exit:** all tickets above are green in CI and documented; no known dangerous false-allow regression. **Specifically:** in Observe nothing is blocked or auto-approved; in Assist every unsafe or uncertain fixture reaches native approval or a block; ASK is delegated to the host, with no custom dialog.
 
 ## G8 — Codex adapter
 
@@ -706,7 +710,7 @@ RFX-041, RFX-042 and RFX-044 moved to G1.5, where the adapter is first exercised
 
 **Depends on:** RFX-091.
 
-**Gate exit:** all tickets above are green in CI and documented; no known dangerous false-allow regression.
+**Gate exit:** all tickets above are green in CI and documented; no known dangerous false-allow regression. **Specifically:** ASK is abstention on `PermissionRequest`, never a simulated `PreToolUse` ask; a user's existing hooks survive install and uninstall unchanged.
 
 ## G9 — CLI and zero-friction onboarding
 
@@ -758,7 +762,7 @@ RFX-052, RFX-053, RFX-056, RFX-057 and RFX-058 moved to G1.5. This gate complete
 
 **Depends on:** RFX-102, RFX-016.
 
-**Gate exit:** all tickets above are green in CI and documented; no known dangerous false-allow regression.
+**Gate exit:** all tickets above are green in CI and documented; no known dangerous false-allow regression. **Specifically:** a partial install failure rolls back completely; every `rfx doctor` failure names a remediation; an existing policy file is never overwritten without an explicit user action.
 
 ## G10 — Persistence and Observe product
 
@@ -820,7 +824,7 @@ RFX-052, RFX-053, RFX-056, RFX-057 and RFX-058 moved to G1.5. This gate complete
 
 **Why:** `docs/architecture.md` §10 promises per-organization retention and nothing implemented it. Developers' commands and file paths are personal data in most jurisdictions.
 
-**Gate exit:** all tickets above are green in CI and documented; no known dangerous false-allow regression.
+**Gate exit:** all tickets above are green in CI and documented; no known dangerous false-allow regression. **Specifically:** isolation tests cover every organization-scoped query; no fixture secret appears in a database dump; every migration reverses cleanly.
 
 ## G11 — Dashboard and activation
 
@@ -850,7 +854,7 @@ RFX-052, RFX-053, RFX-056, RFX-057 and RFX-058 moved to G1.5. This gate complete
 
 **Acceptance:** Mode changes are audited and immediately reflected in config.
 
-**Gate exit:** all tickets above are green in CI and documented; no known dangerous false-allow regression.
+**Gate exit:** all tickets above are green in CI and documented; no known dangerous false-allow regression. **Specifically:** every number on the dashboard is derived from stored events; no card claims safety that was not measured; a mode change is audited and takes effect immediately.
 
 ## G12 — Feedback and Approval Learning
 
@@ -902,7 +906,7 @@ RFX-052, RFX-053, RFX-056, RFX-057 and RFX-058 moved to G1.5. This gate complete
 
 **Acceptance:** Command displays exact generated rule before applying.
 
-**Gate exit:** all tickets above are green in CI and documented; no known dangerous false-allow regression.
+**Gate exit:** all tickets above are green in CI and documented; no known dangerous false-allow regression. **Specifically:** no suggestion changes enforcement before a human accepts it; every accepted rule links to its suggestion and evidence; replay shows the impact before acceptance.
 
 ## G13 — MCP proxy
 
@@ -924,7 +928,7 @@ RFX-052, RFX-053, RFX-056, RFX-057 and RFX-058 moved to G1.5. This gate complete
 
 **Acceptance:** Install is reversible and does not expose server secrets.
 
-**Gate exit:** all tickets above are green in CI and documented; no known dangerous false-allow regression.
+**Gate exit:** all tickets above are green in CI and documented; no known dangerous false-allow regression. **Specifically:** a denied call never reaches the upstream server; a known MCP server works unchanged through the proxy; installation is reversible and exposes no server secret.
 
 ## G14 — SDKs and public API
 
@@ -942,7 +946,7 @@ RFX-078 moved to G10, ahead of the first multi-tenant persistence.
 
 **Acceptance:** Parity contract tests pass across TS/Python.
 
-**Gate exit:** all tickets above are green in CI and documented; no known dangerous false-allow regression.
+**Gate exit:** all tickets above are green in CI and documented; no known dangerous false-allow regression. **Specifically:** the TypeScript and Python SDKs pass the same contract fixtures; wrapped tools keep their signatures.
 
 ## G15 — Billing and paid value
 
@@ -968,7 +972,7 @@ RFX-078 moved to G10, ahead of the first multi-tenant persistence.
 
 **Depends on:** RFX-091. In Assist and Autopilot the counterfactual prompt is not observable, so the figure is an estimate from Observe-period base rates and is labelled as one.
 
-**Gate exit:** all tickets above are green in CI and documented; no known dangerous false-allow regression.
+**Gate exit:** all tickets above are green in CI and documented; no known dangerous false-allow regression. **Specifically:** a retried request is metered once; reaching a plan limit never disables enforcement silently; every estimated figure is labelled as an estimate.
 
 ## G16 — Team foundations
 
@@ -992,4 +996,4 @@ RFX-085 moved to G10, ahead of the audited mode switch in G11.
 
 **Acceptance:** Production policy cannot be weakened by local project policy.
 
-**Gate exit:** all tickets above are green in CI and documented; no known dangerous false-allow regression.
+**Gate exit:** all tickets above are green in CI and documented; no known dangerous false-allow regression. **Specifically:** a production policy cannot be weakened by a project or local policy; clients consume only signed, immutable snapshots; membership changes are audited.
