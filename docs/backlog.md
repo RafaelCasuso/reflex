@@ -140,7 +140,7 @@ Tickets RFX-041, RFX-042, RFX-044, RFX-052, RFX-053, RFX-056, RFX-057 and RFX-05
 
 **Goal:** Install project-scoped config/hook and create backup.
 
-**Acceptance:** `rfx uninstall` restores original config byte-for-byte.
+**Acceptance:** `rfx uninstall` removes exactly what REFLEX added and leaves every other byte untouched, including edits the user made after installing. When the file has not changed since install, the result is byte-identical to the backup.
 
 ### RFX-052 — Implement `rfx init` detector
 
@@ -478,6 +478,8 @@ Tickets RFX-041, RFX-042, RFX-044, RFX-052, RFX-053, RFX-056, RFX-057 and RFX-05
 
 **Acceptance:** Transport errors map to typed provider errors.
 
+**Note:** no in-band retries on the decision path. A retry spends the latency budget twice; the decision path has a deadline and a fallback for that. A retry policy applies to background calls only.
+
 ### RFX-027 — Map Jev outputs to semantic signals
 
 **Goal:** Implement structured mapping and validation.
@@ -626,6 +628,14 @@ RFX-041, RFX-042 and RFX-044 moved to G1.5, where the adapter is first exercised
 
 **Acceptance:** ASK delegates to host approval; DENY reliably blocks where supported.
 
+### RFX-123 — Consent before action content leaves the machine
+
+**Goal:** Ask once, clearly, before the first time tool arguments are sent to a remote gateway or semantic provider.
+
+**Acceptance:** Nothing is uploaded before consent. The prompt states what is sent, what is redacted first and where it goes. Declining keeps the local deterministic path fully working.
+
+**Why:** A developer's commands and file paths leaving the machine is the moment trust is won or lost, and it happens for the first time in this gate.
+
 ### RFX-045 — Claude Observe mode
 
 **Goal:** Evaluate/record without changing execution.
@@ -637,6 +647,22 @@ RFX-041, RFX-042 and RFX-044 moved to G1.5, where the adapter is first exercised
 **Goal:** Auto-resolve safe supported actions and delegate others.
 
 **Acceptance:** Unsafe/uncertain fixture always reaches native approval or block.
+
+### RFX-124 — Host hook schema canary
+
+**Goal:** Detect when a new host version changes the hook payload or the output contract the adapter relies on.
+
+**Acceptance:** A scheduled job runs the adapter fixtures against the latest host release and fails on drift. At runtime, a payload the adapter does not recognize is a typed failure that follows the fail-behavior rules, never a guess.
+
+**Why:** Host hook schemas change outside REFLEX's release cycle. `docs/integrations.md` requires fixture tests against the currently supported schema; nothing noticed when "currently" moved.
+
+### RFX-125 — Override path for a DENY in Autopilot
+
+**Goal:** Give the human a deliberate, audited way to proceed after REFLEX denies an action in Autopilot.
+
+**Acceptance:** The override is performed by the human outside the agent's reach, is recorded with the decision it overrides, and feeds the human override rate. A mandatory deny is not overridable this way.
+
+**Why:** Human override rate is a product metric and there was no mechanism to override anything. A deny with no exit gets REFLEX uninstalled.
 
 **Gate exit:** all tickets above are green in CI and documented; no known dangerous false-allow regression.
 
@@ -697,6 +723,22 @@ RFX-052, RFX-053, RFX-056, RFX-057 and RFX-058 moved to G1.5. This gate complete
 **Goal:** Diagnose adapters, gateway, policy, auth and host config.
 
 **Acceptance:** Each failure includes concrete remediation.
+
+### RFX-126 — Implement `rfx pause`
+
+**Goal:** Let the user suspend enforcement for a bounded time when REFLEX misbehaves, without uninstalling it.
+
+**Acceptance:** The pause has a mandatory duration, is visible in `rfx status`, ends automatically, and is audited. While paused REFLEX keeps observing. The agent cannot invoke it.
+
+**Why:** The alternative to a break-glass is `rfx uninstall`, and an uninstalled REFLEX protects nothing.
+
+### RFX-127 — Signed releases
+
+**Goal:** Publish the CLI and SDK with build provenance, from `.github/workflows/release.yml`.
+
+**Acceptance:** A published artifact can be verified against the commit and workflow that built it. Publishing is only possible from CI.
+
+**Why:** `rfx` installs itself into every tool call. `release.yml` is in the architecture layout and had no ticket.
 
 ### RFX-099 — Implement `rfx explain`
 
@@ -820,11 +862,21 @@ RFX-052, RFX-053, RFX-056, RFX-057 and RFX-058 moved to G1.5. This gate complete
 
 ### RFX-068 — Repeated-approval pattern miner
 
-**Goal:** Cluster semantically/deterministically similar approvals.
+**Goal:** Cluster deterministically similar approvals: same tool, same normalized command or path pattern, same resource class. Semantic similarity is RFX-128.
 
 **Acceptance:** Suggestions include evidence count and scope.
 
 **Depends on:** RFX-091. The approvals being mined are the host's native approvals, which only `ActionOutcome` records.
+
+### RFX-128 — Semantic similarity clustering for approvals
+
+**Goal:** Group approvals that are similar in meaning but differ textually, on top of the deterministic clusters from RFX-068.
+
+**Acceptance:** A suggestion produced from a semantic cluster shows every member action as evidence, and a replay (RFX-070) over history shows no newly allowed dangerous case.
+
+**Depends on:** RFX-068, RFX-070.
+
+**Why:** RFX-068 bundled a tractable problem with a research problem. Splitting them lets the deterministic miner ship and be trusted first.
 
 ### RFX-069 — Generate inspectable policy suggestions
 
