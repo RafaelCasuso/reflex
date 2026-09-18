@@ -1,278 +1,112 @@
-/* REFLEX canonical contracts — initial proposal.
- * These contracts intentionally contain no host- or provider-specific types.
+/**
+ * REFLEX canonical contracts — the single source of truth.
+ *
+ * These contracts contain no host- or provider-specific types (ADR-001).
+ *
+ * The export list is explicit on purpose: it is the public surface, and
+ * removing or renaming anything in it is a breaking change (ADR-009). The
+ * validation library is an implementation detail and is not exported.
  */
+export {
+  ID_BODY_MAX_LENGTH,
+  ID_PREFIXES,
+  isOpaqueId,
+  type ActionId,
+  type AgentId,
+  type DecisionId,
+  type IdPrefix,
+  type OpaqueId,
+  type OrganizationId,
+  type PolicyId,
+  type ProjectId,
+  type SessionId,
+} from "./ids.js";
 
-export type OpaqueId<Prefix extends string> = `${Prefix}_${string}`;
+export {
+  DECISION_EFFECTS,
+  ENVIRONMENT_KINDS,
+  FAILURE_MODES,
+  HOST_KINDS,
+  REFLEX_MODES,
+  SIDE_EFFECT_CLASSES,
+  type Confidence,
+  type DecisionEffect,
+  type DurationMs,
+  type EnvironmentKind,
+  type FailureMode,
+  type HostKind,
+  type IsoTimestamp,
+  type ReflexMode,
+  type RiskScore,
+  type Score,
+  type SideEffectClass,
+} from "./primitives.js";
 
-export type DecisionId = OpaqueId<"dec">;
-export type ActionId = OpaqueId<"act">;
-export type AgentId = OpaqueId<"agt">;
-export type ProjectId = OpaqueId<"prj">;
-export type OrganizationId = OpaqueId<"org">;
-export type PolicyId = OpaqueId<"pol">;
-export type SessionId = OpaqueId<"ses">;
+export { CONTRACT_LIMITS } from "./limits.js";
 
-export type DecisionEffect = "allow" | "ask" | "deny";
-export type ReflexMode = "observe" | "assist" | "autopilot";
-export type FailureMode = "fail-open" | "fail-ask" | "fail-closed";
+export {
+  parseCanonicalAction,
+  parseDecisionFeedback,
+  parseDecisionRequest,
+  parseReflexDecision,
+  parseSemanticAssessment,
+} from "./parse.js";
 
-export type HostKind =
-  "claude-code" | "codex" | "mcp" | "sdk-typescript" | "sdk-python" | "http";
+export { CONTRACT_VERSION, type ContractVersion } from "./version.js";
 
-export type EnvironmentKind =
-  "local" | "development" | "test" | "staging" | "production" | "unknown";
+export {
+  MAX_VALIDATION_ISSUES,
+  VALIDATION_ISSUE_CODES,
+  type ValidationFailure,
+  type ValidationIssue,
+  type ValidationIssueCode,
+  type ValidationResult,
+  type ValidationSuccess,
+} from "./validation.js";
 
-export type SideEffectClass =
-  | "none"
-  | "local-read"
-  | "local-write"
-  | "external-read"
-  | "external-write"
-  | "destructive"
-  | "financial"
-  | "privilege"
-  | "credential"
-  | "unknown";
+export {
+  resolveEnvironment,
+  type ActionRepository,
+  type ActionResource,
+  type ActionTool,
+  type AgentIdentity,
+  type CanonicalAction,
+  type PriorActionSummary,
+} from "./action.js";
 
-export type ReasonCode =
-  | "explicit_allow"
-  | "explicit_ask"
-  | "explicit_deny"
-  | "off_task"
-  | "destructive"
-  | "irreversible"
-  | "external_side_effect"
-  | "privilege_escalation"
-  | "secret_access"
-  | "sensitive_data"
-  | "financial_action"
-  | "production_mutation"
-  | "unusual_scope"
-  | "untrusted_input"
-  | "policy_violation"
-  | "low_confidence"
-  | "provider_unavailable"
-  | "decision_timeout"
-  | "unsupported_action"
-  | "unknown_risk";
+export {
+  FALLBACK_REASONS,
+  REASON_CODES,
+  type DecisionEngine,
+  type DecisionFallback,
+  type DecisionLatency,
+  type DecisionRequest,
+  type FallbackReason,
+  type ReasonCode,
+  type ReflexDecision,
+} from "./decision.js";
 
-export interface AgentIdentity {
-  id?: AgentId;
-  name?: string;
-  host: HostKind;
-  hostVersion?: string;
-  model?: string;
-}
+export type {
+  SemanticAssessment,
+  SemanticDecisionProvider,
+  SemanticDecisionRequest,
+  SemanticSignal,
+} from "./semantic.js";
 
-export interface ActionTool {
-  name: string;
-  namespace?: string;
-  description?: string;
-}
+export {
+  POLICY_OPERATORS,
+  type PolicyCondition,
+  type PolicyDefaults,
+  type PolicyDocument,
+  type PolicyEvaluation,
+  type PolicyMatch,
+  type PolicyOperator,
+  type PolicyRule,
+  type PolicyUnresolvedDefault,
+} from "./policy.js";
 
-export interface ActionResource {
-  type?: string;
-  identifier?: string;
-  environment: EnvironmentKind;
-  isProduction?: boolean;
-}
-
-export interface PriorActionSummary {
-  actionId?: ActionId;
-  toolName: string;
-  operation?: string;
-  effect?: DecisionEffect;
-  occurredAt: string;
-}
-
-export interface CanonicalAction {
-  id: ActionId;
-  organizationId?: OrganizationId;
-  projectId?: ProjectId;
-  sessionId?: SessionId;
-
-  agent: AgentIdentity;
-
-  userObjective?: string;
-  taskSummary?: string;
-
-  tool: ActionTool;
-  operation?: string;
-
-  /**
-   * Must be redacted before crossing a trust boundary.
-   * Never log this object before redaction.
-   */
-  arguments: Readonly<Record<string, unknown>>;
-
-  resource?: ActionResource;
-  sideEffectClass: SideEffectClass;
-
-  cwd?: string;
-  repository?: {
-    root?: string;
-    branch?: string;
-    remoteHost?: string;
-  };
-
-  priorActions?: readonly PriorActionSummary[];
-
-  adapterMetadata?: Readonly<Record<string, unknown>>;
-
-  createdAt: string;
-}
-
-export interface DecisionRequest {
-  action: CanonicalAction;
-  mode: ReflexMode;
-  failureMode: FailureMode;
-  policySetHash?: string;
-  deadlineMs?: number;
-}
-
-export interface SemanticSignal<T> {
-  value: T;
-  confidence: number; // 0..1
-}
-
-export interface SemanticAssessment {
-  objectiveAlignment: SemanticSignal<number>; // 0..100, higher = aligned
-  destructiveRisk: SemanticSignal<number>; // 0..100
-  reversibility: SemanticSignal<number>; // 0..100, higher = easier to reverse
-  externalSideEffect: SemanticSignal<boolean>;
-  privilegeEscalation: SemanticSignal<number>;
-  secretAccess: SemanticSignal<number>;
-  sensitiveDataExposure: SemanticSignal<number>;
-  financialConsequence: SemanticSignal<number>;
-  productionMutation: SemanticSignal<number>;
-  unusualScope: SemanticSignal<number>;
-  untrustedInput: SemanticSignal<number>;
-
-  provider: string;
-  model?: string;
-  latencyMs: number;
-}
-
-export interface PolicyMatch {
-  policyId?: PolicyId;
-  ruleId: string;
-  ruleName?: string;
-  effect: DecisionEffect;
-  mandatory: boolean;
-  precedence: number;
-}
-
-export interface ReflexDecision {
-  id: DecisionId;
-  actionId: ActionId;
-
-  effect: DecisionEffect;
-  effectiveEffect: DecisionEffect;
-  mode: ReflexMode;
-
-  risk: number; // integer 0..100
-  confidence: number; // 0..1
-
-  reasonCodes: readonly ReasonCode[];
-  policyMatches: readonly PolicyMatch[];
-
-  semanticAssessment?: SemanticAssessment;
-
-  policySetHash?: string;
-
-  cached: boolean;
-  cacheKey?: string;
-
-  fallback?: {
-    used: boolean;
-    reason?: "timeout" | "provider-error" | "gateway-error" | "invalid-input";
-    configuredMode?: FailureMode;
-  };
-
-  latency: {
-    totalMs: number;
-    policyMs: number;
-    contextMs?: number;
-    semanticMs?: number;
-    aggregationMs?: number;
-  };
-
-  decidedAt: string;
-}
-
-export interface SemanticDecisionRequest {
-  action: Pick<
-    CanonicalAction,
-    | "userObjective"
-    | "taskSummary"
-    | "tool"
-    | "operation"
-    | "arguments"
-    | "resource"
-    | "sideEffectClass"
-    | "repository"
-    | "priorActions"
-  >;
-  policyHints?: readonly string[];
-  maxInputTokens: number;
-  deadlineMs: number;
-}
-
-export interface SemanticDecisionProvider {
-  readonly providerName: string;
-
-  evaluate(
-    request: SemanticDecisionRequest,
-    signal?: AbortSignal,
-  ): Promise<SemanticAssessment>;
-}
-
-export type PolicyOperator =
-  "equals" | "not_equals" | "starts_with" | "matches" | "in" | "exists";
-
-export interface PolicyCondition {
-  field: string;
-  operator: PolicyOperator;
-  value?: unknown;
-}
-
-export interface PolicyRule {
-  id: string;
-  name: string;
-  effect: DecisionEffect;
-  mandatory?: boolean;
-  conditions: readonly PolicyCondition[];
-}
-
-export interface PolicyDocument {
-  version: 1;
-  defaults: {
-    unresolved: "semantic" | "ask" | "deny";
-  };
-  rules: readonly PolicyRule[];
-}
-
-export interface PolicyEvaluation {
-  resolved: boolean;
-  effect?: DecisionEffect;
-  matches: readonly PolicyMatch[];
-  latencyMs: number;
-}
-
-export type DecisionFeedbackValue =
-  "correct" | "should-allow" | "should-ask" | "should-deny";
-
-export interface DecisionFeedback {
-  decisionId: DecisionId;
-  value: DecisionFeedbackValue;
-  actorId?: string;
-  note?: string;
-  createdAt: string;
-}
-
-export interface DecisionEngine {
-  decide(
-    request: DecisionRequest,
-    signal?: AbortSignal,
-  ): Promise<ReflexDecision>;
-}
+export {
+  DECISION_FEEDBACK_VALUES,
+  type DecisionFeedback,
+  type DecisionFeedbackValue,
+} from "./feedback.js";

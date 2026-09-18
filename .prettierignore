@@ -5,6 +5,10 @@ coverage/
 .turbo/
 .npm-cache/
 
+# Released contract fixtures are frozen and checksum-locked (ADR-009).
+# No tool rewrites them, including a future formatter upgrade.
+packages/contracts/fixtures/
+
 # The engineering operating system is edited by hand, deliberately.
 # Tooling does not rewrite it.
 CLAUDE.md

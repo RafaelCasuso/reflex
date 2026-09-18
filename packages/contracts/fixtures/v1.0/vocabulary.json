@@ -1,0 +1,85 @@
+{
+  "DECISION_EFFECTS": ["allow", "ask", "deny"],
+  "REFLEX_MODES": ["observe", "assist", "autopilot"],
+  "FAILURE_MODES": ["fail-open", "fail-ask", "fail-closed"],
+  "HOST_KINDS": [
+    "claude-code",
+    "codex",
+    "mcp",
+    "sdk-typescript",
+    "sdk-python",
+    "http"
+  ],
+  "ENVIRONMENT_KINDS": [
+    "local",
+    "development",
+    "test",
+    "staging",
+    "production",
+    "unknown"
+  ],
+  "SIDE_EFFECT_CLASSES": [
+    "none",
+    "local-read",
+    "local-write",
+    "external-read",
+    "external-write",
+    "destructive",
+    "financial",
+    "privilege",
+    "credential",
+    "unknown"
+  ],
+  "REASON_CODES": [
+    "explicit_allow",
+    "explicit_ask",
+    "explicit_deny",
+    "off_task",
+    "destructive",
+    "irreversible",
+    "external_side_effect",
+    "privilege_escalation",
+    "secret_access",
+    "sensitive_data",
+    "financial_action",
+    "production_mutation",
+    "unusual_scope",
+    "untrusted_input",
+    "policy_violation",
+    "low_confidence",
+    "provider_unavailable",
+    "decision_timeout",
+    "unsupported_action",
+    "unknown_risk"
+  ],
+  "FALLBACK_REASONS": [
+    "timeout",
+    "provider-error",
+    "gateway-error",
+    "invalid-input"
+  ],
+  "POLICY_OPERATORS": [
+    "equals",
+    "not_equals",
+    "starts_with",
+    "matches",
+    "in",
+    "exists"
+  ],
+  "DECISION_FEEDBACK_VALUES": [
+    "correct",
+    "should-allow",
+    "should-ask",
+    "should-deny"
+  ],
+  "VALIDATION_ISSUE_CODES": [
+    "missing_field",
+    "unrecognized_field",
+    "invalid_type",
+    "invalid_value",
+    "invalid_format",
+    "out_of_range",
+    "invalid_json"
+  ],
+  "ID_PREFIXES": ["dec", "act", "agt", "prj", "org", "pol", "ses"]
+}

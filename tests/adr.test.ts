@@ -90,7 +90,7 @@ describe("RFX-004 ADR framework", () => {
 /** RFX-005 — ADR-001 explains inclusions, exclusions and the escape hatch. */
 describe("RFX-005 ADR-001 canonical action model", () => {
   const adr = readText(...ADR_DIR, "ADR-001-canonical-action-model.md");
-  const contracts = readText("packages", "contracts", "src", "index.ts");
+  const contracts = readText("packages", "contracts", "src", "action.ts");
 
   it("covers inclusions, exclusions and the adapter metadata escape hatch", () => {
     expect(adr).toMatch(/^### \d+\. Inclusions$/m);
