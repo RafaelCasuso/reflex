@@ -30,7 +30,7 @@ Ticket IDs are stable. Claude Code should reference them in commits/PRs.
 
 **Acceptance:** PR fails on any quality gate; CI uses lockfile-frozen install.
 
-**Status:** Implemented, verification pending (2026-09-18). Verified locally: `actionlint` reports 0 errors; the exact CI command sequence passes in a clean `node:24` Linux container; fault injection proves each gate exits non-zero (lint, architectural boundary, non-exhaustive switch, `any`, formatting, typecheck, build, failing test, forbidden manifest edge, lockfile drift); `tests/ci.test.ts` rejects ten ways of weakening the workflow. **Missing:** the repository has no GitHub remote yet, so the workflow has never executed on GitHub Actions, and "PR fails" additionally requires marking the **Quality gates** check as required in branch protection, which is a repository setting and not a file. Flip to `Done` after the first green run on GitHub with the required check configured.
+**Status:** Done (2026-09-18). First GitHub Actions run on `main` is green: [run 35366580681](https://github.com/RafaelCasuso/reflex/actions/runs/35366580681), every gate `success`. **Quality gates** is a required status check on `main`, pinned to the GitHub Actions app so no other integration can satisfy it by reusing the name; admins may bypass, no review is required, force pushes and branch deletion are off. Verified before the push: `actionlint` reports 0 errors; the exact CI command sequence passes in a clean `node:24` Linux container; fault injection proves each gate exits non-zero (lint, architectural boundary, non-exhaustive switch, `any`, formatting, typecheck, build, failing test, forbidden manifest edge, lockfile drift); `tests/ci.test.ts` rejects ten ways of weakening the workflow. Branch protection is a repository setting, not a file: it does not travel with a fork or a transfer and must be re-applied there.
 
 ### RFX-004 — Create ADR framework
 
@@ -50,7 +50,7 @@ Ticket IDs are stable. Claude Code should reference them in commits/PRs.
 
 **Gate exit:** all tickets above are green in CI and documented; no known dangerous false-allow regression.
 
-**Gate status:** Open on one item (2026-09-18). All five tickets are implemented, documented and green locally, including a clean-container rehearsal of the CI sequence. "Green in CI" is unproven until the repository is pushed and the workflow runs on GitHub (see RFX-003). No decision logic exists yet, so there is no false-allow surface to regress.
+**Gate status:** Closed (2026-09-18). All five tickets are done, documented and green in CI on GitHub. No decision logic exists yet, so there is no false-allow surface to regress. Carried into later gates: ADR-002 to ADR-008 are owed before G2 (`docs/architecture.md` §14), and ADR-001 lists enforcement obligations for G1, G2, G3, G5, G6, G7 and G8.
 
 ## G1 — Canonical contracts
 
