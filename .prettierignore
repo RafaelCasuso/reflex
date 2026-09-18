@@ -1,0 +1,10 @@
+# generated
+pnpm-lock.yaml
+dist/
+coverage/
+.turbo/
+.npm-cache/
+
+# The engineering operating system is edited by hand, deliberately.
+# Tooling does not rewrite it.
+CLAUDE.md

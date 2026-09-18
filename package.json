@@ -1,0 +1,32 @@
+{
+  "name": "reflex",
+  "version": "0.0.0",
+  "private": true,
+  "description": "REFLEX — the autonomy control layer for AI agents.",
+  "type": "module",
+  "packageManager": "pnpm@9.12.0",
+  "engines": {
+    "node": ">=24"
+  },
+  "scripts": {
+    "build": "turbo run build",
+    "lint": "turbo run lint lint:root format:check",
+    "typecheck": "turbo run typecheck typecheck:root",
+    "test": "turbo run test test:root",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "lint:root": "eslint --max-warnings 0 eslint.config.mjs vitest.config.ts tests",
+    "typecheck:root": "tsc -p tsconfig.json",
+    "test:root": "vitest run"
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "@types/node": "^24.13.5",
+    "eslint": "^10.10.0",
+    "prettier": "^3.9.8",
+    "turbo": "^2.10.13",
+    "typescript": "~6.0.3",
+    "typescript-eslint": "^8.70.0",
+    "vitest": "^5.0.1"
+  }
+}

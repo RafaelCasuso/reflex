@@ -1,0 +1,26 @@
+{
+  "name": "@reflex/sdk-typescript",
+  "version": "0.0.0",
+  "private": true,
+  "description": "TypeScript SDK for guarding tool collections.",
+  "type": "module",
+  "sideEffects": false,
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "typecheck": "tsc -p tsconfig.json",
+    "lint": "eslint --max-warnings 0 .",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@reflex/contracts": "workspace:*"
+  }
+}

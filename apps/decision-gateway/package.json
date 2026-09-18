@@ -1,0 +1,16 @@
+{
+  "name": "@reflex/decision-gateway",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Latency-sensitive runtime decision endpoint. Deployable independently of dashboard/control-plane concerns.",
+  "type": "module",
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "typecheck": "tsc -p tsconfig.json",
+    "lint": "eslint --max-warnings 0 .",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@reflex/contracts": "workspace:*"
+  }
+}

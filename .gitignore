@@ -1,0 +1,26 @@
+# dependencies
+node_modules/
+
+# build output
+dist/
+*.tsbuildinfo
+
+# tooling caches
+.turbo/
+coverage/
+# ~/.npmrc may set a relative `cache=.npm-cache`; never commit it
+.npm-cache/
+
+# local environment — never commit secrets
+.env
+.env.*
+!.env.example
+
+# logs
+*.log
+
+# OS / editor
+.DS_Store
+.idea/
+.vscode/*
+!.vscode/extensions.json

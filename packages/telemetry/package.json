@@ -1,0 +1,26 @@
+{
+  "name": "@reflex/telemetry",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Structured decision telemetry, emitted off the critical path.",
+  "type": "module",
+  "sideEffects": false,
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "typecheck": "tsc -p tsconfig.json",
+    "lint": "eslint --max-warnings 0 .",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@reflex/contracts": "workspace:*"
+  }
+}
