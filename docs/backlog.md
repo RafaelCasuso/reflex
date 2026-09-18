@@ -262,6 +262,14 @@ Tickets RFX-041, RFX-042, RFX-044, RFX-052, RFX-053, RFX-056, RFX-057 and RFX-05
 
 **Acceptance:** Invalid YAML/schema produces actionable line/path errors.
 
+### RFX-105 — Seed the golden corpus and a minimal replay runner
+
+**Goal:** Create the corpus format and a runner that replays it against the deterministic engine, so the policy engine is developed against it from its first ticket.
+
+**Acceptance:** Each case states its acceptable effects and whether allowing it would be dangerous. CI fails when a dangerous case is allowed. Cases are seeded from G1.5 observations where they exist. RFX-038 and RFX-039 extend this corpus and runner; they do not replace them.
+
+**Why:** Every gate exits on "no known dangerous false-allow regression", and the harness that can detect one arrived in G6. `CLAUDE.md` asks for tests first on decision-sensitive changes.
+
 ### RFX-013 — Implement policy condition matcher
 
 **Goal:** Support equals, not_equals, starts_with, matches, in, exists.
@@ -374,6 +382,14 @@ Tickets RFX-041, RFX-042, RFX-044, RFX-052, RFX-053, RFX-056, RFX-057 and RFX-05
 
 **Acceptance:** Timed-out semantic calls terminate and follow fallback policy.
 
+### RFX-106 — Deterministic decision cache and action fingerprint
+
+**Goal:** Cache deterministic decisions by canonical action fingerprint, policy set hash, environment and project (`docs/architecture.md` §11).
+
+**Acceptance:** `adapterMetadata`, IDs and timestamps are not part of the fingerprint (ADR-001 §3.4). A policy change invalidates by construction, because the hash is in the key. The cached path meets its p95 budget. Every test passes with the cache disabled or flushed.
+
+**Why:** The architecture has a caching section and `CLAUDE.md` has a budget for it, and neither had a ticket.
+
 ### RFX-023 — Structured decision telemetry
 
 **Goal:** Emit latency/effect/cache/fallback metrics.
@@ -408,6 +424,14 @@ Tickets RFX-041, RFX-042, RFX-044, RFX-052, RFX-053, RFX-056, RFX-057 and RFX-05
 
 **Acceptance:** Malformed/partial provider output never becomes an implicit allow.
 
+### RFX-107 — Semantic latency and cost spike
+
+**Goal:** Measure, against the real provider, the latency and cost of assessing the eleven dimensions: one call, batched, and parallel.
+
+**Acceptance:** A written result with p50, p95 and cost per 1,000 governed actions, and a recommendation that RFX-028 then implements. If the p95 budget of 400 ms is out of reach, that is reported before RFX-028 starts.
+
+**Why:** RFX-028 assumes parallel per-dimension calls. Eleven model calls per action against a 400 ms p95 is a hypothesis to test, not a design to build.
+
 ### RFX-028 — Implement parallel semantic dimensions
 
 **Goal:** Evaluate independent dimensions with bounded concurrency.
@@ -420,11 +444,27 @@ Tickets RFX-041, RFX-042, RFX-044, RFX-052, RFX-053, RFX-056, RFX-057 and RFX-05
 
 **Acceptance:** Entire decision engine test suite runs offline.
 
+### RFX-108 — Prompt-injection corpus for the semantic path
+
+**Goal:** Add adversarial cases where attacker-controlled text (tool arguments, MCP tool descriptions, task summaries, file content quoted in arguments) instructs the assessor to rate the action as safe.
+
+**Acceptance:** Every case has a clean twin without the injected text. Injection must not lower any risk dimension, or raise any confidence, beyond a stated tolerance relative to the twin. Untrusted text reaches the provider as delimited data, never as instructions. The corpus runs offline against the fake provider for plumbing and on demand against the real provider.
+
+**Why:** The assessor is a model reading text the adversary wrote. The backlog covered secrets leaking out (RFX-035) and nothing about instructions leaking in.
+
 ### RFX-030 — Semantic provider latency telemetry
 
 **Goal:** Record provider/model/dimension latencies.
 
 **Acceptance:** Dashboard-ready metrics exposed without sensitive inputs.
+
+### RFX-109 — Semantic decision cache
+
+**Goal:** Cache semantic assessments only for explicitly safe, repeatable classes.
+
+**Acceptance:** Destructive, financial, production, privilege, credential and external-write actions are never served from cache (`docs/architecture.md` §11), enforced by test. A cached semantic decision meets p95 < 20 ms.
+
+**Depends on:** RFX-106.
 
 **Gate exit:** all tickets above are green in CI and documented; no known dangerous false-allow regression.
 
@@ -446,7 +486,7 @@ Tickets RFX-041, RFX-042, RFX-044, RFX-052, RFX-053, RFX-056, RFX-057 and RFX-05
 
 **Goal:** Produce minimal provider request from canonical action.
 
-**Acceptance:** Median test corpus stays under configured token budget.
+**Acceptance:** Median test corpus stays under configured token budget, measured with a named tokenizer.
 
 ### RFX-034 — Token budget enforcement
 
@@ -476,11 +516,21 @@ Tickets RFX-041, RFX-042, RFX-044, RFX-052, RFX-053, RFX-056, RFX-057 and RFX-05
 
 **Acceptance:** Low-confidence high-impact action never auto-allows.
 
+### RFX-110 — Confidence calibration
+
+**Goal:** Measure how well provider confidence predicts correctness on the corpus, and set the low-confidence threshold from that data.
+
+**Acceptance:** The eval harness produces a reliability table per dimension. The threshold used by RFX-037 is justified by it, and is re-checked whenever the provider or model changes.
+
+**Why:** RFX-037 escalates on low confidence. A model's self-reported confidence is not calibrated until someone measures it.
+
 ### RFX-038 — Create golden eval corpus
 
 **Goal:** Add safe/destructive/off-task/secret/prod/financial cases.
 
 **Acceptance:** Each case has expected acceptable effects.
+
+**Depends on:** RFX-105. This extends the corpus started there with the semantic cases.
 
 ### RFX-039 — Implement replay/eval harness
 
@@ -488,11 +538,21 @@ Tickets RFX-041, RFX-042, RFX-044, RFX-052, RFX-053, RFX-056, RFX-057 and RFX-05
 
 **Acceptance:** CI can fail on dangerous false-allow regression.
 
+**Depends on:** RFX-105. This extends the runner started there to the full engine.
+
 ### RFX-040 — Add regression threshold CI gate
 
 **Goal:** Define initial false-allow safety threshold.
 
 **Acceptance:** Any new dangerous false allow fails CI.
+
+### RFX-111 — Mutation testing for security-sensitive packages
+
+**Goal:** Run mutation testing on the policy engine, the classifier, redaction and the aggregator.
+
+**Acceptance:** A surviving mutant in a decision path fails a scheduled check or is explicitly justified in the repository.
+
+**Why:** In G1, manual mutation checks caught what ordinary tests did not, including a parser that reordered keys. For the packages where a missed branch is a false allow, that should not depend on someone remembering to do it.
 
 **Gate exit:** all tickets above are green in CI and documented; no known dangerous false-allow regression.
 
