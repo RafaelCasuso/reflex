@@ -10,11 +10,12 @@ ADR says so explicitly and the same change updates `CLAUDE.md`.
 
 ## Index
 
-| ADR                                                | Title                                 | Status   | Date       | Tickets |
-| -------------------------------------------------- | ------------------------------------- | -------- | ---------- | ------- |
-| [ADR-001](./ADR-001-canonical-action-model.md)     | Canonical action model                | Accepted | 2026-09-18 | RFX-005 |
-| [ADR-009](./ADR-009-contract-versioning.md)        | Contract versioning and compatibility | Accepted | 2026-09-18 | RFX-011 |
-| [ADR-013](./ADR-013-action-outcome-observation.md) | Action outcome observation            | Proposed | 2026-09-18 | RFX-091 |
+| ADR                                                         | Title                                 | Status   | Date       | Tickets |
+| ----------------------------------------------------------- | ------------------------------------- | -------- | ---------- | ------- |
+| [ADR-001](./ADR-001-canonical-action-model.md)              | Canonical action model                | Accepted | 2026-09-18 | RFX-005 |
+| [ADR-009](./ADR-009-contract-versioning.md)                 | Contract versioning and compatibility | Accepted | 2026-09-18 | RFX-011 |
+| [ADR-010](./ADR-010-decision-placement-and-hook-latency.md) | Decision placement and hook latency   | Proposed | 2026-09-18 | RFX-094 |
+| [ADR-013](./ADR-013-action-outcome-observation.md)          | Action outcome observation            | Proposed | 2026-09-18 | RFX-091 |
 
 ### Planned
 

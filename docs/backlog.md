@@ -278,6 +278,16 @@ Tickets RFX-041, RFX-042, RFX-044, RFX-052, RFX-053, RFX-056, RFX-057 and RFX-05
 
 ## G3 — Decision engine API
 
+### RFX-094 — Decide ADR-010 decision placement and hook latency
+
+**Goal:** Decide where a decision is made (per-call process, local daemon, compiled binary, remote gateway) and at which points the latency budgets are measured.
+
+**Acceptance:** ADR-010 is accepted before RFX-019 starts. It names the measurement points for every budget in `CLAUDE.md`, and it defines what the hook does when the chosen local component is unavailable.
+
+**Depends on:** RFX-088 for the baseline, RFX-087 for what the host does on hook failure.
+
+**Why:** The budgets, the no-account requirement (RFX-058) and "the data plane must keep working without the dashboard" cannot all hold with one Node process per call talking to a remote gateway.
+
 ### RFX-019 — Implement decision engine orchestration
 
 **Goal:** Wire normalize → policy → semantic → aggregate → decision.
@@ -312,7 +322,7 @@ Tickets RFX-041, RFX-042, RFX-044, RFX-052, RFX-053, RFX-056, RFX-057 and RFX-05
 
 **Goal:** Create repeatable local benchmark.
 
-**Acceptance:** Baseline report produced for deterministic path.
+**Acceptance:** Baseline report produced for deterministic path. Every number states where it was measured: inside the engine, and end to end from the hook (ADR-010).
 
 **Gate exit:** all tickets above are green in CI and documented; no known dangerous false-allow regression.
 
