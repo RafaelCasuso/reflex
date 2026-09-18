@@ -128,6 +128,14 @@ Tickets RFX-041, RFX-042, RFX-044, RFX-052, RFX-053, RFX-056, RFX-057 and RFX-05
 
 **G1.5 scope:** `sideEffectClass` is `unknown` unless it is trivially known. Classification arrives with the command classifier, and until then unknown is the honest value (ADR-001 §4).
 
+### RFX-091 — Decide ADR-013 and add the `ActionOutcome` contract
+
+**Goal:** Define a separate contract for what the host did with an action: whether it prompted, what the human answered, whether the action executed, and when. Keyed by `actionId`.
+
+**Acceptance:** ADR-013 is accepted. The contract is added as an additive change under ADR-009 with frozen fixtures. It carries no tool output and no argument values, and it represents a signal the host does not expose as `unknown`, never as a guess.
+
+**Why:** Without it the north-star metric, "approval prompts eliminated", the activation card and Approval Learning (which mines the host's native approvals) have no data to be computed from.
+
 ### RFX-044 — Implement reversible Claude installer
 
 **Goal:** Install project-scoped config/hook and create backup.
@@ -155,6 +163,14 @@ Tickets RFX-041, RFX-042, RFX-044, RFX-052, RFX-053, RFX-056, RFX-057 and RFX-05
 **Acceptance:** The hook never changes what the host does (no block, no auto-approval, no added prompt), including when the recorder itself fails. A record carries tool, operation, side-effect class, timestamps and the shape of the arguments (keys, types, sizes), and never a raw argument value until RFX-031 lands. The log rotates at a fixed size.
 
 **Depends on:** RFX-042.
+
+### RFX-092 — Capture action outcomes in Claude Code
+
+**Goal:** Record an `ActionOutcome` for each observed action from the host's post-execution and permission signals.
+
+**Acceptance:** Fixture tests cover: executed without a prompt, prompted and approved, prompted and rejected, blocked by the host. Capturing an outcome never changes what the host does.
+
+**Depends on:** RFX-091, RFX-086.
 
 ### RFX-087 — Verify host behavior when the hook fails
 
@@ -464,6 +480,14 @@ RFX-041, RFX-042 and RFX-044 moved to G1.5, where the adapter is first exercised
 
 **Acceptance:** Observe never changes execution; Assist never suppresses needed approval.
 
+### RFX-093 — Capture action outcomes in Codex
+
+**Goal:** Record an `ActionOutcome` for each governed Codex action, using the signals that `PreToolUse` and `PermissionRequest` expose.
+
+**Acceptance:** Fixture tests cover the same four cases as RFX-092. Where Codex exposes no signal, the outcome says `unknown`.
+
+**Depends on:** RFX-091.
+
 **Gate exit:** all tickets above are green in CI and documented; no known dangerous false-allow regression.
 
 ## G9 — CLI and zero-friction onboarding
@@ -532,6 +556,8 @@ RFX-052, RFX-053, RFX-056, RFX-057 and RFX-058 moved to G1.5. This gate complete
 
 **Acceptance:** Card appears after enough evidence and never claims unmeasured safety.
 
+**Depends on:** RFX-091. The opportunity it reports is measured from observed outcomes, and any estimated figure is labelled as an estimate.
+
 ### RFX-066 — Mode switch UX
 
 **Goal:** Observe → Assist → Autopilot with explicit consequences.
@@ -553,6 +579,8 @@ RFX-052, RFX-053, RFX-056, RFX-057 and RFX-058 moved to G1.5. This gate complete
 **Goal:** Cluster semantically/deterministically similar approvals.
 
 **Acceptance:** Suggestions include evidence count and scope.
+
+**Depends on:** RFX-091. The approvals being mined are the host's native approvals, which only `ActionOutcome` records.
 
 ### RFX-069 — Generate inspectable policy suggestions
 
@@ -643,6 +671,8 @@ RFX-052, RFX-053, RFX-056, RFX-057 and RFX-058 moved to G1.5. This gate complete
 **Goal:** Compute approval prompts eliminated and configurable time estimate.
 
 **Acceptance:** Estimated time is visibly labelled and assumption configurable.
+
+**Depends on:** RFX-091. In Assist and Autopilot the counterfactual prompt is not observable, so the figure is an estimate from Observe-period base rates and is labelled as one.
 
 **Gate exit:** all tickets above are green in CI and documented; no known dangerous false-allow regression.
 
