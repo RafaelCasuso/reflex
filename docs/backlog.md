@@ -232,6 +232,14 @@ Tickets RFX-041, RFX-042, RFX-044, RFX-052, RFX-053, RFX-056, RFX-057 and RFX-05
 
 ## G2 — Deterministic policy engine
 
+### RFX-095 — Decide ADR-011 normalized operands and classification ownership
+
+**Goal:** Decide what a policy rule matches against (host-shaped `arguments`, or canonical operands for command, paths and network targets) and who computes `sideEffectClass`.
+
+**Acceptance:** ADR-011 is accepted before RFX-013 starts. If it introduces a classifier package, `docs/architecture.md` and the dependency rules in `CLAUDE.md` are updated in the same change.
+
+**Why:** Rules written against `arguments.*` are host-specific, which is the exact failure ADR-001 was written to prevent. `CLAUDE.md` lists a command classifier as security-sensitive code, and no package or ticket for it exists.
+
 ### RFX-012 — Define policy YAML schema
 
 **Goal:** Implement v1 policy document parser.
@@ -243,6 +251,28 @@ Tickets RFX-041, RFX-042, RFX-044, RFX-052, RFX-053, RFX-056, RFX-057 and RFX-05
 **Goal:** Support equals, not_equals, starts_with, matches, in, exists.
 
 **Acceptance:** Unit tests cover positive, negative and malformed cases.
+
+### RFX-096 — Shell command normalization and classifier
+
+**Goal:** Parse a shell command into segments with a real grammar, and classify the side-effect class of each segment.
+
+**Acceptance:** Compound and indirect constructs (`;`, `&&`, pipes, `$(...)`, backticks, `bash -c`, `xargs`, `find -exec`, assignment and `env` prefixes, package-manager scripts) are either decomposed into segments or reported as not understood. An allow rule can only match a command whose every segment is understood. A deny rule matches if any segment matches. A side-effect class can be raised by a later stage and never lowered. The parser has its own latency benchmark.
+
+**Depends on:** RFX-095.
+
+**Why:** `starts_with` and `matches` on raw text cannot defeat the bypasses RFX-018 sets out to test. This ticket is what RFX-018 tests.
+
+### RFX-097 — Path containment and composition operators
+
+**Goal:** Add `path_within`, evaluated after normalization, and boolean composition (`any_of`, `not`) to the matcher.
+
+**Acceptance:** Traversal (`..`), case and trailing-separator tricks cannot make a path outside the root match `path_within`. Composition has a documented truth table. A missing field never satisfies a condition in an allow rule, including under `not`.
+
+### RFX-098 — Bounded regular expressions
+
+**Goal:** Make the `matches` operator safe on the hot path.
+
+**Acceptance:** Patterns either run on a linear-time engine or are rejected at policy compile time by a complexity check. A catastrophic-backtracking corpus cannot push a single evaluation past the deterministic latency budget.
 
 ### RFX-014 — Implement precedence engine
 
@@ -267,6 +297,14 @@ Tickets RFX-041, RFX-042, RFX-044, RFX-052, RFX-053, RFX-056, RFX-057 and RFX-05
 **Goal:** Provide conservative starter rules for common read/test/status operations.
 
 **Acceptance:** Default pack never auto-allows destructive/external/privilege actions.
+
+### RFX-100 — Policy language reference
+
+**Goal:** Write `docs/policy-language.md`: addressable fields, operators, precedence, worked examples, and what a rule cannot express.
+
+**Acceptance:** Every operator and every addressable field is documented with an example that is executed as a test, so the reference cannot drift from the engine.
+
+**Why:** The file is in the architecture layout and had no ticket. It is the first document a user reads before trusting Autopilot.
 
 ### RFX-018 — Adversarial matcher tests
 
@@ -515,6 +553,16 @@ RFX-052, RFX-053, RFX-056, RFX-057 and RFX-058 moved to G1.5. This gate complete
 **Goal:** Diagnose adapters, gateway, policy, auth and host config.
 
 **Acceptance:** Each failure includes concrete remediation.
+
+### RFX-099 — Implement `rfx explain`
+
+**Goal:** Show why an action would be allowed, asked or denied: matched rules, precedence and final effect.
+
+**Acceptance:** The output comes from the same evaluation the engine performs, not from a re-implementation. It works offline against the local policy.
+
+**Depends on:** RFX-015.
+
+**Why:** `CLAUDE.md` principle 6 requires every policy resolution to be explainable through matched rules, precedence and final effect. Nothing exposed that to the user.
 
 **Gate exit:** all tickets above are green in CI and documented; no known dangerous false-allow regression.
 
