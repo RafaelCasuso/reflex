@@ -25,15 +25,15 @@ ADR says so explicitly and the same change updates `CLAUDE.md`.
 listed here so the gap is visible; none of them is decided yet. Their numbers
 are reserved, which is why the next ADR after ADR-001 is ADR-009.
 
-| ADR     | Title                          |
-| ------- | ------------------------------ |
-| ADR-002 | Decision precedence            |
-| ADR-003 | Fail behavior                  |
-| ADR-004 | Policy precedence              |
-| ADR-005 | Provider abstraction           |
-| ADR-006 | Local redaction boundary       |
-| ADR-007 | Adapter ASK semantics          |
-| ADR-008 | Telemetry persistence strategy |
+| ADR     | Title                          | Ticket  | Must answer                                                                                                                                                                                                                                                                                                      |
+| ------- | ------------------------------ | ------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| ADR-002 | Decision precedence            | RFX-112 | The full table of mode (observe, assist, autopilot) by effect (allow, ask, deny): what `effectiveEffect` is in each cell and what the adapter does. Whether a semantic result can ever lower a deterministic ask. How `risk` and `confidence` are set for a purely deterministic decision.                       |
+| ADR-003 | Fail behavior                  | RFX-113 | Which side-effect classes may fail open, and who decides the failure mode: can a client request `fail-open` for a destructive action? What the adapter does when it can reach nothing at all. How a fallback is reported to the user.                                                                            |
+| ADR-004 | Policy precedence              | RFX-114 | What `mandatory` means exactly. Whether a lower source can override a non-mandatory rule from a higher source. How `PolicyMatch.precedence` is derived, how ties inside one source are broken, and how `defaults.unresolved` combines across sources. How trust (ADR-012) enters precedence.                     |
+| ADR-005 | Provider abstraction           | RFX-115 | Where `SemanticDecisionProvider` and `DecisionEngine` live: in contracts, where they are today, or in `packages/semantic-provider`. The typed provider error model. Confirmation that a partial assessment is an error (ADR-009 reads assessments strictly).                                                     |
+| ADR-006 | Local redaction boundary       | RFX-116 | What is redacted where (adapter, CLI, gateway). What may be written locally before redaction. Whether policy is matched before or after redaction, since a rule about a secret-shaped argument cannot match redacted text. Whether redacted values are hashed so that repeated approvals can still be clustered. |
+| ADR-007 | Adapter ASK semantics          | RFX-117 | A capability matrix per host: how allow, ask and deny are expressed, and in which hook. What `ask` becomes when the host cannot ask, for example headless or CI runs. How Assist maps onto each host.                                                                                                            |
+| ADR-008 | Telemetry persistence strategy | RFX-118 | The measured trigger for moving events from PostgreSQL to ClickHouse. When audit persistence is synchronous. What is never stored. Retention per event class.                                                                                                                                                    |
 
 ## When an ADR is required
 

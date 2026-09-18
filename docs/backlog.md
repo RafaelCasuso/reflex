@@ -232,6 +232,48 @@ Tickets RFX-041, RFX-042, RFX-044, RFX-052, RFX-053, RFX-056, RFX-057 and RFX-05
 
 ## G2 — Deterministic policy engine
 
+### RFX-112 — Write ADR-002 decision precedence and effective effect
+
+**Goal:** Write ADR-002, one of the first architectural ADRs that `docs/architecture.md` §14 requires before Gate G2.
+
+**Acceptance:** ADR-002 is accepted and answers: The full table of mode (observe, assist, autopilot) by effect (allow, ask, deny): what `effectiveEffect` is in each cell and what the adapter does. Whether a semantic result can ever lower a deterministic ask. How `risk` and `confidence` are set for a purely deterministic decision.
+
+### RFX-113 — Write ADR-003 fail behavior
+
+**Goal:** Write ADR-003, one of the first architectural ADRs that `docs/architecture.md` §14 requires before Gate G2.
+
+**Acceptance:** ADR-003 is accepted and answers: Which side-effect classes may fail open, and who decides the failure mode: can a client request `fail-open` for a destructive action? What the adapter does when it can reach nothing at all. How a fallback is reported to the user.
+
+### RFX-114 — Write ADR-004 policy precedence
+
+**Goal:** Write ADR-004, one of the first architectural ADRs that `docs/architecture.md` §14 requires before Gate G2.
+
+**Acceptance:** ADR-004 is accepted and answers: What `mandatory` means exactly. Whether a lower source can override a non-mandatory rule from a higher source. How `PolicyMatch.precedence` is derived, how ties inside one source are broken, and how `defaults.unresolved` combines across sources. How trust (ADR-012) enters precedence.
+
+### RFX-115 — Write ADR-005 provider abstraction
+
+**Goal:** Write ADR-005, one of the first architectural ADRs that `docs/architecture.md` §14 requires before Gate G2.
+
+**Acceptance:** ADR-005 is accepted and answers: Where `SemanticDecisionProvider` and `DecisionEngine` live: in contracts, where they are today, or in `packages/semantic-provider`. The typed provider error model. Confirmation that a partial assessment is an error (ADR-009 reads assessments strictly).
+
+### RFX-116 — Write ADR-006 local redaction boundary
+
+**Goal:** Write ADR-006, one of the first architectural ADRs that `docs/architecture.md` §14 requires before Gate G2.
+
+**Acceptance:** ADR-006 is accepted and answers: What is redacted where (adapter, CLI, gateway). What may be written locally before redaction. Whether policy is matched before or after redaction, since a rule about a secret-shaped argument cannot match redacted text. Whether redacted values are hashed so that repeated approvals can still be clustered.
+
+### RFX-117 — Write ADR-007 adapter ASK semantics
+
+**Goal:** Write ADR-007, one of the first architectural ADRs that `docs/architecture.md` §14 requires before Gate G2.
+
+**Acceptance:** ADR-007 is accepted and answers: A capability matrix per host: how allow, ask and deny are expressed, and in which hook. What `ask` becomes when the host cannot ask, for example headless or CI runs. How Assist maps onto each host.
+
+### RFX-118 — Write ADR-008 telemetry persistence strategy
+
+**Goal:** Write ADR-008, one of the first architectural ADRs that `docs/architecture.md` §14 requires before Gate G2.
+
+**Acceptance:** ADR-008 is accepted and answers: The measured trigger for moving events from PostgreSQL to ClickHouse. When audit persistence is synchronous. What is never stored. Retention per event class.
+
 ### RFX-101 — Write the threat model
 
 **Goal:** Write `docs/security.md`: assets, adversaries (the governed agent, prompt-injected content, a malicious repository, a malicious MCP server, a network attacker, a compromised dependency), trust boundaries and explicit non-goals.
