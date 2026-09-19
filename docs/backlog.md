@@ -124,6 +124,8 @@ Tickets RFX-041, RFX-042, RFX-044, RFX-052, RFX-053, RFX-056, RFX-057 and RFX-05
 
 **Acceptance:** Detection is read-only and returns exact mutation plan.
 
+**Status:** Done (2026-09-19). `adapter-claude-code/src/detect.ts` and `settings.ts` are pure: paths and text in, a plan out. `planInit` reads the three settings scopes plus the managed settings and writes nothing; a test lists the whole tree before and after to prove it. The plan carries the exact bytes to be written and the SHA-256 of the bytes it was computed from. Default scope is `.claude/settings.local.json`, because the hook command holds a machine-specific path and the shared project file would give every teammate a failing hook. It reports `disableAllHooks` and `allowManagedHooksOnly`, which would leave REFLEX installed and never run.
+
 ### RFX-042 — Implement Claude hook input translator
 
 **Goal:** Translate supported hook payload into CanonicalAction.
@@ -131,6 +133,8 @@ Tickets RFX-041, RFX-042, RFX-044, RFX-052, RFX-053, RFX-056, RFX-057 and RFX-05
 **Acceptance:** Fixture tests cover Bash, file edits and MCP calls.
 
 **G1.5 scope:** `sideEffectClass` is `unknown` unless it is trivially known. Classification arrives with the command classifier, and until then unknown is the honest value (ADR-001 §4).
+
+**Status:** Done (2026-09-19). Fixtures for Bash, Write, Edit and an MCP call translate to actions the contract accepts. The envelope is validated by hand (no schema library in a per-call process), tolerates fields and events a newer host adds, and returns a typed failure for one it cannot use. Arguments pass through as received and are never read. `sideEffectClass` is `unknown` for everything except WebSearch and TodoWrite, and never for an MCP tool: `Read` is a local read until the path is a credentials file. IDs are derived by hashing, so every event about one tool call yields the same `ActionId` with no shared state. **Provenance:** fixtures are built from the official hooks reference and from `sdk-tools.d.ts` as shipped in claude-code 2.1.276 (a documentation summary gave wrong field names for Write and Edit; the shipped types were taken as authoritative). They are not captured from a live session yet; RFX-089 closes that.
 
 ### RFX-091 — Decide ADR-013 and add the `ActionOutcome` contract
 
@@ -148,6 +152,8 @@ Tickets RFX-041, RFX-042, RFX-044, RFX-052, RFX-053, RFX-056, RFX-057 and RFX-05
 
 **Acceptance:** `rfx uninstall` removes exactly what REFLEX added and leaves every other byte untouched, including edits the user made after installing. When the file has not changed since install, the result is byte-identical to the backup.
 
+**Status:** Done (2026-09-19). Install and uninstall are surgical text edits (`jsonc-parser`), tested across nine formatting styles: indentation, CRLF, comments, trailing commas, compact and empty files all keep their bytes. `rfx uninstall` restores the original byte for byte (mode included) when the file is unchanged since install, removes a file REFLEX itself created, and otherwise removes only REFLEX's entries and keeps the user's later edits. A tampered backup is detected by checksum and falls back to surgical removal. REFLEX's entries are recognized by a leading `REFLEX_MANAGED=1`; a user hook that merely mentions it survives. Idempotent and self-healing. Explicit 5 s hook timeout (the host default is 600 s).
+
 ### RFX-052 — Implement `rfx init` detector
 
 **Goal:** Scan supported agents and MCP configs.
@@ -155,6 +161,8 @@ Tickets RFX-041, RFX-042, RFX-044, RFX-052, RFX-053, RFX-056, RFX-057 and RFX-05
 **Acceptance:** Command prints deterministic plan before mutation.
 
 **G1.5 scope:** Claude Code only. Codex and MCP detection are added by their own gates.
+
+**Status:** Done (2026-09-19). `rfx init` prints the plan before anything is touched: the file, create or modify, the events, the exact command, the backup location and any warnings. The same state yields the same plan text byte for byte. Without a terminal and without `--yes` it prints the plan and changes nothing; `--dry-run` does the same explicitly. If the file changes while the plan is on screen, nothing is written. Claude Code only, per the G1.5 scope.
 
 ### RFX-053 — Implement backup transaction
 
@@ -172,6 +180,8 @@ Tickets RFX-041, RFX-042, RFX-044, RFX-052, RFX-053, RFX-056, RFX-057 and RFX-05
 
 **Depends on:** RFX-042.
 
+**Status:** Done (2026-09-19). `@reflex/telemetry` plus `rfx hook claude-code`. The real binary is run as a child process against every failure mode (empty, truncated, binary garbage, a nesting bomb, a 4 MB payload, an unwritable state directory, an unknown host): it always exits 0 with nothing on stdout or stderr. Records carry tool, side-effect class, timestamps and the argument shape; tests plant a secret in the command, in nested values, in a tool response and in the transcript path, and assert it is nowhere on disk. An adversarial test found that the first key-name rule let a token used as a map key reach the log; the rule is now narrow (identifier-like, short, few digits, top two levels only). JSONL, `0600` in a `0700` directory under `~/.reflex`, rotated at 5 MB with three files kept; 400 concurrent appends keep every record whole.
+
 ### RFX-092 — Capture action outcomes in Claude Code
 
 **Goal:** Record an `ActionOutcome` for each observed action from the host's post-execution and permission signals.
@@ -179,6 +189,8 @@ Tickets RFX-041, RFX-042, RFX-044, RFX-052, RFX-053, RFX-056, RFX-057 and RFX-05
 **Acceptance:** Fixture tests cover: executed without a prompt, prompted and approved, prompted and rejected, blocked by the host. Capturing an outcome never changes what the host does.
 
 **Depends on:** RFX-091, RFX-086.
+
+**Status:** Done (2026-09-19). Host events map to four host-agnostic signals plus the end of a turn, and a pure function assembles them into a contract-valid `ActionOutcome`. Fixtures cover executed without a prompt, prompted and approved, prompted and rejected, and blocked by the host, end to end from the stdin payload. All 32 combinations of signals are run through the contract parser, which rejects self-contradicting records. A signal the host did not identify is dropped instead of being attached to a guessed action. **Two rules rest on documented, not yet observed, host behavior** and are the first thing RFX-087's live run should confirm: a pending prompt becomes `rejected` only when the turn ends without the tool running, and `PostToolUseFailure` leaves `executed` as `unknown`.
 
 ### RFX-087 — Verify host behavior when the hook fails
 
@@ -188,6 +200,8 @@ Tickets RFX-041, RFX-042, RFX-044, RFX-052, RFX-053, RFX-056, RFX-057 and RFX-05
 
 **Why:** `CLAUDE.md` principle 5 says REFLEX may never silently disappear from the execution path. That only holds if the host cooperates, and it has to be known before Assist or Autopilot rely on it.
 
+**Status:** Implemented, verification pending (2026-09-19). `docs/claude-code-hook.md` §3 holds the failure table and what it implies: apart from exit code 2, Claude Code fails open on everything (other exit codes, invalid output, timeout, missing command, removed or disabled hook), so from Assist on REFLEX has to close or surface each path itself, and "fail closed" cannot rely on the host. Each fail-open path is mapped to the ticket or ADR that owns it. **Missing:** the table comes from the official documentation, not from fixtures against the live host as the acceptance requires. That needs headless Claude Code runs, which spend the maintainer's quota; the procedure is written down and waits for a go-ahead.
+
 ### RFX-088 — Measure end-to-end hook overhead
 
 **Goal:** Measure what one governed tool call costs as the host experiences it: process start, payload parse, translation, record, exit.
@@ -195,6 +209,8 @@ Tickets RFX-041, RFX-042, RFX-044, RFX-052, RFX-053, RFX-056, RFX-057 and RFX-05
 **Acceptance:** A repeatable benchmark with p50 and p95 on a named machine, committed next to its numbers and compared explicitly with the latency budgets in `CLAUDE.md`.
 
 **Why:** Measured on 2026-09-18 (Apple Silicon, Node 24): an empty Node process takes 29.5 ms p50 to start, and 70.5 ms p50 once it loads the contracts and validates one request. A 10 ms deterministic budget cannot be met end to end with one Node process per call, so where decisions run has to be decided with this baseline in hand.
+
+**Status:** Done (2026-09-19). `pnpm --filter @reflex/cli bench`, numbers in `docs/claude-code-hook.md` §4 (Apple M1 Max, Node 24.9, 60 runs per case). End to end a hook call costs p50 48.8 ms and p95 59.3 ms, against a floor of 30.2 ms for an empty Node process. **The deterministic budget (p95 < 10 ms) and the infrastructure budget (p95 < 25 ms) are unreachable with one Node process per call**: the floor alone is three times the first. REFLEX's own ~17 ms is module loading, not work (an ignored event costs as much as a recorded one). Node's compile cache and a dedicated hook entry point were both measured and did not help (0.6 ms and 1.7 ms); the second was reverted. This is the baseline ADR-010 needed.
 
 ### RFX-056 — Implement `rfx status`
 
@@ -204,11 +220,15 @@ Tickets RFX-041, RFX-042, RFX-044, RFX-052, RFX-053, RFX-056, RFX-057 and RFX-05
 
 **G1.5 scope:** mode, installed adapters, last recorded action and measured hook overhead. Decision and latency fields appear once a decision engine exists.
 
+**Status:** Done (2026-09-19). Local and offline. Shows the mode, each adapter's health, what was observed in this project (actions, ran without a prompt, prompted with approved and rejected, blocked by the host, and `unknown` counted apart, never folded into "not prompted"), the last action, the hook time measured from inside the process, and the local identity. It re-reads every settings file instead of trusting its own registry, so a hook that was removed or switched off since `rfx init` is reported as `HOOK MISSING` or `DISABLED`. Tool names are stripped of control characters before printing: an MCP server chooses its tool names, and a terminal runs escape sequences.
+
 ### RFX-057 — Implement `rfx uninstall`
 
 **Goal:** Remove hooks/adapter and restore backups.
 
 **Acceptance:** Idempotent; leaves user's unrelated config untouched.
+
+**Status:** Done (2026-09-19). Idempotent: with nothing installed it says so and exits 0. It only touches this project's installs, finds REFLEX hooks its own registry has lost track of, and leaves a settings file it cannot parse alone while saying how to clean it by hand. Observations, backups and the local identity are kept under `~/.reflex` and the command says where; `--purge` deletes them.
 
 ### RFX-058 — Anonymous local Observe identity
 
@@ -217,6 +237,8 @@ Tickets RFX-041, RFX-042, RFX-044, RFX-052, RFX-053, RFX-056, RFX-057 and RFX-05
 **Acceptance:** User can govern actions locally before creating cloud account.
 
 **G1.5 scope:** the local identity only. Governing arrives with the decision engine.
+
+**Status:** Done (2026-09-19). `rfx init` creates a random `agt_` identity and a random `prj_` identity per project, in `~/.reflex`, mode `0600`, holding nothing about the user or the machine, and sent nowhere. Project identities are stored apart from installs so that they survive `rfx uninstall` and a re-install: a test caught the first version orphaning a project's history, which is exactly what a later claim (RFX-061) must not find.
 
 ### RFX-089 — Validate ADR-001 against real payloads
 
@@ -228,6 +250,8 @@ Tickets RFX-041, RFX-042, RFX-044, RFX-052, RFX-053, RFX-056, RFX-057 and RFX-05
 
 **Why:** ADR-001 was accepted before a single real payload had been seen.
 
+**Status:** Not started, blocked on real usage (2026-09-19). It needs payloads observed from real sessions, which exist only after someone runs `rfx init` in a project and works in it. Nothing in the repository can substitute for that.
+
 ### RFX-090 — Supply-chain security workflow
 
 **Goal:** Add `.github/workflows/security.yml` (dependency audit, static analysis, secret scanning) and automated update pull requests for the SHA-pinned actions and the npm dependencies.
@@ -236,7 +260,11 @@ Tickets RFX-041, RFX-042, RFX-044, RFX-052, RFX-053, RFX-056, RFX-057 and RFX-05
 
 **Why:** From this gate on, REFLEX code runs inside every tool call on a developer's machine. `security.yml` is in the architecture layout and had no ticket, and SHA-pinned actions go stale without an updater.
 
+**Status:** Implemented, verification pending (2026-09-19). `.github/workflows/security.yml` (check name **Security gates**): gitleaks over every commit and `pnpm audit --audit-level=high`, on pull requests, on `main`, and weekly, because a dependency can go bad without a commit. gitleaks is installed at a pinned version and refused unless its SHA-256 matches; a tampered checksum was tested and stops the install before anything is unpacked. `.github/dependabot.yml` covers the pinned actions and npm. `tests/ci.test.ts` audits this workflow like `ci.yml`. **Found while building it:** a path-based allowlist for the fake secrets in tests hid real GitHub, AWS and Stripe tokens, because gitleaks skips an allowlisted path entirely in directory mode; the allowlist now matches the finding by exact shape, and a test forbids path rules. CodeQL and dependency review are left out on purpose: they need GitHub Advanced Security, which this private repository does not have. **Missing:** the workflow has not run on GitHub yet, and **Security gates** has to be added as a required check.
+
 **Gate exit:** all tickets above are green in CI and documented; no known dangerous false-allow regression. **Specifically:** on a clean machine `rfx init` reaches a recorded action in under five minutes; `rfx uninstall` leaves no trace; no observed action was blocked, prompted or auto-approved by REFLEX; the log contains no raw argument value.
+
+**Gate status:** Open on three items (2026-09-19). Thirteen of fifteen tickets are done and green locally. **RFX-087** needs live runs against Claude Code to turn a documented table into a verified one. **RFX-089** needs payloads from real sessions. **RFX-090** needs its first run on GitHub and the new check marked as required. The gate has already paid for itself twice: RFX-088 shows the latency budgets cannot be met with one Node process per call (the evidence ADR-010 was waiting for), and RFX-087 shows the host fails open on nearly everything, so fail-closed will have to be REFLEX's own work.
 
 ## G2 — Deterministic policy engine
 
