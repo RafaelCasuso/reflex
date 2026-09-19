@@ -23,6 +23,20 @@ updates:
       interval: weekly
       day: monday
     open-pull-requests-limit: 5
+    ignore:
+      # typescript-eslint peers on `typescript <6.1.0`, and typed linting is
+      # what enforces no-any, exhaustive switches and floating promises
+      # (CLAUDE.md). TypeScript 7 fails the lint gate today. Patch releases
+      # of 6.0 still arrive. Lift this when typescript-eslint supports 7.
+      - dependency-name: typescript
+        update-types:
+          - version-update:semver-major
+          - version-update:semver-minor
+      # The types must describe the runtime in .nvmrc (the current Node LTS),
+      # not the newest Node. Bump this major together with .nvmrc, by hand.
+      - dependency-name: "@types/node"
+        update-types:
+          - version-update:semver-major
     groups:
       tooling:
         dependency-type: development

@@ -186,4 +186,17 @@ describe("RFX-090 supply-chain security gates", () => {
     expect(dependabot).toContain("package-ecosystem: github-actions");
     expect(dependabot).toContain("package-ecosystem: npm");
   });
+
+  // Dependabot's first pull request proposed TypeScript 7 and @types/node 26.
+  // Both fail this repository for a known reason, so they are not proposed
+  // again every week. The reasons, and when to lift them, are in the file.
+  it("does not ask for upgrades that are known to break the toolchain", () => {
+    const dependabot = readText(".github", "dependabot.yml");
+    expect(dependabot).toMatch(
+      /dependency-name: typescript\n\s+update-types:\n\s+- version-update:semver-major\n\s+- version-update:semver-minor/,
+    );
+    expect(dependabot).toMatch(
+      /dependency-name: "@types\/node"\n\s+update-types:\n\s+- version-update:semver-major/,
+    );
+  });
 });

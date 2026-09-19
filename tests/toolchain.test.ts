@@ -23,6 +23,15 @@ describe("RFX-001 toolchain", () => {
     expect(readText(".nvmrc").trim()).toBe("24");
   });
 
+  // Types for a newer Node describe APIs the runtime does not have. This is
+  // what Dependabot's first pull request got wrong (@types/node 26 on Node 24).
+  it("types Node with the same major version it runs on", () => {
+    const runtime = readText(".nvmrc").trim();
+    expect(root.allDependencies["@types/node"]).toMatch(
+      new RegExp(`^\\^${runtime}\\.`),
+    );
+  });
+
   it("is never publishable from the workspace root", () => {
     expect(root.isPrivate).toBe(true);
   });
