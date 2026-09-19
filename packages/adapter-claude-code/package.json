@@ -9,6 +9,10 @@
     ".": {
       "types": "./dist/index.d.ts",
       "default": "./dist/index.js"
+    },
+    "./hook": {
+      "types": "./dist/hook.d.ts",
+      "default": "./dist/hook.js"
     }
   },
   "files": [

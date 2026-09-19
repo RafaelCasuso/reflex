@@ -25,6 +25,11 @@ export interface PlannedWrite {
    * refuses to run: the user approved a plan for a different file.
    */
   readonly expectedSha256: string | undefined;
+  /**
+   * Permission bits for a file this write creates. An existing file always
+   * keeps the bits it has.
+   */
+  readonly createMode?: number;
 }
 
 export interface BackupEntry {
@@ -174,7 +179,7 @@ export async function applyTransaction(
         await fileSystem.write(
           write.path,
           write.content,
-          original?.mode ?? DEFAULT_MODE,
+          original?.mode ?? write.createMode ?? DEFAULT_MODE,
         );
       }
       applied.push({ write, original });

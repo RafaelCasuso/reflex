@@ -17,10 +17,18 @@ import type { ArgumentShape } from "./argument-shape.js";
  */
 export const RECORD_VERSION = 1;
 
+/**
+ * Milliseconds the hook process had been alive when it built the record, as
+ * measured from inside it. A lower bound on what the host waited: it cannot
+ * see the time the operating system took to start the process.
+ */
+export type HookMs = number;
+
 export interface ObservedActionRecord {
   readonly kind: "action";
   readonly recordVersion: typeof RECORD_VERSION;
   readonly recordedAt: IsoTimestamp;
+  readonly hookMs?: HookMs;
 
   readonly actionId: ActionId;
   readonly sessionId?: SessionId;
@@ -58,6 +66,7 @@ export interface OutcomeSignalRecord {
   readonly kind: "signal";
   readonly recordVersion: typeof RECORD_VERSION;
   readonly recordedAt: IsoTimestamp;
+  readonly hookMs?: HookMs;
   readonly actionId: ActionId;
   readonly sessionId?: SessionId;
   readonly signal: OutcomeSignal;

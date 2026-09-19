@@ -24,6 +24,7 @@ export {
 export {
   OUTCOME_SIGNALS,
   RECORD_VERSION,
+  type HookMs,
   type ObservationRecord,
   type ObservedActionRecord,
   type OutcomeSignal,

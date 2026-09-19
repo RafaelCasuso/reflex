@@ -5,6 +5,9 @@
   "description": "Installation, detection, configuration and diagnostics (rfx).",
   "type": "module",
   "sideEffects": false,
+  "bin": {
+    "rfx": "./dist/bin.js"
+  },
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
@@ -18,7 +21,8 @@
     "build": "tsc -p tsconfig.build.json",
     "typecheck": "tsc -p tsconfig.json",
     "lint": "eslint --max-warnings 0 .",
-    "test": "vitest run"
+    "test": "vitest run",
+    "bench": "vitest bench --run"
   },
   "dependencies": {
     "@reflex/adapter-claude-code": "workspace:*",
