@@ -1,0 +1,34 @@
+# Secret scanning for REFLEX (RFX-090). Extends the default gitleaks rules.
+#
+# The adversarial tests contain fake secrets on purpose: they prove that a
+# value can never reach a log line, an error message or the disk. Those fakes
+# follow one convention so that they can be allowed narrowly:
+#
+#   sk-live-<12 hex characters>                   the house fake API key
+#   ghp_16C7e42F292c6912E7710c838347Ae178B4a      one fixed fake GitHub token
+#
+# Neither is a real credential format (Stripe keys are `sk_live_`, with
+# underscores, and far longer).
+#
+# The allowlist matches the FINDING, not the file and not the line:
+#
+# - No `paths`. In directory mode gitleaks skips an allowlisted path entirely,
+#   whatever `condition` says: a path rule for test files hid real GitHub, AWS
+#   and Stripe tokens placed in a test file. That was tried and measured.
+# - `regexTarget = "match"`, not "line": a real secret on the same line as a
+#   fake one is still reported.
+#
+# New fake secrets in tests must use one of the shapes above. Do not add a
+# path, and do not add a broader pattern.
+title = "REFLEX"
+
+[extend]
+useDefault = true
+
+[[allowlists]]
+description = "Deliberate fake secrets used by adversarial tests"
+regexTarget = "match"
+regexes = [
+  '''sk-live-[0-9a-f]{12}''',
+  '''ghp_16C7e42F292c6912E7710c838347Ae178B4a''',
+]

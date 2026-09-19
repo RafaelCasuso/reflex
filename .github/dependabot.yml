@@ -1,0 +1,30 @@
+# RFX-090 — keep pinned things moving.
+#
+# Actions are pinned to commit SHAs (tests/ci.test.ts enforces it). A pin that
+# nobody updates is a vulnerability with a delay, so Dependabot proposes the
+# bumps. Every proposal goes through the required checks like any other PR.
+#
+# Not covered: the gitleaks version in .github/scripts/install-gitleaks.sh,
+# which Dependabot cannot see. It is upgraded by hand.
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+    groups:
+      actions:
+        patterns: ["*"]
+
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 5
+    groups:
+      tooling:
+        dependency-type: development
+      runtime:
+        dependency-type: production

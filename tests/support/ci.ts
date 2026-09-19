@@ -14,7 +14,32 @@ export const REQUIRED_GATES = [
 
 const FROZEN_INSTALL = "pnpm install --frozen-lockfile";
 
-export function auditWorkflow(workflow: string): readonly string[] {
+export interface WorkflowRequirements {
+  /** The exact install command the workflow must run, if it installs. */
+  readonly install: string | undefined;
+  /** Commands that must each be the whole of some `run` step. */
+  readonly commands: readonly string[];
+}
+
+export const CI_REQUIREMENTS: WorkflowRequirements = {
+  install: FROZEN_INSTALL,
+  commands: REQUIRED_GATES,
+};
+
+/** RFX-090. Exact strings: a softer flag is a different command. */
+export const SECURITY_REQUIREMENTS: WorkflowRequirements = {
+  install: undefined,
+  commands: [
+    "bash .github/scripts/install-gitleaks.sh",
+    "gitleaks git . --no-banner --redact --exit-code 1",
+    "pnpm audit --audit-level=high",
+  ],
+};
+
+export function auditWorkflow(
+  workflow: string,
+  requirements: WorkflowRequirements = CI_REQUIREMENTS,
+): readonly string[] {
   const problems: string[] = [];
   const lines = workflow
     .split("\n")
@@ -28,12 +53,15 @@ export function auditWorkflow(workflow: string): readonly string[] {
     problems.push("workflow does not run on pull_request");
   }
 
-  if (!runCommands.includes(FROZEN_INSTALL)) {
-    problems.push(`missing "${FROZEN_INSTALL}"`);
+  if (
+    requirements.install !== undefined &&
+    !runCommands.includes(requirements.install)
+  ) {
+    problems.push(`missing "${requirements.install}"`);
   }
   for (const command of runCommands) {
     const installs = /\bpnpm\s+(install|i|add)\b/.test(command);
-    if (installs && command !== FROZEN_INSTALL) {
+    if (installs && command !== requirements.install) {
       problems.push(`install is not lockfile-frozen: "${command}"`);
     }
     if (command === "" || command === "|" || command === ">") {
@@ -44,7 +72,7 @@ export function auditWorkflow(workflow: string): readonly string[] {
     }
   }
 
-  for (const gate of REQUIRED_GATES) {
+  for (const gate of requirements.commands) {
     if (!runCommands.includes(gate)) {
       problems.push(`missing quality gate "${gate}"`);
     }

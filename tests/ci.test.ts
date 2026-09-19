@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { auditWorkflow } from "./support/ci.js";
+import { auditWorkflow, SECURITY_REQUIREMENTS } from "./support/ci.js";
 import { readText } from "./support/repo.js";
 
 /** RFX-003 — PR fails on any quality gate; CI uses lockfile-frozen install. */
@@ -83,5 +83,107 @@ describe("RFX-003 CI quality gates", () => {
     },
   ])("rejects the workflow when $label", ({ tamper, expected }) => {
     expect(auditWorkflow(tamper(workflow))).toContain(expected);
+  });
+});
+
+/** RFX-090 — a vulnerable dependency or a committed secret fails a check. */
+describe("RFX-090 supply-chain security gates", () => {
+  const workflow = readText(".github", "workflows", "security.yml");
+  const audit = (text: string) => auditWorkflow(text, SECURITY_REQUIREMENTS);
+  const replace = (from: string, to: string) => (text: string) => {
+    expect(text, `fixture drift: "${from}" not found`).toContain(from);
+    return text.replace(from, to);
+  };
+
+  it("passes the audit as committed", () => {
+    expect(audit(workflow)).toEqual([]);
+  });
+
+  it("also runs on a schedule, because a dependency can go bad without a commit", () => {
+    expect(workflow).toMatch(/^ {2}schedule:\n {4}(?:#.*\n {4})?- cron: /m);
+  });
+
+  // Adversarial: ways the security gate could be made to pass without
+  // protecting anything.
+  it.each([
+    {
+      label: "the secret scan is told to succeed whatever it finds",
+      tamper: replace("--exit-code 1", "--exit-code 0"),
+      expected:
+        'missing quality gate "gitleaks git . --no-banner --redact --exit-code 1"',
+    },
+    {
+      label: "the audit only fails on critical advisories",
+      tamper: replace("--audit-level=high", "--audit-level=critical"),
+      expected: 'missing quality gate "pnpm audit --audit-level=high"',
+    },
+    {
+      label: "the audit result is swallowed",
+      tamper: replace(
+        "run: pnpm audit --audit-level=high",
+        "run: pnpm audit --audit-level=high || true",
+      ),
+      expected:
+        'gate result can be swallowed: "pnpm audit --audit-level=high || true"',
+    },
+    {
+      label: "the scanner is installed without its checksum script",
+      tamper: replace(
+        "run: bash .github/scripts/install-gitleaks.sh",
+        "run: curl -sSfL https://example.com/install.sh | sh",
+      ),
+      expected:
+        'missing quality gate "bash .github/scripts/install-gitleaks.sh"',
+    },
+    {
+      label: "an action floats on a mutable tag",
+      tamper: replace(
+        "pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413",
+        "pnpm/action-setup@v6",
+      ),
+      expected: 'action is not pinned to a commit SHA: "pnpm/action-setup@v6"',
+    },
+    {
+      label: "the secret scan may fail without failing the job",
+      tamper: replace(
+        "        run: gitleaks git",
+        "        continue-on-error: true\n        run: gitleaks git",
+      ),
+      expected: "continue-on-error lets a failed gate pass",
+    },
+  ])("rejects the workflow when $label", ({ tamper, expected }) => {
+    expect(audit(tamper(workflow))).toContain(expected);
+  });
+
+  it("installs the scanner at a pinned version and verifies its checksum", () => {
+    const script = readText(".github", "scripts", "install-gitleaks.sh");
+    expect(script).toContain("set -euo pipefail");
+    expect(script).toMatch(/^VERSION="\d+\.\d+\.\d+"$/m);
+    expect(script).toMatch(/^SHA256="[0-9a-f]{64}"$/m);
+    expect(script).toContain("sha256sum --check --strict");
+    // The checksum is verified before anything is unpacked.
+    expect(script.indexOf("sha256sum")).toBeLessThan(script.indexOf("tar -x"));
+  });
+
+  // Measured while building this: in directory mode gitleaks skips an
+  // allowlisted path entirely, so a path rule for test files hid real GitHub,
+  // AWS and Stripe tokens. The allowlist must match findings, never files.
+  it("allowlists fake test secrets by exact shape, never by path", () => {
+    const config = readText(".gitleaks.toml")
+      .split("\n")
+      .filter((line) => !line.trimStart().startsWith("#"))
+      .join("\n");
+
+    expect(config).toContain("useDefault = true");
+    expect(config).toContain('regexTarget = "match"');
+    expect(config).not.toMatch(/^\s*paths\s*=/m);
+    expect(config).not.toMatch(/^\s*commits\s*=/m);
+    expect(config).not.toMatch(/^\s*stopwords\s*=/m);
+  });
+
+  it("asks Dependabot to move the pinned actions and the dependencies", () => {
+    const dependabot = readText(".github", "dependabot.yml");
+    expect(dependabot).toContain("package-ecosystem: github-actions");
+    expect(dependabot).toContain("package-ecosystem: npm");
   });
 });
