@@ -39,7 +39,9 @@ function record(index: number, padding = 0): ObservationRecord {
 }
 
 const ids = (records: readonly ObservationRecord[]): string[] =>
-  records.map((entry) => (entry.kind === "turn-ended" ? "-" : entry.actionId));
+  records.map((entry) =>
+    entry.kind === "turn-ended" ? "-" : (entry.actionId ?? "unattributed"),
+  );
 
 /** RFX-086 — a local, size-bounded log that can never hurt the host. */
 describe("RFX-086 observation log", () => {

@@ -4,13 +4,10 @@
   "cwd": "/work/project",
   "prompt_id": "550e8400-e29b-41d4-a716-446655440000",
   "permission_mode": "default",
-  "hook_event_name": "PostToolUseFailure",
+  "hook_event_name": "PreToolUse",
   "tool_name": "Bash",
   "tool_input": {
     "command": "ls rfx087-this-directory-does-not-exist"
   },
-  "tool_use_id": "toolu_01BashFailing00000000006",
-  "error": "Exit code 1\nls: rfx087-this-directory-does-not-exist: No such file or directory",
-  "is_interrupt": false,
-  "duration_ms": 974
+  "tool_use_id": "toolu_01BashFailing00000000006"
 }

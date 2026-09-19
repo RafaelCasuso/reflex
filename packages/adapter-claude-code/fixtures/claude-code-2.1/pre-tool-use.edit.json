@@ -1,7 +1,8 @@
 {
   "session_id": "0b9f2d6e-5c1a-4f7b-9e3d-2a8c6f4b1d70",
-  "transcript_path": "/Users/dev/.claude/projects/-Users-dev-code-webapp/0b9f2d6e.jsonl",
-  "cwd": "/Users/dev/code/webapp",
+  "prompt_id": "550e8400-e29b-41d4-a716-446655440000",
+  "transcript_path": "/home/dev/.claude/projects/-work-project/0b9f2d6e-5c1a-4f7b-9e3d-2a8c6f4b1d70.jsonl",
+  "cwd": "/work/project",
   "permission_mode": "default",
   "hook_event_name": "PreToolUse",
   "tool_name": "Edit",

@@ -67,8 +67,21 @@ export interface OutcomeSignalRecord {
   readonly recordVersion: typeof RECORD_VERSION;
   readonly recordedAt: IsoTimestamp;
   readonly hookMs?: HookMs;
-  readonly actionId: ActionId;
+  /**
+   * Absent when the host did not say which call the signal is about. Verified
+   * live on Claude Code 2.1.276: `PermissionRequest` carries no tool-use
+   * identifier, unlike every other tool event.
+   */
+  readonly actionId?: ActionId;
   readonly sessionId?: SessionId;
+  /**
+   * Set on a signal without an `actionId`: what `assembleOutcomes` correlates
+   * on, together with the session and the order of the records. Never anything
+   * derived from the arguments, not even a hash: a digest of a short command
+   * can be confirmed by guessing.
+   */
+  readonly toolName?: string;
+  readonly toolNamespace?: string;
   readonly signal: OutcomeSignal;
 }
 

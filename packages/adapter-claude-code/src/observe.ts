@@ -7,7 +7,11 @@ import {
 
 import type { ClaudeHookEvent, ToolEventName } from "./hook-input.js";
 import { deriveActionId, deriveSessionId } from "./identity.js";
-import { toCanonicalAction, type TranslationContext } from "./translate.js";
+import {
+  parseToolName,
+  toCanonicalAction,
+  type TranslationContext,
+} from "./translate.js";
 
 /**
  * RFX-092 — what each Claude Code event says about an action's outcome.
@@ -28,9 +32,13 @@ const SIGNALS: Readonly<
  * The record to keep for a host event, or `undefined` when there is nothing
  * worth keeping. Pure: no I/O, no clock of its own.
  *
- * A signal that cannot be tied to an action (the host sent no tool-use
- * identifier) is dropped. Attaching it to a guessed action would give one
- * action another's outcome; a missing signal only leaves a field `unknown`.
+ * When the host does not say which call a signal is about, the record carries
+ * the session and the tool instead of an action, and `assembleOutcomes`
+ * attributes it by order. Verified live (RFX-087): on Claude Code 2.1.276
+ * `PermissionRequest` has no `tool_use_id`, so without this no action would
+ * ever be seen as prompted. Nothing derived from the arguments is used, and a
+ * signal with neither an identifier nor a session is dropped: attaching it to
+ * a guessed action would give one action another's outcome.
  */
 export function toObservationRecord(
   event: ClaudeHookEvent,
@@ -80,14 +88,22 @@ export function toObservationRecord(
       }
 
       const actionId = deriveActionId(event.sessionId, event.toolUseId);
-      if (actionId === undefined) {
+      if (actionId === undefined && event.sessionId === undefined) {
         return undefined;
       }
+      const tool = parseToolName(event.toolName);
       return {
         kind: "signal",
         recordVersion: RECORD_VERSION,
         recordedAt,
-        actionId,
+        ...(actionId === undefined
+          ? {
+              toolName: tool.name,
+              ...(tool.namespace === undefined
+                ? {}
+                : { toolNamespace: tool.namespace }),
+            }
+          : { actionId }),
         ...(event.sessionId === undefined
           ? {}
           : { sessionId: deriveSessionId(event.sessionId) }),

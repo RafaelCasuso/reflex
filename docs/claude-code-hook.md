@@ -55,23 +55,83 @@ token used as a map key must not reach the log.
 
 ## 3. What the host does when the hook fails (RFX-087)
 
-**Status: documented, not yet verified against a live host.** The table is
-taken from the official hooks reference for Claude Code 2.1.x, consulted on
-2026-09-19. RFX-087 asks for every row to be backed by a fixture test against
-the real host; that needs running Claude Code, which spends the maintainer's
-quota, and is pending their go-ahead (procedure below).
+**Status: verified against a live host.** Claude Code 2.1.276, headless
+(`claude -p`), 2026-09-19. Each row marked _live_ was produced by
+`packages/adapter-claude-code/live/verify-hook-failures.mjs`: a scratch project
+with one `PreToolUse` hook that misbehaves in exactly one way, a session asked
+to run `touch marker.txt`, and the answer read from the disk (does the marker
+exist), not from the model. The recorded runs are checked in under
+`packages/adapter-claude-code/live/results/`, and
+`src/live-evidence.test.ts` holds this table to that record in CI.
 
-| The hook…                                   | Claude Code…                                                                                                              | Fail-open? |
-| ------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------- | ---------- |
-| exits 0 and prints nothing                  | continues with its normal permission flow                                                                                 | by design  |
-| exits 2                                     | blocks the call on `PreToolUse`; ignores it on `PermissionRequest`; on `PostToolUse` only shows stderr (the tool has run) | no         |
-| exits with any other non-zero code          | treats it as a non-blocking error: the call proceeds, the user sees an error notice                                       | **yes**    |
-| exits 0 and prints invalid JSON             | treats it as a non-blocking error: the call proceeds                                                                      | **yes**    |
-| exceeds its timeout                         | does not block: the call continues through the normal permission flow                                                     | **yes**    |
-| command is missing (`rfx` moved or removed) | treats it as a non-blocking error: the call proceeds                                                                      | **yes**    |
-| was removed from the settings file          | never runs it                                                                                                             | **yes**    |
-| is switched off by `disableAllHooks`        | never runs it (managed hooks aside)                                                                                       | **yes**    |
-| is excluded by `allowManagedHooksOnly`      | never runs it                                                                                                             | **yes**    |
+| The hook…                                   | Claude Code…                                                                                                        | Fail-open? | Evidence                      |
+| ------------------------------------------- | ------------------------------------------------------------------------------------------------------------------- | ---------- | ----------------------------- |
+| exits 0 and prints nothing                  | continues with its normal permission flow                                                                           | by design  | live: `silent-exit-0`         |
+| exits 2 on `PreToolUse`                     | blocks the call. No completion event follows                                                                        | no         | live: `exit-2`                |
+| answers `permissionDecision: "deny"`        | blocks the call. No completion event follows                                                                        | no         | live: `json-deny`             |
+| exits with any other non-zero code          | carries on: the call runs                                                                                           | **yes**    | live: `exit-1`                |
+| exits 0 and prints invalid JSON             | carries on: the call runs                                                                                           | **yes**    | live: `invalid-json`          |
+| exceeds its timeout                         | carries on: the call runs, even though the hook would have blocked it (it exits 2 after 20 s; the session took 8 s) | **yes**    | live: `timeout` (2 s timeout) |
+| command is missing (`rfx` moved or removed) | carries on: the call runs                                                                                           | **yes**    | live: `missing-command`       |
+| is switched off by `disableAllHooks`        | runs no hook at all, for any event, and runs the call                                                               | **yes**    | live: `hooks-disabled`        |
+
+Every row above is backed by a recorded live run and a test. What follows is
+**not**, and is kept out of the table for that reason:
+
+- **Documentation only:** `allowManagedHooksOnly` excludes the hook, which then
+  never runs (fail-open). Exit code 2 is ignored on `PermissionRequest`, and on
+  `PostToolUse` only shows stderr, because the tool has already run.
+- **By construction:** a hook removed from the settings file never runs
+  (fail-open). It is the host's baseline, and `hooks-disabled` shows the host
+  runs the call when no hook does.
+- **Not observed:** the interactive terminal (every run was headless), and what
+  the user is shown when a hook errors. The hook engine is the same, but that
+  is an inference, not a measurement. RFX-089 is where it gets seen.
+
+### What else the live runs showed
+
+These were not in the documentation consulted, and three of them changed code.
+
+1. **`PermissionRequest` does not say which call it is about.** `PreToolUse`,
+   `PostToolUse` and `PostToolUseFailure` carry `tool_use_id`;
+   `PermissionRequest` does not (it carries `permission_suggestions` instead).
+   The adapter used to drop a signal it could not tie to a call, so no action
+   would ever have been recorded as prompted, and "approval prompts eliminated"
+   would have been computed from nothing. The signal is now recorded with the
+   session and the tool name, and attributed to the latest action of that
+   session and tool that has not been prompted, has not completed and whose
+   turn has not ended. Nothing derived from the arguments takes part, not even
+   a hash. Known limit: two calls to the same tool running in parallel can swap
+   a prompt between them. Counts stay right; a signal with no plausible owner
+   is dropped, never forced onto an action.
+2. **`PostToolUseFailure` means the tool ran.** It fired for a command that
+   executed and exited non-zero (`error: "Exit code 1 …"`,
+   `is_interrupt: false`), and for no refused or blocked call. A failed action
+   may have had its side effects, so its outcome is `executed: "yes"` (it used
+   to be `unknown`).
+3. **A call that is not approved leaves no completion event.** The host fires
+   `PermissionRequest`, then nothing for that call, then `Stop`. That is the
+   only trace of a refusal, and it is what the outcome rule "prompted, turn
+   ended, never executed ⇒ rejected" relies on. It was observed headless, where
+   the host refuses on the human's behalf. A human pressing "no" in the
+   terminal has not been observed yet (RFX-089).
+4. **`PermissionRequest` fires in headless mode** when a tool is not
+   pre-approved, although nobody can answer.
+5. **A hook that answers `ask` where nobody can answer gets a refusal**, with
+   no `PermissionRequest` event. For the enforcing adapter this means `ASK`
+   degrades to a denial in headless hosts. That is the safe direction, and
+   ADR-003 must state it rather than discover it.
+6. **A call blocked by a hook leaves no trace at all**: no completion, no
+   `PermissionDenied`, no prompt. REFLEX reports such an outcome as `unknown`
+   on all three fields. From Assist on, the hook knows what it answered and
+   must record it itself; it cannot be read back from the host.
+7. **`PermissionDenied` was never observed**, in any case. The adapter keeps
+   subscribing to it, and the rule that reads it is untested against a live
+   host.
+8. **`Stop` carries `last_assistant_message`**, which is conversation content.
+   The adapter reads none of it, and a test holds that it never reaches a
+   record.
+9. **Project hooks do run in `-p`**, with `--setting-sources project`.
 
 ### What this means
 
@@ -98,10 +158,27 @@ host, because the host's reading of a broken hook is "carry on".
 
 ### Live verification procedure
 
-In a scratch directory, install a hook that misbehaves in one specific way
-(exit 1, exit 2, sleep past the timeout, print `{`, point at a missing file),
-run `claude -p "Run: touch marker"` with `Bash` allowed, and record whether
-`marker` exists and what the transcript shows. One short headless run per row.
+```sh
+cd packages/adapter-claude-code
+node live/verify-hook-failures.mjs                       # prints the usage, runs nothing
+node live/verify-hook-failures.mjs --run                 # every case, rewrites the record
+node live/verify-hook-failures.mjs --run --only exit-2 --merge
+```
+
+It runs the real host, so it needs a logged-in Claude Code and spends that
+account's quota: about $0.02 per case, $0.23 for the eleven cases on the
+cheapest model. Nothing runs without `--run`, and an unknown flag is an error
+rather than a run. It is not part of `pnpm test`.
+
+Each session is confined to a scratch directory, may run only the one command
+its case names, loads no user settings and no MCP servers, is not persisted,
+and has a hard budget cap. Scratch paths and the home directory are replaced
+before anything is written to the record, and a test refuses a record that
+holds a path, an address or a credential of the machine it ran on.
+
+Run it again for a new host version: the record is written per version, and
+the evidence suite runs on every record present. RFX-124 (canary) is the
+ticket that makes this routine.
 
 ## 4. What a hook call costs (RFX-088)
 
@@ -166,14 +243,14 @@ number excludes process start, so it is a lower bound on what the host waits.
 
 ## 5. Where these facts come from
 
-| Fact                                                        | Source                                                                                                        |
-| ----------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------- |
-| Envelope fields, output contract, exit codes, configuration | Official Claude Code hooks reference and settings reference, 2.1.x                                            |
-| `tool_input` field names                                    | `sdk-tools.d.ts` shipped inside `@anthropic-ai/claude-code` 2.1.276                                           |
-| The six event names exist in this version                   | Checked against the installed 2.1.276 binary, with a made-up name as a control                                |
-| Latency                                                     | Measured, this document                                                                                       |
-| Host behavior on hook failure                               | Documentation only. **Not verified live.**                                                                    |
-| Real payload shapes                                         | **Not captured yet** (RFX-089). Fixtures are constructed; `fixtures/claude-code-2.1/README.md` says from what |
+| Fact                                                        | Source                                                                                              |
+| ----------------------------------------------------------- | --------------------------------------------------------------------------------------------------- |
+| Envelope fields, output contract, exit codes, configuration | Official Claude Code hooks reference and settings reference, 2.1.x                                  |
+| `tool_input` field names                                    | `sdk-tools.d.ts` shipped inside `@anthropic-ai/claude-code` 2.1.276                                 |
+| The six event names exist in this version                   | Checked against the installed 2.1.276 binary, with a made-up name as a control                      |
+| Latency                                                     | Measured, this document                                                                             |
+| Host behavior on hook failure                               | **Verified live** on 2.1.276, headless (RFX-087, §3). Two rows remain documentation only and say so |
+| Real payload shapes                                         | `Bash` events **captured live** (RFX-087). File edits and MCP calls are still constructed (RFX-089) |
 
 A documentation summary consulted while building the adapter gave wrong field
 names for `Write` and `Edit` (`file_text`, `old_text`). The shipped type

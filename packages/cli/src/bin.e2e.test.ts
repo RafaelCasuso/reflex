@@ -5,6 +5,7 @@ import {
   mkdir,
   mkdtemp,
   readFile,
+  realpath,
   rm,
   writeFile,
 } from "node:fs/promises";
@@ -105,7 +106,8 @@ describe("rfx hook claude-code: never changes what the host does", () => {
     expect(record).toMatchObject({ kind: "action", toolName: "Bash" });
     expect(typeof record.hookMs).toBe("number");
     // The command that was run is nowhere on disk.
-    expect(log).not.toContain("git status");
+    expect(log).not.toContain("touch");
+    expect(log).not.toContain("marker");
   });
 
   it.each([
@@ -258,6 +260,43 @@ describe("rfx: the command line", () => {
     });
     expect(purge.code).toBe(0);
     expect(existsSync(reflexHome)).toBe(false);
+  });
+
+  // RFX-087: the payloads a live host sent, through the real binary. The
+  // permission event names no call, and the prompt must still be counted.
+  it("counts a prompt the host did not tie to a call", async () => {
+    await mkdir(join(root, "project", ".claude"), { recursive: true });
+    // Resolved, as the host reports it and as the CLI sees its own cwd.
+    const project = await realpath(join(root, "project"));
+    const env = { REFLEX_HOME: reflexHome, HOME: join(root, "home") };
+    expect((await rfx(["init", "--yes"], { cwd: project, env })).code).toBe(0);
+    const inProject = (name: string): string =>
+      JSON.stringify({
+        ...(JSON.parse(fixture(name)) as Record<string, unknown>),
+        cwd: project,
+      });
+    expect(fixture("permission-request.bash")).not.toContain("tool_use_id");
+
+    for (const name of [
+      "pre-tool-use.bash",
+      "permission-request.bash",
+      "post-tool-use.bash",
+      "pre-tool-use.bash-failing",
+      "post-tool-use-failure.bash",
+      "stop",
+    ]) {
+      expect(
+        await rfx(["hook", "claude-code"], { stdin: inProject(name), env }),
+      ).toEqual(SILENT_SUCCESS);
+    }
+
+    const status = await rfx(["status"], { cwd: project, env });
+    expect(status.code).toBe(0);
+    const summary = status.stdout.replace(/[ ]+/g, " ");
+    expect(summary).toContain("2 actions");
+    expect(summary).toContain("ran without a prompt 1");
+    expect(summary).toContain("prompted 1 (approved 1, rejected 0)");
+    expect(summary).toContain("not yet known 0");
   });
 
   it("rejects an unknown scope and an unknown command", async () => {

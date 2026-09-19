@@ -124,9 +124,21 @@ describe("RFX-092 outcome assembly", () => {
     ]);
   });
 
-  it("leaves executed unknown when the host only reports a failure", () => {
+  // Verified live (RFX-087): the host reports a failure for a command that
+  // ran and exited non-zero, and for no refused call. Its side effects may
+  // have happened, so the dangerous reading is the true one.
+  it("reads a reported failure as a call that ran", () => {
     expect(assembleOutcomes([action(), signal("failed")])).toMatchObject([
-      { prompted: "no", humanResponse: "none", executed: "unknown" },
+      { prompted: "no", humanResponse: "none", executed: "yes" },
+    ]);
+    expect(
+      assembleOutcomes([
+        action(),
+        signal("permission-requested"),
+        signal("failed"),
+      ]),
+    ).toMatchObject([
+      { prompted: "yes", humanResponse: "approved", executed: "yes" },
     ]);
   });
 
@@ -191,6 +203,134 @@ describe("RFX-092 outcome assembly", () => {
     expect(
       assembleOutcomes([action(), signal("permission-requested"), anonymous]),
     ).toMatchObject([{ humanResponse: "unknown" }]);
+  });
+
+  /**
+   * Verified live (RFX-087): the host's permission event names no call. The
+   * signal then carries the session and the tool, and is attributed by order.
+   */
+  describe("a signal that names no action", () => {
+    interface Unattributed {
+      readonly toolName?: string;
+      readonly toolNamespace?: string;
+      /** `null` is a signal from a host that named no session. */
+      readonly sessionId?: SessionId | null;
+    }
+
+    const unattributed = (
+      name: OutcomeSignal,
+      {
+        toolName = "Bash",
+        toolNamespace,
+        sessionId = SESSION,
+      }: Unattributed = {},
+    ): ObservationRecord => ({
+      kind: "signal",
+      recordVersion: RECORD_VERSION,
+      recordedAt: tick(),
+      ...(sessionId === null ? {} : { sessionId }),
+      toolName,
+      ...(toolNamespace === undefined ? {} : { toolNamespace }),
+      signal: name,
+    });
+
+    it("goes to the latest unresolved action of that session and tool", () => {
+      expect(
+        assembleOutcomes([
+          action(),
+          unattributed("permission-requested"),
+          signal("executed"),
+        ]),
+      ).toMatchObject([
+        { prompted: "yes", humanResponse: "approved", executed: "yes" },
+      ]);
+    });
+
+    it("records a refusal: the prompt, then nothing, then the end of the turn", () => {
+      expect(
+        assembleOutcomes([
+          action(),
+          unattributed("permission-requested"),
+          turnEnded(),
+        ]),
+      ).toMatchObject([
+        { prompted: "yes", humanResponse: "rejected", executed: "no" },
+      ]);
+    });
+
+    it("keeps repeated identical calls apart when they run one after another", () => {
+      const second: ActionId = "act_0002";
+      expect(
+        assembleOutcomes([
+          action(ACTION),
+          signal("executed", ACTION),
+          action(second),
+          unattributed("permission-requested"),
+          signal("executed", second),
+        ]),
+      ).toMatchObject([
+        { actionId: ACTION, prompted: "no", executed: "yes" },
+        { actionId: second, prompted: "yes", humanResponse: "approved" },
+      ]);
+    });
+
+    // Adversarial: a prompt must never land on an action it cannot belong to.
+    it.each<[string, Unattributed]>([
+      ["another session", { sessionId: "ses_other" }],
+      ["another tool", { toolName: "Write" }],
+      ["the same tool name from an MCP server", { toolNamespace: "evil" }],
+      ["no session at all", { sessionId: null }],
+    ])("is dropped when it comes from %s", (_label, from) => {
+      expect(
+        assembleOutcomes([
+          action(),
+          unattributed("permission-requested", from),
+        ]),
+      ).toMatchObject([
+        { prompted: "unknown", humanResponse: "unknown", executed: "unknown" },
+      ]);
+    });
+
+    it("never lands on an action that already completed", () => {
+      expect(
+        assembleOutcomes([
+          action(),
+          signal("executed"),
+          unattributed("permission-requested"),
+        ]),
+      ).toMatchObject([
+        { prompted: "no", humanResponse: "none", executed: "yes" },
+      ]);
+    });
+
+    it("never lands on an action whose turn already ended", () => {
+      expect(
+        assembleOutcomes([
+          action(),
+          turnEnded(),
+          unattributed("permission-requested"),
+        ]),
+      ).toMatchObject([{ prompted: "unknown" }]);
+    });
+
+    it("never lands on an action recorded after it", () => {
+      expect(
+        assembleOutcomes([unattributed("permission-requested"), action()]),
+      ).toMatchObject([{ prompted: "unknown" }]);
+    });
+
+    it("marks one action per prompt, not every candidate", () => {
+      const second: ActionId = "act_0002";
+      const outcomes = assembleOutcomes([
+        action(ACTION),
+        action(second),
+        unattributed("permission-requested"),
+      ]);
+      expect(
+        outcomes.filter((outcome) => outcome.prompted === "yes"),
+      ).toHaveLength(1);
+      expect(outcomes[1]).toMatchObject({ actionId: second, prompted: "yes" });
+    });
   });
 
   // Every combination of signals, with and without the turn ending: whatever

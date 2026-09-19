@@ -136,7 +136,7 @@ describe("RFX-042 translating to the canonical action", () => {
       agent: { host: "claude-code", hostVersion: "2.1.276" },
       tool: { name: "Bash" },
       sideEffectClass: "unknown",
-      cwd: "/Users/dev/code/webapp",
+      cwd: "/work/project",
       createdAt: "2026-09-19T09:00:00.000Z",
     });
     // Passed through as received, by reference, uninterpreted.
@@ -173,12 +173,7 @@ describe("RFX-042 translating to the canonical action", () => {
   });
 
   it("derives the same ID for every event about the same tool call", () => {
-    const ids = [
-      "pre-tool-use.bash",
-      "permission-request.bash",
-      "post-tool-use.bash",
-      "post-tool-use-failure.bash",
-    ].map((name) => {
+    const ids = ["pre-tool-use.bash", "post-tool-use.bash"].map((name) => {
       const event = toolEvent(name);
       return deriveActionId(event.sessionId, event.toolUseId);
     });
@@ -186,6 +181,14 @@ describe("RFX-042 translating to the canonical action", () => {
     expect(ids[0]).toBe(
       toCanonicalAction(toolEvent("pre-tool-use.bash"), context).id,
     );
+  });
+
+  // Verified live (RFX-087): the permission event is the one tool event that
+  // names no call. It gets no ID, and is attributed by order instead.
+  it("derives no ID for the real PermissionRequest, which has no tool_use_id", () => {
+    const event = toolEvent("permission-request.bash");
+    expect(event.toolUseId).toBeUndefined();
+    expect(deriveActionId(event.sessionId, event.toolUseId)).toBeUndefined();
   });
 
   it("derives different IDs for different calls and different sessions", () => {

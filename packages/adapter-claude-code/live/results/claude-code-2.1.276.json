@@ -1,0 +1,697 @@
+{
+  "ticket": "RFX-087",
+  "host": "2.1.276 (Claude Code)",
+  "model": "haiku",
+  "totalCostUsd": 0.2274,
+  "results": [
+    {
+      "id": "silent-exit-0",
+      "hook": "exits 0 and prints nothing",
+      "expectRan": true,
+      "ran": true,
+      "markerExists": true,
+      "matchesExpectation": true,
+      "events": {
+        "PostToolUse": 1,
+        "PreToolUse": 1,
+        "Stop": 1
+      },
+      "session": {
+        "exitCode": 0,
+        "seconds": 6.1,
+        "isError": false,
+        "subtype": "success",
+        "turns": 2,
+        "costUsd": 0.0203702,
+        "reply": "done",
+        "permissionDenials": [],
+        "stderr": null
+      },
+      "samples": {
+        "PostToolUse": {
+          "session_id": "a391d034-e333-4027-aa36-dab6a341b896",
+          "transcript_path": "/home/dev/.claude/projects/-private-var-folders-1s--nj51k2909334n3796ht9-c00000gn-T-reflex-rfx087-6CxXSy-silent-exit-0/a391d034-e333-4027-aa36-dab6a341b896.jsonl",
+          "cwd": "/work/project",
+          "prompt_id": "d4b334a5-b59b-48c6-94da-9ab5c1b94c53",
+          "permission_mode": "default",
+          "hook_event_name": "PostToolUse",
+          "tool_name": "Bash",
+          "tool_input": {
+            "command": "touch marker.txt",
+            "description": "Create marker.txt file"
+          },
+          "tool_response": {
+            "stdout": "",
+            "stderr": "",
+            "interrupted": false,
+            "isImage": false,
+            "noOutputExpected": true
+          },
+          "tool_use_id": "toolu_01JXzZL6YK8279LmDfMiUx6y",
+          "duration_ms": 1023
+        },
+        "PreToolUse": {
+          "session_id": "a391d034-e333-4027-aa36-dab6a341b896",
+          "transcript_path": "/home/dev/.claude/projects/-private-var-folders-1s--nj51k2909334n3796ht9-c00000gn-T-reflex-rfx087-6CxXSy-silent-exit-0/a391d034-e333-4027-aa36-dab6a341b896.jsonl",
+          "cwd": "/work/project",
+          "prompt_id": "d4b334a5-b59b-48c6-94da-9ab5c1b94c53",
+          "permission_mode": "default",
+          "hook_event_name": "PreToolUse",
+          "tool_name": "Bash",
+          "tool_input": {
+            "command": "touch marker.txt",
+            "description": "Create marker.txt file"
+          },
+          "tool_use_id": "toolu_01JXzZL6YK8279LmDfMiUx6y"
+        },
+        "Stop": {
+          "session_id": "a391d034-e333-4027-aa36-dab6a341b896",
+          "transcript_path": "/home/dev/.claude/projects/-private-var-folders-1s--nj51k2909334n3796ht9-c00000gn-T-reflex-rfx087-6CxXSy-silent-exit-0/a391d034-e333-4027-aa36-dab6a341b896.jsonl",
+          "cwd": "/work/project",
+          "prompt_id": "d4b334a5-b59b-48c6-94da-9ab5c1b94c53",
+          "permission_mode": "default",
+          "hook_event_name": "Stop",
+          "stop_hook_active": false,
+          "last_assistant_message": "done",
+          "background_tasks": [],
+          "session_crons": []
+        }
+      }
+    },
+    {
+      "id": "exit-1",
+      "hook": "exits 1 with a message on stderr",
+      "expectRan": true,
+      "ran": true,
+      "markerExists": true,
+      "matchesExpectation": true,
+      "events": {
+        "PostToolUse": 1,
+        "PreToolUse": 1,
+        "Stop": 1
+      },
+      "session": {
+        "exitCode": 0,
+        "seconds": 5.6,
+        "isError": false,
+        "subtype": "success",
+        "turns": 2,
+        "costUsd": 0.0204778,
+        "reply": "done",
+        "permissionDenials": [],
+        "stderr": null
+      },
+      "samples": {
+        "PostToolUse": {
+          "session_id": "ec002aa8-6d7e-4825-a564-0e9ce678f7d6",
+          "transcript_path": "/home/dev/.claude/projects/-private-var-folders-1s--nj51k2909334n3796ht9-c00000gn-T-reflex-rfx087-6CxXSy-exit-1/ec002aa8-6d7e-4825-a564-0e9ce678f7d6.jsonl",
+          "cwd": "/work/project",
+          "prompt_id": "ca313acd-72ac-4101-a2a3-2c933325a331",
+          "permission_mode": "default",
+          "hook_event_name": "PostToolUse",
+          "tool_name": "Bash",
+          "tool_input": {
+            "command": "touch marker.txt",
+            "description": "Create marker file"
+          },
+          "tool_response": {
+            "stdout": "",
+            "stderr": "",
+            "interrupted": false,
+            "isImage": false,
+            "noOutputExpected": true
+          },
+          "tool_use_id": "toolu_01ShiPPPv1qUJ74VLyWPcHAf",
+          "duration_ms": 993
+        },
+        "PreToolUse": {
+          "session_id": "ec002aa8-6d7e-4825-a564-0e9ce678f7d6",
+          "transcript_path": "/home/dev/.claude/projects/-private-var-folders-1s--nj51k2909334n3796ht9-c00000gn-T-reflex-rfx087-6CxXSy-exit-1/ec002aa8-6d7e-4825-a564-0e9ce678f7d6.jsonl",
+          "cwd": "/work/project",
+          "prompt_id": "ca313acd-72ac-4101-a2a3-2c933325a331",
+          "permission_mode": "default",
+          "hook_event_name": "PreToolUse",
+          "tool_name": "Bash",
+          "tool_input": {
+            "command": "touch marker.txt",
+            "description": "Create marker file"
+          },
+          "tool_use_id": "toolu_01ShiPPPv1qUJ74VLyWPcHAf"
+        },
+        "Stop": {
+          "session_id": "ec002aa8-6d7e-4825-a564-0e9ce678f7d6",
+          "transcript_path": "/home/dev/.claude/projects/-private-var-folders-1s--nj51k2909334n3796ht9-c00000gn-T-reflex-rfx087-6CxXSy-exit-1/ec002aa8-6d7e-4825-a564-0e9ce678f7d6.jsonl",
+          "cwd": "/work/project",
+          "prompt_id": "ca313acd-72ac-4101-a2a3-2c933325a331",
+          "permission_mode": "default",
+          "hook_event_name": "Stop",
+          "stop_hook_active": false,
+          "last_assistant_message": "done",
+          "background_tasks": [],
+          "session_crons": []
+        }
+      }
+    },
+    {
+      "id": "exit-2",
+      "hook": "exits 2 with a message on stderr",
+      "expectRan": false,
+      "ran": false,
+      "markerExists": false,
+      "matchesExpectation": true,
+      "events": {
+        "PreToolUse": 1,
+        "Stop": 1
+      },
+      "session": {
+        "exitCode": 0,
+        "seconds": 4.3,
+        "isError": false,
+        "subtype": "success",
+        "turns": 2,
+        "costUsd": 0.0205838,
+        "reply": "refused",
+        "permissionDenials": ["Bash"],
+        "stderr": null
+      },
+      "samples": {
+        "PreToolUse": {
+          "session_id": "45526c93-9532-4e15-b3b0-77e5da6dbee1",
+          "transcript_path": "/home/dev/.claude/projects/-private-var-folders-1s--nj51k2909334n3796ht9-c00000gn-T-reflex-rfx087-6CxXSy-exit-2/45526c93-9532-4e15-b3b0-77e5da6dbee1.jsonl",
+          "cwd": "/work/project",
+          "prompt_id": "6d581f9e-d914-4608-b9d0-b942f674b930",
+          "permission_mode": "default",
+          "hook_event_name": "PreToolUse",
+          "tool_name": "Bash",
+          "tool_input": {
+            "command": "touch marker.txt",
+            "description": "Create an empty marker file"
+          },
+          "tool_use_id": "toolu_015fiVE95mjDgAGEyzrB2xLK"
+        },
+        "Stop": {
+          "session_id": "45526c93-9532-4e15-b3b0-77e5da6dbee1",
+          "transcript_path": "/home/dev/.claude/projects/-private-var-folders-1s--nj51k2909334n3796ht9-c00000gn-T-reflex-rfx087-6CxXSy-exit-2/45526c93-9532-4e15-b3b0-77e5da6dbee1.jsonl",
+          "cwd": "/work/project",
+          "prompt_id": "6d581f9e-d914-4608-b9d0-b942f674b930",
+          "permission_mode": "default",
+          "hook_event_name": "Stop",
+          "stop_hook_active": false,
+          "last_assistant_message": "refused",
+          "background_tasks": [],
+          "session_crons": []
+        }
+      }
+    },
+    {
+      "id": "invalid-json",
+      "hook": "exits 0 and prints invalid JSON",
+      "expectRan": true,
+      "ran": true,
+      "markerExists": true,
+      "matchesExpectation": true,
+      "events": {
+        "PostToolUse": 1,
+        "PreToolUse": 1,
+        "Stop": 1
+      },
+      "session": {
+        "exitCode": 0,
+        "seconds": 5.4,
+        "isError": false,
+        "subtype": "success",
+        "turns": 2,
+        "costUsd": 0.020335800000000005,
+        "reply": "done",
+        "permissionDenials": [],
+        "stderr": null
+      },
+      "samples": {
+        "PostToolUse": {
+          "session_id": "1d1bf935-040d-4b7b-a20a-7a97af0e91c6",
+          "transcript_path": "/home/dev/.claude/projects/-private-var-folders-1s--nj51k2909334n3796ht9-c00000gn-T-reflex-rfx087-6CxXSy-invalid-json/1d1bf935-040d-4b7b-a20a-7a97af0e91c6.jsonl",
+          "cwd": "/work/project",
+          "prompt_id": "0c40e0f9-7d03-4fed-98ee-29b71e1b735c",
+          "permission_mode": "default",
+          "hook_event_name": "PostToolUse",
+          "tool_name": "Bash",
+          "tool_input": {
+            "command": "touch marker.txt",
+            "description": "Create marker.txt file"
+          },
+          "tool_response": {
+            "stdout": "",
+            "stderr": "",
+            "interrupted": false,
+            "isImage": false,
+            "noOutputExpected": true
+          },
+          "tool_use_id": "toolu_01VrSUumfE6UdUHy5B2MHWMS",
+          "duration_ms": 1031
+        },
+        "PreToolUse": {
+          "session_id": "1d1bf935-040d-4b7b-a20a-7a97af0e91c6",
+          "transcript_path": "/home/dev/.claude/projects/-private-var-folders-1s--nj51k2909334n3796ht9-c00000gn-T-reflex-rfx087-6CxXSy-invalid-json/1d1bf935-040d-4b7b-a20a-7a97af0e91c6.jsonl",
+          "cwd": "/work/project",
+          "prompt_id": "0c40e0f9-7d03-4fed-98ee-29b71e1b735c",
+          "permission_mode": "default",
+          "hook_event_name": "PreToolUse",
+          "tool_name": "Bash",
+          "tool_input": {
+            "command": "touch marker.txt",
+            "description": "Create marker.txt file"
+          },
+          "tool_use_id": "toolu_01VrSUumfE6UdUHy5B2MHWMS"
+        },
+        "Stop": {
+          "session_id": "1d1bf935-040d-4b7b-a20a-7a97af0e91c6",
+          "transcript_path": "/home/dev/.claude/projects/-private-var-folders-1s--nj51k2909334n3796ht9-c00000gn-T-reflex-rfx087-6CxXSy-invalid-json/1d1bf935-040d-4b7b-a20a-7a97af0e91c6.jsonl",
+          "cwd": "/work/project",
+          "prompt_id": "0c40e0f9-7d03-4fed-98ee-29b71e1b735c",
+          "permission_mode": "default",
+          "hook_event_name": "Stop",
+          "stop_hook_active": false,
+          "last_assistant_message": "done",
+          "background_tasks": [],
+          "session_crons": []
+        }
+      }
+    },
+    {
+      "id": "timeout",
+      "hook": "runs past its configured timeout (2 s)",
+      "expectRan": true,
+      "ran": true,
+      "markerExists": true,
+      "matchesExpectation": true,
+      "events": {
+        "PostToolUse": 1,
+        "PreToolUse": 1,
+        "Stop": 1
+      },
+      "session": {
+        "exitCode": 0,
+        "seconds": 7.9,
+        "isError": false,
+        "subtype": "success",
+        "turns": 2,
+        "costUsd": 0.0208504,
+        "reply": "done",
+        "permissionDenials": [],
+        "stderr": null
+      },
+      "samples": {
+        "PostToolUse": {
+          "session_id": "ed238c1c-eca7-4df5-9a56-1dfa970bfcca",
+          "transcript_path": "/home/dev/.claude/projects/-private-var-folders-1s--nj51k2909334n3796ht9-c00000gn-T-reflex-rfx087-6CxXSy-timeout/ed238c1c-eca7-4df5-9a56-1dfa970bfcca.jsonl",
+          "cwd": "/work/project",
+          "prompt_id": "4551197e-c600-44e4-a1b8-92ee7a7a54c0",
+          "permission_mode": "default",
+          "hook_event_name": "PostToolUse",
+          "tool_name": "Bash",
+          "tool_input": {
+            "command": "touch marker.txt",
+            "description": "Create marker file"
+          },
+          "tool_response": {
+            "stdout": "",
+            "stderr": "",
+            "interrupted": false,
+            "isImage": false,
+            "noOutputExpected": true
+          },
+          "tool_use_id": "toolu_01L6bmDc5UnMSkSJwCFNnLiB",
+          "duration_ms": 1033
+        },
+        "PreToolUse": {
+          "session_id": "ed238c1c-eca7-4df5-9a56-1dfa970bfcca",
+          "transcript_path": "/home/dev/.claude/projects/-private-var-folders-1s--nj51k2909334n3796ht9-c00000gn-T-reflex-rfx087-6CxXSy-timeout/ed238c1c-eca7-4df5-9a56-1dfa970bfcca.jsonl",
+          "cwd": "/work/project",
+          "prompt_id": "4551197e-c600-44e4-a1b8-92ee7a7a54c0",
+          "permission_mode": "default",
+          "hook_event_name": "PreToolUse",
+          "tool_name": "Bash",
+          "tool_input": {
+            "command": "touch marker.txt",
+            "description": "Create marker file"
+          },
+          "tool_use_id": "toolu_01L6bmDc5UnMSkSJwCFNnLiB"
+        },
+        "Stop": {
+          "session_id": "ed238c1c-eca7-4df5-9a56-1dfa970bfcca",
+          "transcript_path": "/home/dev/.claude/projects/-private-var-folders-1s--nj51k2909334n3796ht9-c00000gn-T-reflex-rfx087-6CxXSy-timeout/ed238c1c-eca7-4df5-9a56-1dfa970bfcca.jsonl",
+          "cwd": "/work/project",
+          "prompt_id": "4551197e-c600-44e4-a1b8-92ee7a7a54c0",
+          "permission_mode": "default",
+          "hook_event_name": "Stop",
+          "stop_hook_active": false,
+          "last_assistant_message": "done",
+          "background_tasks": [],
+          "session_crons": []
+        }
+      }
+    },
+    {
+      "id": "missing-command",
+      "hook": "points at a command that does not exist",
+      "expectRan": true,
+      "ran": true,
+      "markerExists": true,
+      "matchesExpectation": true,
+      "events": {
+        "PostToolUse": 1,
+        "PreToolUse": 1,
+        "Stop": 1
+      },
+      "session": {
+        "exitCode": 0,
+        "seconds": 5.3,
+        "isError": false,
+        "subtype": "success",
+        "turns": 2,
+        "costUsd": 0.0203598,
+        "reply": "done",
+        "permissionDenials": [],
+        "stderr": null
+      },
+      "samples": {
+        "PostToolUse": {
+          "session_id": "22edecb6-57fb-4197-91c0-7884402218de",
+          "transcript_path": "/home/dev/.claude/projects/-private-var-folders-1s--nj51k2909334n3796ht9-c00000gn-T-reflex-rfx087-6CxXSy-missing-command/22edecb6-57fb-4197-91c0-7884402218de.jsonl",
+          "cwd": "/work/project",
+          "prompt_id": "d778a833-17bb-4565-a1fc-628172569517",
+          "permission_mode": "default",
+          "hook_event_name": "PostToolUse",
+          "tool_name": "Bash",
+          "tool_input": {
+            "command": "touch marker.txt",
+            "description": "Create marker.txt file"
+          },
+          "tool_response": {
+            "stdout": "",
+            "stderr": "",
+            "interrupted": false,
+            "isImage": false,
+            "noOutputExpected": true
+          },
+          "tool_use_id": "toolu_01Qu2Q2fWtsqyfXvbMt6NpCu",
+          "duration_ms": 1134
+        },
+        "PreToolUse": {
+          "session_id": "22edecb6-57fb-4197-91c0-7884402218de",
+          "transcript_path": "/home/dev/.claude/projects/-private-var-folders-1s--nj51k2909334n3796ht9-c00000gn-T-reflex-rfx087-6CxXSy-missing-command/22edecb6-57fb-4197-91c0-7884402218de.jsonl",
+          "cwd": "/work/project",
+          "prompt_id": "d778a833-17bb-4565-a1fc-628172569517",
+          "permission_mode": "default",
+          "hook_event_name": "PreToolUse",
+          "tool_name": "Bash",
+          "tool_input": {
+            "command": "touch marker.txt",
+            "description": "Create marker.txt file"
+          },
+          "tool_use_id": "toolu_01Qu2Q2fWtsqyfXvbMt6NpCu"
+        },
+        "Stop": {
+          "session_id": "22edecb6-57fb-4197-91c0-7884402218de",
+          "transcript_path": "/home/dev/.claude/projects/-private-var-folders-1s--nj51k2909334n3796ht9-c00000gn-T-reflex-rfx087-6CxXSy-missing-command/22edecb6-57fb-4197-91c0-7884402218de.jsonl",
+          "cwd": "/work/project",
+          "prompt_id": "d778a833-17bb-4565-a1fc-628172569517",
+          "permission_mode": "default",
+          "hook_event_name": "Stop",
+          "stop_hook_active": false,
+          "last_assistant_message": "done",
+          "background_tasks": [],
+          "session_crons": []
+        }
+      }
+    },
+    {
+      "id": "json-deny",
+      "hook": "exits 0 and answers permissionDecision: deny",
+      "expectRan": false,
+      "ran": false,
+      "markerExists": false,
+      "matchesExpectation": true,
+      "events": {
+        "PreToolUse": 1,
+        "Stop": 1
+      },
+      "session": {
+        "exitCode": 0,
+        "seconds": 5.4,
+        "isError": false,
+        "subtype": "success",
+        "turns": 2,
+        "costUsd": 0.020965800000000003,
+        "reply": "refused",
+        "permissionDenials": ["Bash"],
+        "stderr": null
+      },
+      "samples": {
+        "PreToolUse": {
+          "session_id": "3bdf9a4e-d589-4ebc-a667-85e6f275f5a0",
+          "transcript_path": "/home/dev/.claude/projects/-private-var-folders-1s--nj51k2909334n3796ht9-c00000gn-T-reflex-rfx087-6CxXSy-json-deny/3bdf9a4e-d589-4ebc-a667-85e6f275f5a0.jsonl",
+          "cwd": "/work/project",
+          "prompt_id": "be8c6ccf-92d2-46c2-a315-86b1824cedbc",
+          "permission_mode": "default",
+          "hook_event_name": "PreToolUse",
+          "tool_name": "Bash",
+          "tool_input": {
+            "command": "touch marker.txt",
+            "description": "Create marker.txt file"
+          },
+          "tool_use_id": "toolu_01W9hULvJysru8RRjNMq3YTn"
+        },
+        "Stop": {
+          "session_id": "3bdf9a4e-d589-4ebc-a667-85e6f275f5a0",
+          "transcript_path": "/home/dev/.claude/projects/-private-var-folders-1s--nj51k2909334n3796ht9-c00000gn-T-reflex-rfx087-6CxXSy-json-deny/3bdf9a4e-d589-4ebc-a667-85e6f275f5a0.jsonl",
+          "cwd": "/work/project",
+          "prompt_id": "be8c6ccf-92d2-46c2-a315-86b1824cedbc",
+          "permission_mode": "default",
+          "hook_event_name": "Stop",
+          "stop_hook_active": false,
+          "last_assistant_message": "refused",
+          "background_tasks": [],
+          "session_crons": []
+        }
+      }
+    },
+    {
+      "id": "json-ask-headless",
+      "hook": "exits 0 and answers permissionDecision: ask, with no human to ask",
+      "expectRan": null,
+      "ran": false,
+      "markerExists": false,
+      "matchesExpectation": null,
+      "events": {
+        "PreToolUse": 1,
+        "Stop": 1
+      },
+      "session": {
+        "exitCode": 0,
+        "seconds": 5,
+        "isError": false,
+        "subtype": "success",
+        "turns": 2,
+        "costUsd": 0.020462400000000002,
+        "reply": "refused",
+        "permissionDenials": ["Bash"],
+        "stderr": null
+      },
+      "samples": {
+        "PreToolUse": {
+          "session_id": "d029bb22-e983-48d9-ac0d-11592bcdb8f7",
+          "transcript_path": "/home/dev/.claude/projects/-private-var-folders-1s--nj51k2909334n3796ht9-c00000gn-T-reflex-rfx087-6CxXSy-json-ask-headless/d029bb22-e983-48d9-ac0d-11592bcdb8f7.jsonl",
+          "cwd": "/work/project",
+          "prompt_id": "3b10378d-8684-4b61-97ab-98515a4c78d1",
+          "permission_mode": "default",
+          "hook_event_name": "PreToolUse",
+          "tool_name": "Bash",
+          "tool_input": {
+            "command": "touch marker.txt",
+            "description": "Create marker.txt file"
+          },
+          "tool_use_id": "toolu_01Qf3zw6KvyWRV6KaLoVJCEe"
+        },
+        "Stop": {
+          "session_id": "d029bb22-e983-48d9-ac0d-11592bcdb8f7",
+          "transcript_path": "/home/dev/.claude/projects/-private-var-folders-1s--nj51k2909334n3796ht9-c00000gn-T-reflex-rfx087-6CxXSy-json-ask-headless/d029bb22-e983-48d9-ac0d-11592bcdb8f7.jsonl",
+          "cwd": "/work/project",
+          "prompt_id": "3b10378d-8684-4b61-97ab-98515a4c78d1",
+          "permission_mode": "default",
+          "hook_event_name": "Stop",
+          "stop_hook_active": false,
+          "last_assistant_message": "refused",
+          "background_tasks": [],
+          "session_crons": []
+        }
+      }
+    },
+    {
+      "id": "hooks-disabled",
+      "hook": "would block with exit 2, but disableAllHooks is true",
+      "expectRan": true,
+      "ran": true,
+      "markerExists": true,
+      "matchesExpectation": true,
+      "events": {},
+      "session": {
+        "exitCode": 0,
+        "seconds": 9.8,
+        "isError": false,
+        "subtype": "success",
+        "turns": 2,
+        "costUsd": 0.020283799999999998,
+        "reply": "done",
+        "permissionDenials": [],
+        "stderr": null
+      },
+      "samples": {}
+    },
+    {
+      "id": "needs-permission-headless",
+      "hook": "is silent, and the tool is not pre-approved (no human to ask)",
+      "expectRan": false,
+      "ran": false,
+      "markerExists": false,
+      "matchesExpectation": true,
+      "events": {
+        "PermissionRequest": 1,
+        "PreToolUse": 1,
+        "Stop": 1
+      },
+      "session": {
+        "exitCode": 0,
+        "seconds": 7.7,
+        "isError": false,
+        "subtype": "success",
+        "turns": 2,
+        "costUsd": 0.021871400000000003,
+        "reply": "refused",
+        "permissionDenials": ["Bash"],
+        "stderr": null
+      },
+      "samples": {
+        "PermissionRequest": {
+          "session_id": "da0968d8-97ee-4d06-bf76-35f56fc01e01",
+          "transcript_path": "/home/dev/.claude/projects/-private-var-folders-1s--nj51k2909334n3796ht9-c00000gn-T-reflex-rfx087-6CxXSy-needs-permission-headless/da0968d8-97ee-4d06-bf76-35f56fc01e01.jsonl",
+          "cwd": "/work/project",
+          "prompt_id": "7ae3fdd2-de7c-40f2-ab77-6c50486cdd12",
+          "permission_mode": "default",
+          "hook_event_name": "PermissionRequest",
+          "tool_name": "Bash",
+          "tool_input": {
+            "command": "touch marker.txt",
+            "description": "Create an empty file named marker.txt"
+          },
+          "permission_suggestions": [
+            {
+              "type": "addDirectories",
+              "directories": ["/work/project"],
+              "destination": "session"
+            },
+            {
+              "type": "setMode",
+              "mode": "acceptEdits",
+              "destination": "session"
+            }
+          ]
+        },
+        "PreToolUse": {
+          "session_id": "da0968d8-97ee-4d06-bf76-35f56fc01e01",
+          "transcript_path": "/home/dev/.claude/projects/-private-var-folders-1s--nj51k2909334n3796ht9-c00000gn-T-reflex-rfx087-6CxXSy-needs-permission-headless/da0968d8-97ee-4d06-bf76-35f56fc01e01.jsonl",
+          "cwd": "/work/project",
+          "prompt_id": "7ae3fdd2-de7c-40f2-ab77-6c50486cdd12",
+          "permission_mode": "default",
+          "hook_event_name": "PreToolUse",
+          "tool_name": "Bash",
+          "tool_input": {
+            "command": "touch marker.txt",
+            "description": "Create an empty file named marker.txt"
+          },
+          "tool_use_id": "toolu_01XZYC1xqeV3vTTGPZ5U85V1"
+        },
+        "Stop": {
+          "session_id": "da0968d8-97ee-4d06-bf76-35f56fc01e01",
+          "transcript_path": "/home/dev/.claude/projects/-private-var-folders-1s--nj51k2909334n3796ht9-c00000gn-T-reflex-rfx087-6CxXSy-needs-permission-headless/da0968d8-97ee-4d06-bf76-35f56fc01e01.jsonl",
+          "cwd": "/work/project",
+          "prompt_id": "7ae3fdd2-de7c-40f2-ab77-6c50486cdd12",
+          "permission_mode": "default",
+          "hook_event_name": "Stop",
+          "stop_hook_active": false,
+          "last_assistant_message": "refused",
+          "background_tasks": [],
+          "session_crons": []
+        }
+      }
+    },
+    {
+      "id": "failing-command",
+      "recordedAt": "2026-09-19T16:50:52.692Z",
+      "hook": "is silent, and the command itself exits non-zero",
+      "expectRan": null,
+      "ran": true,
+      "markerExists": false,
+      "matchesExpectation": null,
+      "events": {
+        "PostToolUseFailure": 1,
+        "PreToolUse": 1,
+        "Stop": 1
+      },
+      "session": {
+        "exitCode": 0,
+        "seconds": 6,
+        "isError": false,
+        "subtype": "success",
+        "turns": 2,
+        "costUsd": 0.0208513,
+        "reply": "done",
+        "permissionDenials": [],
+        "stderr": null
+      },
+      "samples": {
+        "PostToolUseFailure": {
+          "session_id": "a6d67739-19c8-4203-aa23-2082b3177781",
+          "transcript_path": "/home/dev/.claude/projects/-private-var-folders-1s--nj51k2909334n3796ht9-c00000gn-T-reflex-rfx087-ZmIbT1-failing-command/a6d67739-19c8-4203-aa23-2082b3177781.jsonl",
+          "cwd": "/work/project",
+          "prompt_id": "d93c53c0-2b75-4f17-bd22-007cf5475da7",
+          "permission_mode": "default",
+          "hook_event_name": "PostToolUseFailure",
+          "tool_name": "Bash",
+          "tool_input": {
+            "command": "ls rfx087-this-directory-does-not-exist"
+          },
+          "tool_use_id": "toolu_01QReUvGRRwuZG1xodAm9zhQ",
+          "error": "Exit code 1\nls: rfx087-this-directory-does-not-exist: No such file or directory",
+          "is_interrupt": false,
+          "duration_ms": 974
+        },
+        "PreToolUse": {
+          "session_id": "a6d67739-19c8-4203-aa23-2082b3177781",
+          "transcript_path": "/home/dev/.claude/projects/-private-var-folders-1s--nj51k2909334n3796ht9-c00000gn-T-reflex-rfx087-ZmIbT1-failing-command/a6d67739-19c8-4203-aa23-2082b3177781.jsonl",
+          "cwd": "/work/project",
+          "prompt_id": "d93c53c0-2b75-4f17-bd22-007cf5475da7",
+          "permission_mode": "default",
+          "hook_event_name": "PreToolUse",
+          "tool_name": "Bash",
+          "tool_input": {
+            "command": "ls rfx087-this-directory-does-not-exist"
+          },
+          "tool_use_id": "toolu_01QReUvGRRwuZG1xodAm9zhQ"
+        },
+        "Stop": {
+          "session_id": "a6d67739-19c8-4203-aa23-2082b3177781",
+          "transcript_path": "/home/dev/.claude/projects/-private-var-folders-1s--nj51k2909334n3796ht9-c00000gn-T-reflex-rfx087-ZmIbT1-failing-command/a6d67739-19c8-4203-aa23-2082b3177781.jsonl",
+          "cwd": "/work/project",
+          "prompt_id": "d93c53c0-2b75-4f17-bd22-007cf5475da7",
+          "permission_mode": "default",
+          "hook_event_name": "Stop",
+          "stop_hook_active": false,
+          "last_assistant_message": "done",
+          "background_tasks": [],
+          "session_crons": []
+        }
+      }
+    }
+  ]
+}

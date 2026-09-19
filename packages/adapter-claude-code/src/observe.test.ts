@@ -29,13 +29,13 @@ describe("RFX-086 the record of an observed action", () => {
       hostVersion: "2.1.276",
       toolName: "Bash",
       sideEffectClass: "unknown",
-      projectRoot: "/Users/dev/code/webapp",
+      projectRoot: "/work/project",
       argumentShape: {
         type: "object",
         otherKeys: 0,
         keys: {
-          command: { type: "string", length: 10 },
-          description: { type: "string", length: 24 },
+          command: { type: "string", length: 16 },
+          description: { type: "string", length: 22 },
         },
       },
     });
@@ -144,10 +144,43 @@ describe("RFX-092 outcomes from Claude Code events", () => {
     ).toMatchObject({ prompted: "no", humanResponse: "none", executed: "no" });
   });
 
-  it("a reported failure leaves execution unknown", () => {
+  // Captured live: `ls` of a missing directory ran, exited 1, and the host
+  // fired PostToolUseFailure. The call ran.
+  it("a reported failure is a call that ran", () => {
     expect(
-      outcomeOf("pre-tool-use.bash", "post-tool-use-failure.bash"),
-    ).toMatchObject({ executed: "unknown" });
+      outcomeOf("pre-tool-use.bash-failing", "post-tool-use-failure.bash"),
+    ).toMatchObject({ prompted: "no", humanResponse: "none", executed: "yes" });
+  });
+
+  // Captured live: PermissionRequest carries no tool_use_id. Before RFX-087
+  // this signal was dropped, and no action could ever be seen as prompted.
+  it("attributes the real PermissionRequest without a tool-use identifier", () => {
+    const [record] = records("permission-request.bash");
+    expect(record).toMatchObject({
+      kind: "signal",
+      signal: "permission-requested",
+      toolName: "Bash",
+    });
+    expect(record).not.toHaveProperty("actionId");
+    // Correlated on session, tool and order. Nothing derived from arguments.
+    const serialized = JSON.stringify(record);
+    expect(serialized).not.toContain("touch");
+    expect(serialized).not.toContain("marker");
+    expect(Object.keys(record ?? {}).sort()).toEqual([
+      "kind",
+      "recordVersion",
+      "recordedAt",
+      "sessionId",
+      "signal",
+      "toolName",
+    ]);
+  });
+
+  it("records nothing of the conversation that arrives with Stop", () => {
+    const serialized = JSON.stringify(records("stop"));
+    expect(serialized).not.toContain("last_assistant_message");
+    expect(serialized).not.toContain("done");
+    expect(serialized).not.toContain("transcript");
   });
 
   it("maps each host event onto one host-agnostic signal", () => {
@@ -170,11 +203,15 @@ describe("RFX-092 outcomes from Claude Code events", () => {
     ]);
   });
 
-  // Adversarial: a signal that cannot be tied to an action is dropped. Tying
-  // it to a guessed action would give one action another's outcome.
-  it("drops a signal the host did not identify", () => {
+  // Adversarial: with neither a tool-use identifier nor a session there is
+  // nothing to correlate on. Tying the signal to a guessed action would give
+  // one action another's outcome, so it is dropped.
+  it("drops a signal that names neither a call nor a session", () => {
     const anonymous = readHookInput(
-      tampered("post-tool-use.bash", { tool_use_id: undefined }),
+      tampered("post-tool-use.bash", {
+        tool_use_id: undefined,
+        session_id: undefined,
+      }),
     );
     expect(
       anonymous.ok && toObservationRecord(anonymous.event, context),
@@ -183,7 +220,8 @@ describe("RFX-092 outcomes from Claude Code events", () => {
 
   it("never records the tool output that arrives with PostToolUse", () => {
     const serialized = JSON.stringify(records("post-tool-use.bash"));
-    expect(serialized).not.toContain("nothing to commit");
+    expect(serialized).not.toContain("tool_response");
     expect(serialized).not.toContain("stdout");
+    expect(serialized).not.toContain("duration_ms");
   });
 });
