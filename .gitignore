@@ -10,6 +10,9 @@ dist/
 coverage/
 # ~/.npmrc may set a relative `cache=.npm-cache`; never commit it
 .npm-cache/
+# pnpm puts its store here when the project is on another volume than the
+# home directory (a bind-mounted container, for one)
+.pnpm-store/
 
 # local environment — never commit secrets
 .env

@@ -4,6 +4,7 @@ dist/
 coverage/
 .turbo/
 .npm-cache/
+.pnpm-store/
 
 # Released contract fixtures are frozen and checksum-locked (ADR-009).
 # No tool rewrites them, including a future formatter upgrade.
