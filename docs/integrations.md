@@ -12,6 +12,8 @@ Installation principles:
 - preserve existing settings
 - observe first
 
+What is installed, what the host does when the hook fails, and what a hook call costs are documented in [`claude-code-hook.md`](./claude-code-hook.md).
+
 ## Codex
 
 Current Codex hook behavior requires a deliberate split:
