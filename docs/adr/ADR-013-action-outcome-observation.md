@@ -1,7 +1,7 @@
 # ADR-013: Action outcome observation
 
-- **Status:** Proposed
-- **Date:** 2026-09-18
+- **Status:** Accepted
+- **Date:** 2026-09-19
 - **Tickets:** RFX-091, RFX-092, RFX-093
 - **Supersedes:** none
 
@@ -47,9 +47,11 @@ exposes no signal.
 
 ## Decision
 
-Not decided.
+**Option A**, accepted by the maintainer on 2026-09-19: REFLEX records what the
+host did in a separate `ActionOutcome` contract, keyed by `actionId`.
 
-Recommendation (not binding): **option A**.
+It was proposed on 2026-09-18 with the reasoning below, which stands as the
+rationale.
 
 - B is rejected because a decision is written before the outcome exists, by a
   different writer (gateway, not adapter). Mutating a decision after the fact
@@ -58,13 +60,23 @@ Recommendation (not binding): **option A**.
   metrics are a form of influence. It would also make the most important
   product numbers depend on an untyped bag.
 
-Under option A the contract is an additive change (ADR-009), it is an **input**
-to metrics and learning and is therefore read strictly, and it carries no tool
-output and no argument values.
+The contract is an additive change (ADR-009, shipped as contract version 1.1).
+It is an **input** to metrics and learning and is therefore read strictly. It
+carries no tool output and no argument values.
+
+Three rules complete the decision:
+
+- **`unknown` is a value.** Where the host exposes no signal the field says
+  `unknown`. A consumer must never read `unknown` as `no`.
+- **A record may not contradict itself.** No answer without a question, no
+  known answer to an unknown question, no rejected action that ran. Such a
+  record is rejected, never reconciled, because it would let one action count
+  as both interrupted and autonomous.
+- **Assembly is the adapter's job.** Host signals arrive as separate events. The
+  adapter correlates them and emits one outcome per action; correlation
+  identifiers stay in the adapter and do not enter the contract.
 
 ## Consequences
-
-If option A is accepted:
 
 ### Positive
 
@@ -84,6 +96,8 @@ If option A is accepted:
   correlation, not influence, and stays within ADR-001 §3.
 
 ## Open questions
+
+These remain open after acceptance. None of them changes the contract.
 
 - Which signals does each supported host actually expose, and in which modes?
   (RFX-092 and RFX-093 answer this with fixtures.)

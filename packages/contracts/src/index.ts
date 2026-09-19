@@ -45,6 +45,7 @@ export {
 export { CONTRACT_LIMITS } from "./limits.js";
 
 export {
+  parseActionOutcome,
   parseCanonicalAction,
   parseDecisionFeedback,
   parseDecisionRequest,
@@ -110,3 +111,11 @@ export {
   type DecisionFeedback,
   type DecisionFeedbackValue,
 } from "./feedback.js";
+
+export {
+  HUMAN_RESPONSES,
+  OBSERVATION_STATES,
+  type ActionOutcome,
+  type HumanResponse,
+  type ObservationState,
+} from "./outcome.js";

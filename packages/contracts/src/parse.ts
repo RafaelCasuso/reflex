@@ -7,8 +7,10 @@ import {
   reflexDecisionSchema,
 } from "./internal/decision.schema.js";
 import { decisionFeedbackSchema } from "./internal/feedback.schema.js";
+import { actionOutcomeSchema } from "./internal/outcome.schema.js";
 import { semanticAssessmentSchema } from "./internal/semantic.schema.js";
 import { validate } from "./internal/validate.js";
+import type { ActionOutcome } from "./outcome.js";
 import type { SemanticAssessment } from "./semantic.js";
 import type { ValidationResult } from "./validation.js";
 
@@ -59,4 +61,11 @@ export function parseDecisionFeedback(
   input: unknown,
 ): ValidationResult<DecisionFeedback> {
   return validate(decisionFeedbackSchema, input);
+}
+
+/** Strict: an outcome is an input to metrics and Approval Learning (ADR-013). */
+export function parseActionOutcome(
+  input: unknown,
+): ValidationResult<ActionOutcome> {
+  return validate(actionOutcomeSchema, input);
 }

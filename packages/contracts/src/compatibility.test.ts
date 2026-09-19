@@ -16,6 +16,7 @@ import * as contracts from "./index.js";
 import {
   CONTRACT_LIMITS,
   CONTRACT_VERSION,
+  parseActionOutcome,
   parseCanonicalAction,
   parseDecisionFeedback,
   parseDecisionRequest,
@@ -41,6 +42,7 @@ const PARSERS: Readonly<Record<string, Parser>> = {
   "reflex-decision": parseReflexDecision,
   "semantic-assessment": parseSemanticAssessment,
   "decision-feedback": parseDecisionFeedback,
+  "action-outcome": parseActionOutcome,
 };
 
 function parserFor(file: string): Parser | undefined {
@@ -125,6 +127,38 @@ describe("RFX-011 frozen fixtures are not edited", () => {
       "vocabulary.json":
         "b2df2ca2dcfd6eccba973e4159e70eabdfec477dac537ba9144ffadebff1d5e2",
     },
+    "v1.1": {
+      "action-outcome.blocked-by-host.json":
+        "b8eeb7e6f6fdad5d12dba1de4bfc48925ea5d5fb36dd5ba94761922a631c6faf",
+      "action-outcome.executed-without-prompt.json":
+        "2f180556d6e4b8af436cad974c8f050822012a0d28102a5fec8d5f03463f1b03",
+      "action-outcome.no-signal.json":
+        "890d1ef1d2e74c906ee27970813d1ff8bc4190b6d8b2e7e9d5898774000c7862",
+      "action-outcome.prompted-approved.json":
+        "59d73999ea1ed752709d572b98ba504388e1ba88bbd5ef24a7f56d831dd407f1",
+      "action-outcome.prompted-rejected.json":
+        "89bd7e8d9990ea802be02a4939ad65da9a32e9b815c7c718e658766550f74455",
+      "canonical-action.full.json":
+        "09fffb3d041294c4146df1ed0f66d97b7127303a840019f30ca672423b2ebba3",
+      "canonical-action.minimal.json":
+        "f2db44d14d19b90bd8f8ee20278c1fdf33aa47d9307662bdaa9c1647b0b4b3e8",
+      "decision-feedback.full.json":
+        "47f4b241fbcfef750b407df12386f8b058d6fdec8d2150a94fb1e62a4f06514a",
+      "decision-feedback.minimal.json":
+        "90161dd81364a974b154c8adfc2ca190148c0ecc302ce940dc22868b1d583e95",
+      "decision-request.full.json":
+        "5e4563884a0132b2c68dad92c6b716aab198a715d2084a0f1193229788dae28c",
+      "decision-request.minimal.json":
+        "ace2d9ca0ba8bc0b28bfc44d255d8d26b7e29a38c34623c5bf24a14563bdcfa3",
+      "reflex-decision.full.json":
+        "901e4c4da0f7d3bb31ffff22d262542d16ffd534521bb67a30b1dff6fa699afc",
+      "reflex-decision.minimal.json":
+        "0232b3f7fbb27cd6f491d58cd3a598b0824285a888fc9302050cddcf02c3d1c7",
+      "semantic-assessment.json":
+        "a832bca12b82a1c5c3a6d35d81bfc7aec0d1c708dbd6ba5f034fa84379e563f9",
+      "vocabulary.json":
+        "dbc0ea5e0636fb3cde9d85a1d84a7f5135bdc93b3c34083e86b7172431214ca7",
+    },
   };
 
   it("has a checksum entry for every released fixture set", () => {
@@ -149,11 +183,12 @@ describe("RFX-011 frozen fixtures are not edited", () => {
 
 describe("RFX-011 no new mandatory fields", () => {
   /**
-   * The mandatory fields of v1.0, discovered by parsing `{}`. A field that is
-   * mandatory today and was not mandatory in v1.0 rejects every older client:
-   * that is a breaking change, however small the diff looks.
+   * The mandatory fields of each contract as of the minor that introduced it
+   * (v1.0 unless noted), discovered by parsing `{}`. A field that is mandatory
+   * today and was not mandatory at release rejects every older client: that is
+   * a breaking change, however small the diff looks.
    */
-  const MANDATORY_V1_0: Readonly<Record<string, readonly string[]>> = {
+  const MANDATORY_AT_RELEASE: Readonly<Record<string, readonly string[]>> = {
     "canonical-action": [
       "agent",
       "arguments",
@@ -193,16 +228,24 @@ describe("RFX-011 no new mandatory fields", () => {
       "unusualScope",
     ],
     "decision-feedback": ["createdAt", "decisionId", "value"],
+    // Introduced in v1.1 (ADR-013).
+    "action-outcome": [
+      "actionId",
+      "executed",
+      "humanResponse",
+      "observedAt",
+      "prompted",
+    ],
   };
 
   it.each(Object.entries(PARSERS))(
-    "%s requires exactly what v1.0 required",
+    "%s requires exactly what it required at release",
     (kind, parse) => {
       const mandatory = issuesOf(parse({}))
         .filter((issue) => issue.code === "missing_field")
         .map((issue) => issue.path)
         .sort();
-      expect(mandatory).toEqual(MANDATORY_V1_0[kind]);
+      expect(mandatory).toEqual(MANDATORY_AT_RELEASE[kind]);
     },
   );
 
@@ -217,10 +260,6 @@ describe("RFX-011 no new mandatory fields", () => {
 });
 
 describe("RFX-011 vocabulary only grows", () => {
-  const frozen = loadFixture("vocabulary.json", "v1.0") as Record<
-    string,
-    readonly string[]
-  >;
   const current: Readonly<Record<string, readonly string[]>> = {
     DECISION_EFFECTS: contracts.DECISION_EFFECTS,
     REFLEX_MODES: contracts.REFLEX_MODES,
@@ -234,24 +273,53 @@ describe("RFX-011 vocabulary only grows", () => {
     DECISION_FEEDBACK_VALUES: contracts.DECISION_FEEDBACK_VALUES,
     VALIDATION_ISSUE_CODES: contracts.VALIDATION_ISSUE_CODES,
     ID_PREFIXES: Object.values(contracts.ID_PREFIXES),
+    OBSERVATION_STATES: contracts.OBSERVATION_STATES,
+    HUMAN_RESPONSES: contracts.HUMAN_RESPONSES,
   };
 
+  const released = fixtureVersions().map((version) => ({
+    version,
+    vocabulary: loadFixture("vocabulary.json", version) as Record<
+      string,
+      readonly string[]
+    >,
+  }));
+
   it("tracks every closed set the contracts export", () => {
-    expect(Object.keys(current).sort()).toEqual(Object.keys(frozen).sort());
+    const latest = released.at(-1);
+    expect(latest?.version).toBe(currentVersion);
+    expect(Object.keys(current).sort()).toEqual(
+      Object.keys(latest?.vocabulary ?? {}).sort(),
+    );
   });
 
-  it.each(Object.keys(frozen))("%s keeps every v1.0 member", (name) => {
-    expect(current[name]).toEqual(
-      expect.arrayContaining([...(frozen[name] ?? [])]),
-    );
+  it("never drops a set that an earlier minor released", () => {
+    for (const { version, vocabulary } of released) {
+      for (const name of Object.keys(vocabulary)) {
+        expect(current, `${version} released ${name}`).toHaveProperty([name]);
+      }
+    }
+  });
+
+  const members = released.flatMap(({ version, vocabulary }) =>
+    Object.entries(vocabulary).map(([name, frozen]) => ({
+      version,
+      name,
+      frozen,
+    })),
+  );
+
+  it.each(members)("$name keeps every $version member", ({ name, frozen }) => {
+    expect(current[name]).toEqual(expect.arrayContaining([...frozen]));
   });
 
   // These three sets are the decision semantics. They do not grow within a
   // major version either: a fourth effect is a new product, not a new minor.
+  const v1_0 = released[0]?.vocabulary ?? {};
   it.each(["DECISION_EFFECTS", "REFLEX_MODES", "FAILURE_MODES"])(
     "%s is closed for the whole major version",
     (name) => {
-      expect(current[name]).toEqual(frozen[name]);
+      expect(current[name]).toEqual(v1_0[name]);
     },
   );
 });
@@ -281,10 +349,11 @@ describe("RFX-011 limits only loosen", () => {
 
 describe("RFX-011 public surface", () => {
   /**
-   * Runtime exports of v1.0. Removing or renaming one breaks every consumer.
-   * Adding one is fine: append it here in the same change.
+   * Runtime exports. Removing or renaming one breaks every consumer. Adding
+   * one is fine: append it here in the same change, under its minor.
    */
-  const EXPORTS_V1_0 = [
+  const EXPORTS = [
+    // v1.0
     "CONTRACT_LIMITS",
     "CONTRACT_VERSION",
     "DECISION_EFFECTS",
@@ -308,17 +377,19 @@ describe("RFX-011 public surface", () => {
     "parseReflexDecision",
     "parseSemanticAssessment",
     "resolveEnvironment",
+    // v1.1 (ADR-013)
+    "HUMAN_RESPONSES",
+    "OBSERVATION_STATES",
+    "parseActionOutcome",
   ];
 
-  it("still exports everything v1.0 exported", () => {
-    expect(Object.keys(contracts)).toEqual(
-      expect.arrayContaining(EXPORTS_V1_0),
-    );
+  it("still exports everything it ever exported", () => {
+    expect(Object.keys(contracts)).toEqual(expect.arrayContaining(EXPORTS));
   });
 
   it("exports nothing that is not listed here", () => {
     // Keeps the surface deliberate: an accidental export becomes a promise.
-    expect(Object.keys(contracts).sort()).toEqual([...EXPORTS_V1_0].sort());
+    expect(Object.keys(contracts).sort()).toEqual([...EXPORTS].sort());
   });
 
   it("keeps the validation library out of every public module", () => {
@@ -362,10 +433,17 @@ describe("RFX-011 direction of tolerance", () => {
     ["DecisionRequest", parseDecisionRequest, "decision-request.full.json"],
     ["SemanticAssessment", parseSemanticAssessment, "semantic-assessment.json"],
     ["DecisionFeedback", parseDecisionFeedback, "decision-feedback.full.json"],
+    [
+      "ActionOutcome",
+      parseActionOutcome,
+      "action-outcome.prompted-approved.json",
+    ],
   ] as const)(
     "%s is an input to a decision: an unknown field is rejected",
     (_name, parse, file) => {
-      expect(parse({ ...loadFixture(file), ...extra }).ok).toBe(false);
+      expect(parse({ ...loadFixture(file, currentVersion), ...extra }).ok).toBe(
+        false,
+      );
     },
   );
 

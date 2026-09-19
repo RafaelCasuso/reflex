@@ -138,6 +138,8 @@ Tickets RFX-041, RFX-042, RFX-044, RFX-052, RFX-053, RFX-056, RFX-057 and RFX-05
 
 **Acceptance:** ADR-013 is accepted. The contract is added as an additive change under ADR-009 with frozen fixtures. It carries no tool output and no argument values, and it represents a signal the host does not expose as `unknown`, never as a guess.
 
+**Status:** Done (2026-09-19). ADR-013 accepted with option A. `outcome.ts` adds `ActionOutcome` (`actionId`, `prompted`, `humanResponse`, `executed`, `observedAt`) and `parseActionOutcome`. It is read strictly, carries no tool output and no argument values, and rejects a record that contradicts itself (an answer without a question, a rejected action that ran). Shipped as contract version 1.1 by the ADR-009 procedure, its first real use: `fixtures/v1.1/` is frozen and checksum-locked, and `fixtures/v1.0/` is byte-identical to its release.
+
 **Why:** Without it the north-star metric, "approval prompts eliminated", the activation card and Approval Learning (which mines the host's native approvals) have no data to be computed from.
 
 ### RFX-044 — Implement reversible Claude installer

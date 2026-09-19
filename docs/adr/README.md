@@ -17,7 +17,7 @@ ADR says so explicitly and the same change updates `CLAUDE.md`.
 | [ADR-010](./ADR-010-decision-placement-and-hook-latency.md)    | Decision placement and hook latency              | Proposed | 2026-09-18 | RFX-094 |
 | [ADR-011](./ADR-011-normalized-operands-and-classification.md) | Normalized operands and classification ownership | Proposed | 2026-09-18 | RFX-095 |
 | [ADR-012](./ADR-012-self-protection-and-workspace-trust.md)    | Self-protection and workspace trust              | Proposed | 2026-09-18 | RFX-102 |
-| [ADR-013](./ADR-013-action-outcome-observation.md)             | Action outcome observation                       | Proposed | 2026-09-18 | RFX-091 |
+| [ADR-013](./ADR-013-action-outcome-observation.md)             | Action outcome observation                       | Accepted | 2026-09-19 | RFX-091 |
 
 ### Planned
 

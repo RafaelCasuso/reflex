@@ -22,6 +22,7 @@ additive, what is breaking, and the procedure for each).
 | `semantic.ts`   | `SemanticAssessment`, provider request and interface                                                                               |
 | `policy.ts`     | Policy document types, `PolicyMatch`                                                                                               |
 | `feedback.ts`   | `DecisionFeedback`                                                                                                                 |
+| `outcome.ts`    | `ActionOutcome`: what the host did with an action (ADR-013)                                                                        |
 | `parse.ts`      | The five boundary parsers                                                                                                          |
 | `version.ts`    | `CONTRACT_VERSION`                                                                                                                 |
 | `internal/`     | Schemas and validation machinery. Not exported.                                                                                    |
