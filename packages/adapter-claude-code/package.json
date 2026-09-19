@@ -21,6 +21,8 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "@reflex/contracts": "workspace:*"
+    "@reflex/contracts": "workspace:*",
+    "@reflex/telemetry": "workspace:*",
+    "jsonc-parser": "^3.3.1"
   }
 }

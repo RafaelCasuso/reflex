@@ -1,0 +1,13 @@
+{
+  "session_id": "0b9f2d6e-5c1a-4f7b-9e3d-2a8c6f4b1d70",
+  "transcript_path": "/Users/dev/.claude/projects/-Users-dev-code-webapp/0b9f2d6e.jsonl",
+  "cwd": "/Users/dev/code/webapp",
+  "permission_mode": "default",
+  "hook_event_name": "PreToolUse",
+  "tool_name": "Bash",
+  "tool_input": {
+    "command": "rm -rf build",
+    "description": "Remove build output"
+  },
+  "tool_use_id": "toolu_01BashRemove00000000005"
+}

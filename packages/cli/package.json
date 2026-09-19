@@ -21,6 +21,8 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "@reflex/contracts": "workspace:*"
+    "@reflex/adapter-claude-code": "workspace:*",
+    "@reflex/contracts": "workspace:*",
+    "@reflex/telemetry": "workspace:*"
   }
 }
