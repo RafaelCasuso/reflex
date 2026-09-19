@@ -162,6 +162,8 @@ Tickets RFX-041, RFX-042, RFX-044, RFX-052, RFX-053, RFX-056, RFX-057 and RFX-05
 
 **Acceptance:** Partial failure rolls back prior modifications.
 
+**Status:** Done (2026-09-19). `packages/cli/src/backups/`. A transaction is applied from a plan the user has already seen, in three phases: verify every file still has the bytes the plan was computed from, back everything up, then write. A failed write restores every earlier one (and the half-written one) byte for byte and mode for mode, and removes files it created. If rollback itself fails, the result says so and names the files to recover from the backup directory. Writes are atomic, preserve permission bits such as `0600` on a user settings file, go through a symlink instead of replacing it, and backups are readable only by the user.
+
 ### RFX-086 — Local Observe recorder
 
 **Goal:** Append one structured record per observed action to a local, size-bounded log that the user owns.
