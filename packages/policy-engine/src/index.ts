@@ -26,6 +26,12 @@ export {
   type PatternCompileResult,
 } from "./pattern.js";
 export {
+  POLICY_SET_FORMAT,
+  canonicalizePolicySet,
+  type CanonicalPolicySet,
+  type CanonicalSource,
+} from "./canonical.js";
+export {
   compilePolicySet,
   evaluatePolicy,
   type CompileResult,

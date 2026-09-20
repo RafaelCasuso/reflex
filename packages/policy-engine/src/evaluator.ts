@@ -9,6 +9,7 @@ import type {
   SideEffectClass,
 } from "@reflex/contracts";
 
+import { canonicalizePolicySet } from "./canonical.js";
 import { ruleMatches, type MatchContext } from "./matcher.js";
 import type { PathContext } from "./paths.js";
 import { compilePattern, type CompiledPattern } from "./pattern.js";
@@ -40,6 +41,13 @@ export interface CompiledPolicySet {
   /** ADR-004 §6: the most restrictive default any source declares, or `ask`. */
   readonly unresolved: PolicyUnresolvedDefault;
   readonly patterns: ReadonlyMap<string, CompiledPattern>;
+  /**
+   * RFX-016: depends on what the policies mean and on nothing else. Recorded
+   * with every decision as `policySetHash`.
+   */
+  readonly hash: string;
+  /** The canonical form that was hashed: the payload of a snapshot (RFX-083). */
+  readonly canonical: string;
 }
 
 export type CompileResult =
@@ -130,9 +138,30 @@ export function compilePolicySet(
     }
   }
 
-  return problems.length > 0
-    ? { ok: false, problems }
-    : { ok: true, set: { rules, unresolved: unresolved ?? "ask", patterns } };
+  if (problems.length > 0) {
+    return { ok: false, problems };
+  }
+  const { hash, payload } = canonicalizePolicySet(
+    sources.map((entry) => ({
+      source: entry.source,
+      trusted: entry.source === "project" ? entry.trusted : true,
+      ...(entry.policyId === undefined ? {} : { policyId: entry.policyId }),
+      ...(entry.document.defaults === undefined
+        ? {}
+        : { unresolved: entry.document.defaults.unresolved }),
+      rules: entry.document.rules,
+    })),
+  );
+  return {
+    ok: true,
+    set: {
+      rules,
+      unresolved: unresolved ?? "ask",
+      patterns,
+      hash,
+      canonical: payload,
+    },
+  };
 }
 
 export interface PolicyEvaluationResult {

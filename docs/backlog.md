@@ -434,6 +434,8 @@ This gate opens with the decisions the policy engine depends on (RFX-112 to RFX-
 
 **Note:** design the compiled set so that it can be the payload of the signed snapshot in RFX-083. Signing can come later; the format should not have to change when it does.
 
+**Status:** Done (2026-09-20). `packages/policy-engine/src/canonical.ts`. A policy set has one canonical form, plain JSON with sorted keys and no whitespace, and its hash is `sha256:` over that form. `compilePolicySet` computes both, and the set carries them as `hash` and `canonical`. **Identical content, identical hash, regardless of formatting:** tested against comments, blank lines, indentation, quoting, flow and block style and the order of keys, and also against everything that ADR-004 says never changes a decision: the order of rules, of conditions, of `any_of` branches, of `in` values and of the sources themselves, and `mandatory: false` written out or left out. **Adversarial, the other direction:** eleven changes that do change a decision (an effect, a mandate, a value, an operator, a field, a negation, the default, a rule's id or name, one rule fewer) each change the hash, and so do the source a policy comes from and whether a project is trusted. The hash of a known policy is frozen in a test, so that a change to the canonical form, which would change every recorded hash, cannot happen unnoticed; `POLICY_SET_FORMAT` is inside the hashed payload for that day. **Per the note:** the canonical form is the payload a signed snapshot will carry (RFX-083); signing wraps it and does not change it.
+
 ### RFX-017 — Bootstrap coding-agent policy pack
 
 **Goal:** Provide conservative starter rules for common read/test/status operations.
