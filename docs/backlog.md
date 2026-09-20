@@ -276,11 +276,15 @@ This gate opens with the decisions the policy engine depends on (RFX-112 to RFX-
 
 **Acceptance:** ADR-002 is accepted and answers: The full table of mode (observe, assist, autopilot) by effect (allow, ask, deny): what `effectiveEffect` is in each cell and what the adapter does. Whether a semantic result can ever lower a deterministic ask. How `risk` and `confidence` are set for a purely deterministic decision.
 
+**Status:** Implemented, verification pending (2026-09-20). ADR-002 is written and `Proposed`: context, a recommendation that answers every question above, what it costs, the alternatives and how it would be enforced. It recommends that the mode never changes `effect`, that Observe reports `effectiveEffect: ask` and emits nothing, that Assist never blocks, that a resolved deterministic decision ends the pipeline in both directions, and that a deterministic decision has confidence 1 and a risk taken from a fixed table by side-effect class. **Missing:** the maintainer's decision. A recommendation is not an acceptance, and nothing that depends on this ADR is built until it is accepted, changed or rejected.
+
 ### RFX-113 — Write ADR-003 fail behavior
 
 **Goal:** Write ADR-003, one of the first architectural ADRs that `docs/architecture.md` §14 requires before Gate G2.
 
 **Acceptance:** ADR-003 is accepted and answers: Which side-effect classes may fail open, and who decides the failure mode: can a client request `fail-open` for a destructive action? What the adapter does when it can reach nothing at all. How a fallback is reported to the user.
+
+**Status:** Implemented, verification pending (2026-09-20). ADR-003 is written and `Proposed`: context, a recommendation that answers every question above, what it costs, the alternatives and how it would be enforced. It recommends that the failure mode is configuration and the request's `failureMode` only a ceiling on leniency, that only `none` and `local-read` may fail open, that `fail-open` means deferring to the host and never an allow, and that a hook client with no daemon answers by itself. It builds on what RFX-087 verified: the host fails open on almost everything. **Missing:** the maintainer's decision. A recommendation is not an acceptance, and nothing that depends on this ADR is built until it is accepted, changed or rejected.
 
 ### RFX-114 — Write ADR-004 policy precedence
 
@@ -288,11 +292,15 @@ This gate opens with the decisions the policy engine depends on (RFX-112 to RFX-
 
 **Acceptance:** ADR-004 is accepted and answers: What `mandatory` means exactly. Whether a lower source can override a non-mandatory rule from a higher source. How `PolicyMatch.precedence` is derived, how ties inside one source are broken, and how `defaults.unresolved` combines across sources. How trust (ADR-012) enters precedence.
 
+**Status:** Implemented, verification pending (2026-09-20). ADR-004 is written and `Proposed`: context, a recommendation that answers every question above, what it costs, the alternatives and how it would be enforced. It recommends that defaults cascade down (the most specific source with a non-mandatory match decides) and mandates hold from above (a mandatory rule is a floor no source can go under), that `mandatory` is valid on `deny` and `ask` only, that rule order never matters, that the most restrictive `defaults.unresolved` applies, and that trust enters in one place: an untrusted source's allow rules are dropped. **Missing:** the maintainer's decision. A recommendation is not an acceptance, and nothing that depends on this ADR is built until it is accepted, changed or rejected.
+
 ### RFX-115 — Write ADR-005 provider abstraction
 
 **Goal:** Write ADR-005, one of the first architectural ADRs that `docs/architecture.md` §14 requires before Gate G2.
 
 **Acceptance:** ADR-005 is accepted and answers: Where `SemanticDecisionProvider` and `DecisionEngine` live: in contracts, where they are today, or in `packages/semantic-provider`. The typed provider error model. Confirmation that a partial assessment is an error (ADR-009 reads assessments strictly).
+
+**Status:** Implemented, verification pending (2026-09-20). ADR-005 is written and `Proposed`: context, a recommendation that answers every question above, what it costs, the alternatives and how it would be enforced. It recommends that data shapes stay in contracts while `SemanticDecisionProvider` moves to `packages/semantic-provider` and `DecisionEngine` to `packages/core` (in RFX-025, not before), a `ProviderResult` that never rejects for an expected outcome, and confirms that a partial assessment is an error. It uses what RFX-107 measured. **Missing:** the maintainer's decision. A recommendation is not an acceptance, and nothing that depends on this ADR is built until it is accepted, changed or rejected.
 
 ### RFX-116 — Write ADR-006 local redaction boundary
 
@@ -300,17 +308,23 @@ This gate opens with the decisions the policy engine depends on (RFX-112 to RFX-
 
 **Acceptance:** ADR-006 is accepted and answers: What is redacted where (adapter, CLI, gateway). What may be written locally before redaction. Whether policy is matched before or after redaction, since a rule about a secret-shaped argument cannot match redacted text. Whether redacted values are hashed so that repeated approvals can still be clustered.
 
+**Status:** Implemented, verification pending (2026-09-20). ADR-006 is written and `Proposed`: context, a recommendation that answers every question above, what it costs, the alternatives and how it would be enforced. It recommends that raw values exist only in memory on the user's machine, that the policy matcher alone reads the raw action while every stage that writes or sends reads a redacted view of a different type, and that a redacted value keeps a keyed fingerprint (HMAC under a local key) so that repetition is visible and content is not. **It reads `CLAUDE.md` principle 2 in one of two possible ways and says so.** **Missing:** the maintainer's decision. A recommendation is not an acceptance, and nothing that depends on this ADR is built until it is accepted, changed or rejected.
+
 ### RFX-117 — Write ADR-007 adapter ASK semantics
 
 **Goal:** Write ADR-007, one of the first architectural ADRs that `docs/architecture.md` §14 requires before Gate G2.
 
 **Acceptance:** ADR-007 is accepted and answers: A capability matrix per host: how allow, ask and deny are expressed, and in which hook. What `ask` becomes when the host cannot ask, for example headless or CI runs. How Assist maps onto each host.
 
+**Status:** Implemented, verification pending (2026-09-20). ADR-007 is written and `Proposed`: context, a recommendation that answers every question above, what it costs, the alternatives and how it would be enforced. It gives the capability matrix for Claude Code, Codex and the MCP proxy, marking which cells RFX-087 verified live and which ticket verifies each of the others, recommends that `ask` becomes a refusal and never an allow where nobody can answer, and that Assist may add a prompt the host alone would not have shown. **Missing:** the maintainer's decision. A recommendation is not an acceptance, and nothing that depends on this ADR is built until it is accepted, changed or rejected.
+
 ### RFX-118 — Write ADR-008 telemetry persistence strategy
 
 **Goal:** Write ADR-008, one of the first architectural ADRs that `docs/architecture.md` §14 requires before Gate G2.
 
 **Acceptance:** ADR-008 is accepted and answers: The measured trigger for moving events from PostgreSQL to ClickHouse. When audit persistence is synchronous. What is never stored. Retention per event class.
+
+**Status:** Implemented, verification pending (2026-09-20). ADR-008 is written and `Proposed`: context, a recommendation that answers every question above, what it costs, the alternatives and how it would be enforced. It recommends PostgreSQL until one of two named measurements says otherwise, synchronous audit as a flush to a local journal and never a network call, a never-stored list, and retention defaults per event class. **Every threshold in it is a number to measure against, not a finding: no event has ever been sent.** **Missing:** the maintainer's decision. A recommendation is not an acceptance, and nothing that depends on this ADR is built until it is accepted, changed or rejected.
 
 ### RFX-101 — Write the threat model
 
@@ -320,6 +334,8 @@ This gate opens with the decisions the policy engine depends on (RFX-112 to RFX-
 
 **Why:** The file is in the architecture layout and had no ticket. For a product whose job is to stop dangerous actions, the adversary list is what decides which tests exist.
 
+**Status:** Done (2026-09-20). `docs/security.md`: assets, the six adversaries the ticket names, trust boundaries and explicit non-goals. It opens by saying that REFLEX is not a sandbox and what follows from that. Every adversary has mitigations tied to tickets and at least one accepted risk stated as such. `tests/security.test.ts` holds it to the backlog: the adversaries are exactly the ticket's, every cited ticket exists, and the sandbox statement is present. Several mitigations rest on ADRs that are still `Proposed`; the document cites them as the place where the mitigation is decided, not as decided.
+
 ### RFX-102 — Decide ADR-012 self-protection and workspace trust
 
 **Goal:** Decide how REFLEX protects its own configuration and hook registration from the agent it governs, and how much a repository's own policy is trusted.
@@ -328,6 +344,8 @@ This gate opens with the decisions the policy engine depends on (RFX-112 to RFX-
 
 **Why:** In Autopilot the agent can edit `.reflex/policy.yaml` or remove the hook. A cloned repository can ship an allow-all policy that outranks the user's own rules.
 
+**Status:** Implemented, verification pending (2026-09-20). ADR-012 has been written and `Proposed` since 2026-09-18, with options and a non-binding recommendation. ADR-004 and the threat model are written to fit that recommendation and say so. **Missing:** the maintainer's decision.
+
 ### RFX-095 — Decide ADR-011 normalized operands and classification ownership
 
 **Goal:** Decide what a policy rule matches against (host-shaped `arguments`, or canonical operands for command, paths and network targets) and who computes `sideEffectClass`.
@@ -335,6 +353,8 @@ This gate opens with the decisions the policy engine depends on (RFX-112 to RFX-
 **Acceptance:** ADR-011 is accepted before RFX-013 starts. If it introduces a classifier package, `docs/architecture.md` and the dependency rules in `CLAUDE.md` are updated in the same change.
 
 **Why:** Rules written against `arguments.*` are host-specific, which is the exact failure ADR-001 was written to prevent. `CLAUDE.md` lists a command classifier as security-sensitive code, and no package or ticket for it exists.
+
+**Status:** Implemented, verification pending (2026-09-20). ADR-011 has been written and `Proposed` since 2026-09-18, with options and a non-binding recommendation. ADR-004 and the threat model are written to fit that recommendation and say so. **Missing:** the maintainer's decision.
 
 ### RFX-012 — Define policy YAML schema
 
@@ -439,6 +459,8 @@ This gate opens with the decisions the policy engine depends on (RFX-112 to RFX-
 **Depends on:** RFX-088 for the baseline, RFX-087 for what the host does on hook failure.
 
 **Why:** The budgets, the no-account requirement (RFX-058) and "the data plane must keep working without the dashboard" cannot all hold with one Node process per call talking to a remote gateway.
+
+**Status:** Done (2026-09-20). The maintainer accepted **option B** on 2026-09-20: a local long-lived daemon plus a minimal hook client, after RFX-088 and RFX-107 supplied both halves of the evidence. RFX-019 has not started. As the acceptance requires, ADR-010 now names where every budget in `CLAUDE.md` is measured (in-engine, with end to end from the hook always reported beside it) and what the client does when the daemon does not answer (silent in Observe; its own `ask`, or `deny` under `fail-closed`, in the enforcing modes; never an exit without an answer). `docs/architecture.md` §1, §3 and §12 gained the local branch. **Two things in the ADR were written at acceptance and are for the maintainer to confirm:** the measurement table, and the daemon-unavailable rule, whose full version is ADR-003 (`Proposed`). Still open and recorded there: the end-to-end budget, and with it whether the client can remain a Node script.
 
 ### RFX-019 — Implement decision engine orchestration
 

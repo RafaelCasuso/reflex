@@ -10,30 +10,30 @@ ADR says so explicitly and the same change updates `CLAUDE.md`.
 
 ## Index
 
-| ADR                                                            | Title                                            | Status   | Date       | Tickets |
-| -------------------------------------------------------------- | ------------------------------------------------ | -------- | ---------- | ------- |
-| [ADR-001](./ADR-001-canonical-action-model.md)                 | Canonical action model                           | Accepted | 2026-09-18 | RFX-005 |
-| [ADR-009](./ADR-009-contract-versioning.md)                    | Contract versioning and compatibility            | Accepted | 2026-09-18 | RFX-011 |
-| [ADR-010](./ADR-010-decision-placement-and-hook-latency.md)    | Decision placement and hook latency              | Proposed | 2026-09-18 | RFX-094 |
-| [ADR-011](./ADR-011-normalized-operands-and-classification.md) | Normalized operands and classification ownership | Proposed | 2026-09-18 | RFX-095 |
-| [ADR-012](./ADR-012-self-protection-and-workspace-trust.md)    | Self-protection and workspace trust              | Proposed | 2026-09-18 | RFX-102 |
-| [ADR-013](./ADR-013-action-outcome-observation.md)             | Action outcome observation                       | Accepted | 2026-09-19 | RFX-091 |
+| ADR                                                              | Title                                            | Status   | Date       | Tickets |
+| ---------------------------------------------------------------- | ------------------------------------------------ | -------- | ---------- | ------- |
+| [ADR-001](./ADR-001-canonical-action-model.md)                   | Canonical action model                           | Accepted | 2026-09-18 | RFX-005 |
+| [ADR-002](./ADR-002-decision-precedence-and-effective-effect.md) | Decision precedence and effective effect         | Proposed | 2026-09-20 | RFX-112 |
+| [ADR-003](./ADR-003-fail-behavior.md)                            | Fail behavior                                    | Proposed | 2026-09-20 | RFX-113 |
+| [ADR-004](./ADR-004-policy-precedence.md)                        | Policy precedence                                | Proposed | 2026-09-20 | RFX-114 |
+| [ADR-005](./ADR-005-provider-abstraction.md)                     | Provider abstraction                             | Proposed | 2026-09-20 | RFX-115 |
+| [ADR-006](./ADR-006-local-redaction-boundary.md)                 | Local redaction boundary                         | Proposed | 2026-09-20 | RFX-116 |
+| [ADR-007](./ADR-007-adapter-ask-semantics.md)                    | Adapter ASK semantics                            | Proposed | 2026-09-20 | RFX-117 |
+| [ADR-008](./ADR-008-telemetry-persistence-strategy.md)           | Telemetry persistence strategy                   | Proposed | 2026-09-20 | RFX-118 |
+| [ADR-009](./ADR-009-contract-versioning.md)                      | Contract versioning and compatibility            | Accepted | 2026-09-18 | RFX-011 |
+| [ADR-010](./ADR-010-decision-placement-and-hook-latency.md)      | Decision placement and hook latency              | Accepted | 2026-09-20 | RFX-094 |
+| [ADR-011](./ADR-011-normalized-operands-and-classification.md)   | Normalized operands and classification ownership | Proposed | 2026-09-18 | RFX-095 |
+| [ADR-012](./ADR-012-self-protection-and-workspace-trust.md)      | Self-protection and workspace trust              | Proposed | 2026-09-18 | RFX-102 |
+| [ADR-013](./ADR-013-action-outcome-observation.md)               | Action outcome observation                       | Accepted | 2026-09-19 | RFX-091 |
 
-### Planned
+### Awaiting a decision
 
-`docs/architecture.md` §14 requires these before Gate G2 opens. They are
-listed here so the gap is visible; none of them is decided yet. Their numbers
-are reserved, which is why the next ADR after ADR-001 is ADR-009.
-
-| ADR     | Title                          | Ticket  | Must answer                                                                                                                                                                                                                                                                                                      |
-| ------- | ------------------------------ | ------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| ADR-002 | Decision precedence            | RFX-112 | The full table of mode (observe, assist, autopilot) by effect (allow, ask, deny): what `effectiveEffect` is in each cell and what the adapter does. Whether a semantic result can ever lower a deterministic ask. How `risk` and `confidence` are set for a purely deterministic decision.                       |
-| ADR-003 | Fail behavior                  | RFX-113 | Which side-effect classes may fail open, and who decides the failure mode: can a client request `fail-open` for a destructive action? What the adapter does when it can reach nothing at all. How a fallback is reported to the user.                                                                            |
-| ADR-004 | Policy precedence              | RFX-114 | What `mandatory` means exactly. Whether a lower source can override a non-mandatory rule from a higher source. How `PolicyMatch.precedence` is derived, how ties inside one source are broken, and how `defaults.unresolved` combines across sources. How trust (ADR-012) enters precedence.                     |
-| ADR-005 | Provider abstraction           | RFX-115 | Where `SemanticDecisionProvider` and `DecisionEngine` live: in contracts, where they are today, or in `packages/semantic-provider`. The typed provider error model. Confirmation that a partial assessment is an error (ADR-009 reads assessments strictly).                                                     |
-| ADR-006 | Local redaction boundary       | RFX-116 | What is redacted where (adapter, CLI, gateway). What may be written locally before redaction. Whether policy is matched before or after redaction, since a rule about a secret-shaped argument cannot match redacted text. Whether redacted values are hashed so that repeated approvals can still be clustered. |
-| ADR-007 | Adapter ASK semantics          | RFX-117 | A capability matrix per host: how allow, ask and deny are expressed, and in which hook. What `ask` becomes when the host cannot ask, for example headless or CI runs. How Assist maps onto each host.                                                                                                            |
-| ADR-008 | Telemetry persistence strategy | RFX-118 | The measured trigger for moving events from PostgreSQL to ClickHouse. When audit persistence is synchronous. What is never stored. Retention per event class.                                                                                                                                                    |
+`docs/architecture.md` §14 requires ADR-002 to ADR-008 before Gate G2 builds on
+them. They are written, each with options, a recommendation and what it costs,
+and they are `Proposed`: **a recommendation is not a decision.** Accepting,
+changing or rejecting each one is the maintainer's call, and so it is for
+ADR-011 and ADR-012. The tickets that depend on one say so in
+`docs/backlog.md`.
 
 ## When an ADR is required
 

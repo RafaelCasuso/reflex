@@ -15,19 +15,27 @@ REFLEX is split conceptually into a **data plane** and **control plane**.
                                    │ config snapshots
                                    ▼
 
-AGENT/HOST ──► ADAPTER ──► DECISION GATEWAY ──► DECISION
-                              │
-                              ├── normalize
-                              ├── deterministic policy
-                              ├── context compiler
-                              ├── semantic provider
-                              ├── risk aggregator
-                              └── async telemetry
+AGENT/HOST ──► ADAPTER ──► LOCAL DAEMON ──► DECISION
+               (hook       │
+                client)    ├── normalize
+                           ├── deterministic policy
+                           ├── context compiler + local redaction
+                           ├── risk aggregator
+                           ├── async telemetry
+                           │
+                           └── unresolved only ──► DECISION GATEWAY ──► semantic provider
 
                                   DATA PLANE
 ```
 
 The data plane must continue functioning if the dashboard is unavailable.
+
+Decisions are made on the user's machine (ADR-010). The host starts a hook
+process per tool call; that process is a minimal client of a local, long-lived
+daemon, which holds the compiled policy set and resolves the deterministic path
+with no network and no account. Only an action that policy does not resolve
+reaches a remote service, and only as redacted, minimal context. Tool arguments
+of an action that policy resolves never leave the machine.
 
 ---
 
@@ -207,19 +215,19 @@ adapter
   ↓
 CanonicalActionRequest
   ↓
-local/edge redaction where possible
+local daemon (Unix domain socket, same user)
   ↓
-Decision Gateway
-  ↓
-PolicyEngine.evaluate()
+PolicyEngine.evaluate()              on the raw action, in memory (ADR-006)
   │
-  ├── resolved → final deterministic decision
+  ├── resolved → final deterministic decision, nothing leaves the machine
   │
   └── unresolved
           ↓
+local redaction
+          ↓
 ContextCompiler.compile()
           ↓
-SemanticDecisionProvider.evaluate()
+SemanticDecisionProvider.evaluate()  the only remote call, over a kept connection
           ↓
 RiskAggregator.aggregate()
           ↓
@@ -231,6 +239,8 @@ host executes / asks / blocks
 ```
 
 Telemetry is emitted after the final decision and must not block the action path unless an organization explicitly requires synchronous audit persistence.
+
+If the daemon does not answer, the hook client answers by itself and never exits without an answer in an enforcing mode: hosts read a failed hook as "carry on" (ADR-010, `docs/claude-code-hook.md` §3).
 
 ---
 
@@ -461,6 +471,9 @@ Never blindly cache:
 
 ### Phase 1
 
+On the user's machine: the hook client and the local daemon (ADR-010). They
+need no account and no server.
+
 Single region:
 
 - dashboard
@@ -515,12 +528,23 @@ Create these before Gate 2:
 - ADR-001 canonical action model
   ([accepted](./adr/ADR-001-canonical-action-model.md))
 - ADR-002 decision precedence
-- ADR-003 fail behavior
-- ADR-004 policy precedence
+  ([proposed](./adr/ADR-002-decision-precedence-and-effective-effect.md))
+- ADR-003 fail behavior ([proposed](./adr/ADR-003-fail-behavior.md))
+- ADR-004 policy precedence ([proposed](./adr/ADR-004-policy-precedence.md))
 - ADR-005 provider abstraction
+  ([proposed](./adr/ADR-005-provider-abstraction.md))
 - ADR-006 local redaction boundary
+  ([proposed](./adr/ADR-006-local-redaction-boundary.md))
 - ADR-007 adapter ASK semantics
+  ([proposed](./adr/ADR-007-adapter-ask-semantics.md))
 - ADR-008 telemetry persistence strategy
+  ([proposed](./adr/ADR-008-telemetry-persistence-strategy.md))
 
 Written since: ADR-009 contract versioning and compatibility
-([accepted](./adr/ADR-009-contract-versioning.md)).
+([accepted](./adr/ADR-009-contract-versioning.md)), ADR-010 decision placement
+and hook latency
+([accepted](./adr/ADR-010-decision-placement-and-hook-latency.md)), ADR-013
+action outcome observation
+([accepted](./adr/ADR-013-action-outcome-observation.md)). Still proposed:
+[ADR-011](./adr/ADR-011-normalized-operands-and-classification.md) and
+[ADR-012](./adr/ADR-012-self-protection-and-workspace-trust.md).

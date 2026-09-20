@@ -1,8 +1,8 @@
 # ADR-010: Decision placement and hook latency
 
-- **Status:** Proposed
-- **Date:** 2026-09-18
-- **Tickets:** RFX-094, RFX-088, RFX-024
+- **Status:** Accepted
+- **Date:** 2026-09-20
+- **Tickets:** RFX-094, RFX-088, RFX-024, RFX-107
 - **Supersedes:** none
 
 ## Context
@@ -52,28 +52,73 @@ daemon.
 
 ## Decision
 
-Not decided. RFX-088 provides the baseline this decision needs; the numbers
-above are a first measurement, not the benchmark.
+**Option B**, accepted by the maintainer on 2026-09-20: a local long-lived
+daemon plus a minimal client. The hook is a small client that talks to the
+daemon over a Unix domain socket (a named pipe on Windows). The daemon holds
+the compiled policy set, evaluates the deterministic path locally, and is the
+only component that talks to a remote service, for the semantic path only.
 
-Recommendation (not binding): **option B**, with the budgets reported at two
-named points.
+It was proposed on 2026-09-18 with the reasoning below, which stands as the
+rationale, and accepted after two measurements:
+
+- RFX-088: a Node process per hook call costs 48.8 ms at p50 and 59.3 ms at p95
+  end to end, of which an empty Node process alone is about 30 ms. Neither a
+  compile cache nor a dedicated entry point changed that.
+- RFX-107: a process per call cannot keep a connection open. A semantic
+  assessment costs about 600 ms over a new connection and about 260 ms over a
+  kept one, from the same machine.
+
+Why not the others:
 
 - A cannot meet the deterministic budget end to end, and it makes the
   no-account path depend on a server.
-- C removes the daemon but pays policy load on every call, and makes the
-  TypeScript engine harder to ship. It stays a fallback if daemon lifecycle
-  proves too fragile.
+- C removes the daemon but pays policy load on every call, cannot keep a
+  connection open either, and makes the TypeScript engine harder to ship. It
+  stays a fallback if daemon lifecycle proves too fragile.
 - D is honest about measurement but does nothing for the developer, who feels
   every millisecond of every tool call. Hot-path discipline is a product
   promise, not an internal metric.
 
-Under option B, every latency number states its measurement point: **in-engine**
-(what the budgets in `CLAUDE.md` were written for) and **end to end from the
-hook** (what the user feels). Both are reported, and RFX-024 covers both.
+### Where each budget is measured
+
+Every latency number states its measurement point. The budgets in `CLAUDE.md`
+were written for the engine and are measured **in-engine**: inside the daemon,
+from the moment a validated request is in memory to the moment the decision
+is. What the user feels is measured **end to end from the hook**: from the
+start of the hook process to its exit. Both are always reported (RFX-024).
+
+| Budget in `CLAUDE.md`                                    | Measured                                                                        |
+| -------------------------------------------------------- | ------------------------------------------------------------------------------- |
+| deterministic policy decision, p95 < 10 ms               | in-engine                                                                       |
+| cached semantic decision, p95 < 20 ms                    | in-engine                                                                       |
+| semantic decision, p50 < 150 ms and p95 < 400 ms         | in-engine, from the request to the provider's complete answer, network included |
+| infrastructure overhead excluding inference, p95 < 25 ms | in-engine total minus the provider's round trip                                 |
+
+There is **no end-to-end budget yet**. The measured baseline for a Node client
+is 48.8 ms at p50 before it does anything useful, so a Node client cannot bring
+the end-to-end number under about 30 ms whatever the daemon does. Setting an
+end-to-end budget, and with it whether the client has to be something other
+than Node, is a change to `CLAUDE.md` and stays with the maintainer.
+
+### When the daemon does not answer
+
+A daemon that is down is a hook failure, and the host's reading of a failed
+hook is "carry on" (RFX-087). So the client never exits on an error path
+without an answer. If the daemon does not answer, the client tries once to
+start it, and if it still has no decision inside its own deadline, which is
+shorter than the host's hook timeout, it answers by itself:
+
+- in **Observe**, nothing: it stays silent and exits 0, as it does today;
+- in **Assist** and **Autopilot**, the configured failure mode, applied by the
+  client with no engine behind it. Without an engine nothing is classified, so
+  every action is of unknown class, and an unknown class never fails open
+  (`CLAUDE.md` principle 5). The answer is `ask`, or `deny` where `fail-closed`
+  is configured. ADR-003 owns the full table.
+
+The client reads the mode and the failure mode from its install-time
+configuration, because it has to know them with the daemon down.
 
 ## Consequences
-
-If option B is accepted:
 
 ### Positive
 
@@ -99,11 +144,14 @@ If option B is accepted:
 
 - On-demand start by the first hook call, or a login item installed by
   `rfx init`? The first is friendlier to uninstall, the second to latency.
-- Does the client need to be non-Node to meet the end-to-end number, or is a
-  dependency-free Node script enough? RFX-088 answers this with data.
+- The end-to-end budget, and whether the client can stay a Node script. The
+  data says a Node client costs about 30 ms before it runs a line of REFLEX
+  code; a native client is the only way under that.
 - How does the daemon receive policy updates from the control plane (the
   "config snapshots" arrow), and how are they authenticated (RFX-083)?
-- What is the end-to-end budget? The 10 ms figure was written for the engine.
+- Where the remote semantic path is served from. RFX-107 measured 95 ms of
+  provider time and about 160 ms of round trip from a laptop; the 150 ms p50 is
+  reachable only from close to the provider.
 
 ## References
 
