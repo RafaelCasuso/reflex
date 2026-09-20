@@ -1038,13 +1038,25 @@ RFX-078 moved to G10, ahead of the first multi-tenant persistence.
 
 ## G15 — Billing and paid value
 
+This gate opens with a decision (RFX-129): ADR-010 moved deterministic decisions onto the user's machine, and the meter this gate was written around assumed that every governed action passed through a server. RFX-135 to RFX-137 are go-to-market work. They live here because nothing else in this backlog owns them, and because a price nobody has tested is a risk to everything this gate builds.
+
+### RFX-129 — Decide ADR-014 what a billable action is when decisions are local
+
+**Goal:** Decide what `governed_action` means, where it is counted and how far the count is trusted, now that most decisions never leave the user's machine (ADR-010).
+
+**Acceptance:** ADR-014 is accepted before RFX-079 starts and answers: what is counted (every governed action, only the actions that reach a remote service, or something that is not an action at all, such as seats or projects); where it is counted and how it reaches the control plane; how a count produced on the user's own machine is treated, either as an accepted risk with its bound stated or with a named mitigation; what an installation with no account counts; and whether the tiers in `docs/product.md` still hold under the answer, with the document updated in the same change if they do not.
+
+**Depends on:** ADR-010 (accepted), RFX-060 for what already reaches the control plane.
+
+**Why:** A local counter is editable by the person it bills. A server-side counter sees only the semantic minority of actions, so it would bill for the expensive path and give the product's main value away, or bill nothing for a user whose policy resolves everything. Either can be right. Building the meter before choosing is how a pricing model gets decided by an implementation detail.
+
 ### RFX-079 — Governed-action metering
 
 **Goal:** Count billable governed actions idempotently.
 
 **Acceptance:** Retries cannot double bill.
 
-**Depends on:** RFX-120.
+**Depends on:** RFX-120, RFX-129.
 
 ### RFX-080 — Plan/limit enforcement
 
@@ -1060,7 +1072,103 @@ RFX-078 moved to G10, ahead of the first multi-tenant persistence.
 
 **Depends on:** RFX-091. In Assist and Autopilot the counterfactual prompt is not observable, so the figure is an estimate from Observe-period base rates and is labelled as one.
 
-**Gate exit:** all tickets above are green in CI and documented; no known dangerous false-allow regression. **Specifically:** a retried request is metered once; reaching a plan limit never disables enforcement silently; every estimated figure is labelled as an estimate.
+### RFX-130 — Payment provider integration
+
+**Goal:** Take money: hosted checkout, subscriptions for the Pro, Team and Scale tiers, plan changes, invoices and tax, through one payment provider.
+
+**Acceptance:** In the provider's test mode, an end-to-end test subscribes an account, upgrades it, downgrades it and cancels it, and the account's entitlements (RFX-080) follow each step. Every webhook handler is idempotent: replaying the full recorded webhook log of that test changes nothing. Proration on a plan change matches the provider's own invoice to the minor unit. All amounts are integer minor units with an explicit currency (`CLAUDE.md`). No card number, CVC or bank detail is ever sent to, logged by or stored in a REFLEX service: checkout and card updates happen on the provider's hosted pages, and a test asserts that no request schema of the API accepts such a field. Tax is computed by the provider, not by REFLEX.
+
+**Depends on:** RFX-078, RFX-061, RFX-080.
+
+**Out of scope:** Enterprise contracts and manual invoicing; more than one payment provider; a REFLEX-built card form.
+
+**Why:** G15 meters and limits and never charges. RFX-079 and RFX-080 produce numbers that nothing turns into revenue.
+
+**Test layers:** unit, contract (webhook payloads as fixtures), adversarial (forged, replayed and out-of-order webhooks; a webhook for another tenant).
+
+### RFX-131 — Failed payments, cancellation and downgrade
+
+**Goal:** Define and implement what happens to an account whose payment fails or whose subscription ends.
+
+**Acceptance:** One state machine (active, past due, grace, downgraded, cancelled) with every transition covered by a test, driven by recorded provider events. A failed payment starts a grace period whose length is a named constant; at its end the account falls to the Developer entitlements, and nothing is deleted before the retention period of ADR-008. **In no state is safety enforcement disabled, weakened or paused**: the same rule RFX-080 holds for plan limits, tested here for every state. The user is told in the dashboard and in `rfx status`, with what to do about it. Reactivating restores the previous plan without losing policies or history that is still inside retention.
+
+**Depends on:** RFX-130, RFX-080, RFX-121.
+
+**Why:** Billing failures are routine. Deciding their behavior during an incident is how a security product ends up switching itself off for its customers.
+
+**Test layers:** unit, adversarial (an event that tries to move an account to a better state than its payments justify).
+
+### RFX-132 — Plan, usage and upgrade experience
+
+**Goal:** Let a user see their plan and usage and change plan without contacting anyone.
+
+**Acceptance:** The dashboard shows the current plan, usage against each limit for the current period and the next invoice date, and the usage figure equals the metered count (RFX-079) for the same period in a test. From the notice shown when a limit is near or reached, in the dashboard and in `rfx status`, a user reaches the provider's checkout in at most two steps. A usage warning is sent before a limit is reached, at a threshold that is a named constant, and never more than once per period per threshold. Nothing in this flow is shown to a user who has no account; a local-only installation is never nagged.
+
+**Depends on:** RFX-130, RFX-079, RFX-063.
+
+**Out of scope:** Discounts, coupons, annual plans, referral programs.
+
+**Why:** A limit the user cannot see coming, and an upgrade that needs a support request, are the two most reliable ways to lose a paying user at the moment they were about to pay more.
+
+### RFX-133 — Semantic cost model and margin guard
+
+**Goal:** Know what a governed action costs REFLEX, per plan, from production data, and bound what a single account can cost.
+
+**Acceptance:** A report, produced from production telemetry and reproducible from a command, gives per plan and per period: the share of governed actions that reached the semantic stage, provider input tokens billed, provider cost per 1,000 governed actions and the gross margin on the plan's price. Provider cost is held in integer micro-units of the currency, because a single assessment costs less than any minor unit, and the unit is stated wherever a figure appears. An alert fires when the semantic share or the cost per 1,000 actions of any plan crosses a named threshold. Every account has a semantic budget per period; when it is spent, further unresolved actions fall back as ADR-003 says (to a human, never to `allow`), the user is told, and nothing else changes. The first report states the numbers it replaces: $0.070 per 1,000 semantic assessments measured in RFX-107, and the estimates derived from it (about $1 a month for a Developer account at its limit and about $5 for a Pro account, if 30% of actions reach the semantic stage), so that the estimate can be seen to be right or wrong.
+
+**Depends on:** RFX-030, RFX-079, RFX-060.
+
+**Why:** The margin depends on one ratio nobody has measured: how many actions deterministic policy resolves. "Deterministic first" is a latency rule in `CLAUDE.md` and it is also the business model. A free tier with no semantic budget is an open tab with the provider.
+
+**Test layers:** unit, adversarial (an account that tries to make every action reach the semantic stage).
+
+### RFX-134 — Provider capacity plan
+
+**Goal:** Know at what load the semantic provider becomes the limit, what REFLEX does there, and what has to be in place before that load arrives.
+
+**Acceptance:** A written capacity model in `docs/jev-provider.md`: expected peak semantic assessments per minute as a function of active accounts and semantic share, against the provider's documented limit (1,200 requests a minute and 250,000 tokens a second per account on 2026-09-20, shared by every REFLEX customer behind one key, and stated by the vendor to change without notice). A load test against the fake provider (RFX-029) configured with that limit shows that beyond it every excess assessment ends in the fallback of ADR-003 with reason `provider-error`, that none is retried on the decision path, that none becomes `allow`, and that the deterministic path is unaffected. The document names the load at which a capacity agreement with the vendor, a second account or a second provider is required, and the lead time each needs.
+
+**Depends on:** RFX-026, RFX-029, RFX-030, RFX-133.
+
+**Why:** One provider account with a fixed request rate serves every customer. The first customer with a busy CI pipeline can exhaust it for everyone, and the moment that happens is the moment the product degrades to asking about everything.
+
+### RFX-135 — Validate the pricing hypothesis
+
+**Goal:** Replace "Pricing hypothesis" in `docs/product.md` with pricing that has met users.
+
+**Acceptance:** At least fifteen recorded conversations with people who run coding agents at work, at least five of them with budget authority, each answering the same written questions: what they pay for today in this space, which meter they understand, what they expect for free, and at what price each tier is a yes, a maybe and a no. A one-page summary in `docs/` reports the answers as counts, not impressions, and names what would have changed the conclusion. `docs/product.md` is updated in the same change: the section loses the word "hypothesis", or states what is still unknown and what would settle it. The meter chosen in ADR-014 is one of the things tested.
+
+**Depends on:** RFX-129.
+
+**Out of scope:** A/B testing prices on live traffic; enterprise negotiation.
+
+**Why:** Five tiers and their limits were written before a single user saw the product. Everything in this gate implements them.
+
+### RFX-136 — Public website and pricing page
+
+**Goal:** A public site that says what REFLEX is, shows it working, states the prices and leads to `rfx init`.
+
+**Acceptance:** A visitor can go from the landing page to a working `rfx init` without creating an account and without talking to anyone, and the install command on the page is tested in CI against the released CLI. The pricing page shows exactly the tiers and limits that RFX-080 enforces, from one shared source, so that the two cannot disagree. The site states plainly what leaves the user's machine and what does not (ADR-006, RFX-123), and that REFLEX is not a sandbox (`docs/security.md`). Performance, accessibility and best-practice scores of 90 or more in Lighthouse, on a named page set, run in CI. No third-party script runs before consent.
+
+**Depends on:** RFX-127, RFX-135.
+
+**Out of scope:** A blog, a changelog site, localization.
+
+**Why:** "First value before account creation" (`CLAUDE.md`, UX rules) starts on a page that does not exist. A security product is judged by its first page on exactly the two claims this ticket makes it state.
+
+### RFX-137 — Public documentation
+
+**Goal:** Publish the documentation a user needs to install, trust and operate REFLEX.
+
+**Acceptance:** A public documentation site built from files in this repository covers: quick start, how a decision is made, the policy language (RFX-100), modes, each supported host and what is verified for it (ADR-007), the threat model, what is stored and for how long (ADR-008), and troubleshooting that mirrors `rfx doctor` (RFX-055). Every command and every policy example on the site is executed as a test, as RFX-100 already requires for the policy reference, so that the documentation cannot drift from the product. Broken internal links fail CI.
+
+**Depends on:** RFX-100, RFX-055, RFX-101.
+
+**Out of scope:** API reference for SDKs (G14 owns it); video; localization.
+
+**Why:** The documents exist in `docs/` for the people building REFLEX. None of them is written for, or reachable by, the person deciding whether to let it govern their agent.
+
+**Gate exit:** all tickets above are green in CI and documented; no known dangerous false-allow regression. **Specifically:** ADR-014 is accepted and the meter is the one it names; a retried request is metered once; reaching a plan limit, a semantic budget or a failed payment never disables enforcement silently; every estimated figure is labelled as an estimate; a replayed webhook log changes nothing and no payment detail reaches a REFLEX service; the usage a user sees is the usage that is metered; the cost report runs from a command and states its units; excess load on the provider ends in the fallback and never in `allow`; the pricing in `docs/product.md` has met users; the public pricing page and the enforced entitlements come from one source; every command and example in the public documentation runs as a test.
 
 ## G16 — Team foundations
 

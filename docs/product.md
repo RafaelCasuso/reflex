@@ -154,6 +154,8 @@ Meter:
 
 Users should never be billed in model tokens.
 
+Under review: since ADR-010 most decisions are made on the user's machine and never reach a server, so what a `governed_action` is, and where it is counted, has to be decided before the meter is built (RFX-129, ADR-014). These tiers have not met users yet (RFX-135).
+
 ---
 
 ## Non-goals
