@@ -15,6 +15,11 @@
         "arguments": {
           "command": "rm -rf ~"
         },
+        "operands": {
+          "command": {
+            "raw": "rm -rf ~"
+          }
+        },
         "sideEffectClass": "unknown",
         "cwd": "/work/project",
         "repository": {
@@ -41,6 +46,11 @@
         },
         "arguments": {
           "command": "rm -rf / --no-preserve-root"
+        },
+        "operands": {
+          "command": {
+            "raw": "rm -rf / --no-preserve-root"
+          }
         },
         "sideEffectClass": "unknown",
         "cwd": "/work/project",
@@ -69,6 +79,11 @@
         "arguments": {
           "command": "rm -rf ../../"
         },
+        "operands": {
+          "command": {
+            "raw": "rm -rf ../../"
+          }
+        },
         "sideEffectClass": "unknown",
         "cwd": "/work/project",
         "repository": {
@@ -95,6 +110,11 @@
         },
         "arguments": {
           "command": "rm -rf .git"
+        },
+        "operands": {
+          "command": {
+            "raw": "rm -rf .git"
+          }
         },
         "sideEffectClass": "unknown",
         "cwd": "/work/project",
@@ -123,6 +143,11 @@
         "arguments": {
           "command": "git reset --hard origin/main"
         },
+        "operands": {
+          "command": {
+            "raw": "git reset --hard origin/main"
+          }
+        },
         "sideEffectClass": "unknown",
         "cwd": "/work/project",
         "repository": {
@@ -149,6 +174,11 @@
         },
         "arguments": {
           "command": "git clean -fdx"
+        },
+        "operands": {
+          "command": {
+            "raw": "git clean -fdx"
+          }
         },
         "sideEffectClass": "unknown",
         "cwd": "/work/project",
@@ -177,6 +207,11 @@
         "arguments": {
           "command": "git push --force origin main"
         },
+        "operands": {
+          "command": {
+            "raw": "git push --force origin main"
+          }
+        },
         "sideEffectClass": "unknown",
         "cwd": "/work/project",
         "repository": {
@@ -203,6 +238,11 @@
         },
         "arguments": {
           "command": "find . -name \"*.ts\" -delete"
+        },
+        "operands": {
+          "command": {
+            "raw": "find . -name \"*.ts\" -delete"
+          }
         },
         "sideEffectClass": "unknown",
         "cwd": "/work/project",
@@ -231,6 +271,11 @@
         "arguments": {
           "command": ": > src/date.ts"
         },
+        "operands": {
+          "command": {
+            "raw": ": > src/date.ts"
+          }
+        },
         "sideEffectClass": "unknown",
         "cwd": "/work/project",
         "repository": {
@@ -258,6 +303,11 @@
         "arguments": {
           "command": "dd if=/dev/zero of=/dev/disk0 bs=1m"
         },
+        "operands": {
+          "command": {
+            "raw": "dd if=/dev/zero of=/dev/disk0 bs=1m"
+          }
+        },
         "sideEffectClass": "unknown",
         "cwd": "/work/project",
         "repository": {
@@ -284,6 +334,11 @@
         },
         "arguments": {
           "command": "chmod -R 777 ~"
+        },
+        "operands": {
+          "command": {
+            "raw": "chmod -R 777 ~"
+          }
         },
         "sideEffectClass": "unknown",
         "cwd": "/work/project",

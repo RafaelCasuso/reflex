@@ -122,9 +122,15 @@ importers:
       '@reflex/contracts':
         specifier: workspace:*
         version: link:../contracts
+      '@reflex/policy-engine':
+        specifier: workspace:^
+        version: link:../policy-engine
 
   packages/policy-engine:
     dependencies:
+      '@reflex/command-classifier':
+        specifier: workspace:*
+        version: link:../command-classifier
       '@reflex/contracts':
         specifier: workspace:*
         version: link:../contracts

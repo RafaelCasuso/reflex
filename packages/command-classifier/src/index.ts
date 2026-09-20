@@ -5,6 +5,7 @@
  * Pure: no I/O, never throws. Depends on the contracts and on nothing else.
  */
 export {
+  classifyArgv,
   classifyCommand,
   classifyPath,
   escalate,

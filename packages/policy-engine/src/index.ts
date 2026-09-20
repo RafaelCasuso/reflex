@@ -25,3 +25,35 @@ export {
   type CompiledPattern,
   type PatternCompileResult,
 } from "./pattern.js";
+export {
+  compilePolicySet,
+  evaluatePolicy,
+  type CompileResult,
+  type CompiledPolicySet,
+  type PolicyEvaluationResult,
+  type PolicySourceDocument,
+} from "./evaluator.js";
+export { ruleMatches, type MatchContext, type RuleKind } from "./matcher.js";
+export {
+  isWithin,
+  normalizePath,
+  resolveRoot,
+  type PathContext,
+} from "./paths.js";
+export {
+  POLICY_SOURCES,
+  combine,
+  mostRestrictive,
+  precedenceOf,
+  resolve,
+  type PolicySource,
+  type Resolution,
+  type SourcedRule,
+} from "./precedence.js";
+export {
+  subjectsOf,
+  valuesOf,
+  type FieldValue,
+  type Subject,
+  type SubjectSet,
+} from "./subjects.js";

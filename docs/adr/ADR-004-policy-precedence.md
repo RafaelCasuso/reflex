@@ -113,6 +113,30 @@ in exactly one place, step 1 above. `built-in`, `organization`, `environment`
 and `local` are trusted by construction; how the first three are authenticated
 when they arrive over the network is RFX-083.
 
+## Implementation notes
+
+Made precise while implementing RFX-014 (2026-09-20). They narrow the accepted
+decision and do not change it.
+
+- **An untrusted rule is a floor and nothing else.** Step 1 keeps the deny and
+  ask rules of an untrusted source. Letting them into the cascade of step 3
+  would have been a hole: a project is more specific than an organization, so
+  a repository could ship an `ask` to override an organization's default
+  `deny`. They never take part in the cascade. They tighten what the trusted
+  rules resolved, and that is all.
+- **An untrusted `ask` cannot resolve an action by itself.** With nothing else
+  matching, resolving to `ask` would pre-empt whatever decides next, which
+  might have denied. The action stays unresolved and carries a floor of `ask`,
+  which the next stage may not go under (RFX-019). An untrusted `deny` is
+  final, since nothing is stricter.
+- **The invariant, tested exhaustively:** for every pair of rules the user's
+  own sources can hold and every rule a hostile repository can ship, the
+  result with the repository's rule is never more permissive than without it.
+- **An action with several subjects.** A compound shell command is evaluated
+  segment by segment (ADR-011). Each segment is resolved as above, and then one
+  deny denies, one ask asks, one unresolved segment leaves the action
+  unresolved, and only if every segment is allowed is the action allowed.
+
 ## Consequences
 
 ### Positive

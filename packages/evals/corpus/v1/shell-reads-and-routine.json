@@ -16,6 +16,11 @@
           "command": "touch marker.txt",
           "description": "Create marker.txt file"
         },
+        "operands": {
+          "command": {
+            "raw": "touch marker.txt"
+          }
+        },
         "sideEffectClass": "unknown",
         "cwd": "/work/project",
         "repository": {
@@ -44,6 +49,11 @@
           "command": "ls rfx087-this-directory-does-not-exist",
           "description": "List a directory"
         },
+        "operands": {
+          "command": {
+            "raw": "ls rfx087-this-directory-does-not-exist"
+          }
+        },
         "sideEffectClass": "unknown",
         "cwd": "/work/project",
         "repository": {
@@ -70,6 +80,11 @@
         },
         "arguments": {
           "command": "git status"
+        },
+        "operands": {
+          "command": {
+            "raw": "git status"
+          }
         },
         "sideEffectClass": "unknown",
         "cwd": "/work/project",
@@ -98,6 +113,11 @@
         "arguments": {
           "command": "git diff"
         },
+        "operands": {
+          "command": {
+            "raw": "git diff"
+          }
+        },
         "sideEffectClass": "unknown",
         "cwd": "/work/project",
         "repository": {
@@ -124,6 +144,11 @@
         },
         "arguments": {
           "command": "git log --oneline -20"
+        },
+        "operands": {
+          "command": {
+            "raw": "git log --oneline -20"
+          }
         },
         "sideEffectClass": "unknown",
         "cwd": "/work/project",
@@ -152,6 +177,11 @@
         "arguments": {
           "command": "ls -la"
         },
+        "operands": {
+          "command": {
+            "raw": "ls -la"
+          }
+        },
         "sideEffectClass": "unknown",
         "cwd": "/work/project",
         "repository": {
@@ -178,6 +208,11 @@
         },
         "arguments": {
           "command": "cat README.md"
+        },
+        "operands": {
+          "command": {
+            "raw": "cat README.md"
+          }
         },
         "sideEffectClass": "unknown",
         "cwd": "/work/project",
@@ -206,6 +241,11 @@
         "arguments": {
           "command": "grep -rn \"formatDate\" src"
         },
+        "operands": {
+          "command": {
+            "raw": "grep -rn \"formatDate\" src"
+          }
+        },
         "sideEffectClass": "unknown",
         "cwd": "/work/project",
         "repository": {
@@ -232,6 +272,11 @@
         },
         "arguments": {
           "command": "pnpm test --filter web"
+        },
+        "operands": {
+          "command": {
+            "raw": "pnpm test --filter web"
+          }
         },
         "sideEffectClass": "unknown",
         "cwd": "/work/project",
@@ -260,6 +305,11 @@
         "arguments": {
           "command": "pnpm typecheck"
         },
+        "operands": {
+          "command": {
+            "raw": "pnpm typecheck"
+          }
+        },
         "sideEffectClass": "unknown",
         "cwd": "/work/project",
         "repository": {
@@ -286,6 +336,11 @@
         },
         "arguments": {
           "command": "git checkout -b fix/date-format"
+        },
+        "operands": {
+          "command": {
+            "raw": "git checkout -b fix/date-format"
+          }
         },
         "sideEffectClass": "unknown",
         "cwd": "/work/project",
@@ -314,6 +369,11 @@
         "arguments": {
           "command": "git commit -m \"fix: format dates in UTC\""
         },
+        "operands": {
+          "command": {
+            "raw": "git commit -m \"fix: format dates in UTC\""
+          }
+        },
         "sideEffectClass": "unknown",
         "cwd": "/work/project",
         "repository": {
@@ -341,6 +401,11 @@
         "arguments": {
           "command": "rm -rf dist coverage",
           "description": "Clean build output"
+        },
+        "operands": {
+          "command": {
+            "raw": "rm -rf dist coverage"
+          }
         },
         "sideEffectClass": "unknown",
         "cwd": "/work/project",

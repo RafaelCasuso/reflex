@@ -115,6 +115,22 @@ decision and do not change it.
 - **Where the classifier runs.** The adapter fills operands without parsing
   anything, because it runs in the per-call process (ADR-010). The classifier
   runs where the engine runs. C3 holds as written: a class is only ever raised.
+- **The adapter's `unknown` is not a claim.** C3 says a class is raised and
+  never lowered, so that a wrong or hostile adapter cannot talk an action
+  down. An adapter that says `unknown` has not claimed anything, and no adapter
+  classifies a shell command. So `unknown` from the adapter is replaced by the
+  classifier's answer, and every other class it gives is a floor.
+- **An allow rule reaches an MCP tool only if it names `tool.namespace`.** A
+  server names its own tools, so a rule that allows `Bash` must not allow
+  another server's tool that calls itself `Bash`. Deny and ask rules reach
+  every tool of that name.
+- **How a condition is read depends on the rule's effect**, in every case that
+  is not obvious: several values (every one for an allow, any one for a deny),
+  an absent field (never satisfies an allow, under `not` either), a very long
+  text, a path that matches only by case, a directory that is unknown. When in
+  doubt, a rule that restricts matches and a rule that permits does not. The
+  table is in `packages/policy-engine/src/matcher.ts` and in
+  `docs/policy-language.md`.
 - **Paths are lexical.** No symlink is resolved and the disk is never read. The
   classifier is pure; resolving what a path really points to belongs to the
   component that has a file system, and to RFX-103 for REFLEX's own files.

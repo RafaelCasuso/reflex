@@ -1,7 +1,12 @@
 import { SIDE_EFFECT_CLASSES, type SideEffectClass } from "@reflex/contracts";
 import { describe, expect, it } from "vitest";
 
-import { classifyCommand, classifyPath, escalate } from "./classify.js";
+import {
+  classifyArgv,
+  classifyCommand,
+  classifyPath,
+  escalate,
+} from "./classify.js";
 
 /** RFX-096 — side-effect classification. */
 const classOf = (command: string): SideEffectClass =>
@@ -250,6 +255,48 @@ describe("RFX-096 classifier", () => {
         classifyCommand("ssh deploy@prod.example.test uptime").segments[0]
           ?.networkHosts,
       ).toEqual(["prod.example.test"]);
+    });
+  });
+
+  describe("a command given as an argument vector", () => {
+    it("is understood by construction: nothing in it is expanded", () => {
+      const classified = classifyArgv(["rm", "-rf", "$HOME", "*"]);
+      expect(classified).toMatchObject({
+        understood: true,
+        sideEffectClass: "destructive",
+      });
+      expect(classified.segments[0]?.segment.args).toEqual([
+        "-rf",
+        "$HOME",
+        "*",
+      ]);
+    });
+
+    it("names the program without its directory", () => {
+      expect(
+        classifyArgv(["/usr/bin/git", "status"]).segments[0]?.segment,
+      ).toMatchObject({
+        name: "git",
+        text: "git status",
+      });
+    });
+
+    // Adversarial: a vector that hides a command line inside a shell.
+    it("reads a shell's -c script as a command line", () => {
+      const classified = classifyArgv(["bash", "-c", "git status; rm -rf ~"]);
+      expect(classified.segments.map((entry) => entry.segment.text)).toEqual([
+        "git status",
+        "rm -rf ~",
+      ]);
+      expect(classified.sideEffectClass).toBe("destructive");
+    });
+
+    it("does not understand an empty vector", () => {
+      expect(classifyArgv([])).toMatchObject({
+        understood: false,
+        sideEffectClass: "unknown",
+      });
+      expect(classifyArgv(["bash", "-c"])).toMatchObject({ understood: false });
     });
   });
 

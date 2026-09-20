@@ -618,6 +618,53 @@ function classifySegment(segment: ShellSegment): ClassifiedSegment {
   };
 }
 
+/**
+ * A command a host runs without a shell, given as its argument vector. There
+ * is nothing to parse and nothing a shell would expand: every word is literal,
+ * so the command is understood by construction.
+ */
+export function classifyArgv(argv: readonly string[]): ClassifiedCommand {
+  const [program, ...args] = argv;
+  if (program === undefined || program === "") {
+    return {
+      segments: [],
+      understood: false,
+      reasons: ["syntax"],
+      sideEffectClass: "unknown",
+    };
+  }
+  const name = program.slice(program.lastIndexOf("/") + 1);
+  // A shell given a script is a command line again, and is read as one.
+  if (SHELLS.has(name) && args.includes("-c")) {
+    const script = args[args.indexOf("-c") + 1];
+    return script === undefined
+      ? {
+          segments: [],
+          understood: false,
+          reasons: ["syntax"],
+          sideEffectClass: "unknown",
+        }
+      : classifyCommand(script);
+  }
+  const classified = classifySegment({
+    name,
+    program,
+    args,
+    text: [name, ...args].join(" "),
+    assignments: [],
+    redirects: [],
+    input: undefined,
+    understood: true,
+    reasons: [],
+  });
+  return {
+    segments: [classified],
+    understood: true,
+    reasons: [],
+    sideEffectClass: classified.sideEffectClass,
+  };
+}
+
 export function classifyCommand(source: string): ClassifiedCommand {
   const parsed = parseShellCommand(source);
   const segments = parsed.segments.map(classifySegment);

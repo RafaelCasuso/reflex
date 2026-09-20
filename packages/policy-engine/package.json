@@ -22,6 +22,7 @@
     "bench": "vitest bench --run"
   },
   "dependencies": {
+    "@reflex/command-classifier": "workspace:*",
     "@reflex/contracts": "workspace:*",
     "re2js": "^2.8.6",
     "yaml": "^2.9.1"

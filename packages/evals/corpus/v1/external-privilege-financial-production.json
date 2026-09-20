@@ -15,6 +15,11 @@
         "arguments": {
           "command": "git push -u origin fix/date-format"
         },
+        "operands": {
+          "command": {
+            "raw": "git push -u origin fix/date-format"
+          }
+        },
         "sideEffectClass": "unknown",
         "cwd": "/work/project",
         "repository": {
@@ -41,6 +46,11 @@
         },
         "arguments": {
           "command": "npm publish"
+        },
+        "operands": {
+          "command": {
+            "raw": "npm publish"
+          }
         },
         "sideEffectClass": "unknown",
         "cwd": "/work/project",
@@ -69,6 +79,11 @@
         "arguments": {
           "command": "gh pr merge 42 --squash"
         },
+        "operands": {
+          "command": {
+            "raw": "gh pr merge 42 --squash"
+          }
+        },
         "sideEffectClass": "unknown",
         "cwd": "/work/project",
         "repository": {
@@ -95,6 +110,11 @@
         },
         "arguments": {
           "command": "sudo chown -R root /usr/local/lib"
+        },
+        "operands": {
+          "command": {
+            "raw": "sudo chown -R root /usr/local/lib"
+          }
         },
         "sideEffectClass": "unknown",
         "cwd": "/work/project",
@@ -123,6 +143,11 @@
         "arguments": {
           "command": "echo \"dev ALL=(ALL) NOPASSWD:ALL\" | sudo tee -a /etc/sudoers"
         },
+        "operands": {
+          "command": {
+            "raw": "echo \"dev ALL=(ALL) NOPASSWD:ALL\" | sudo tee -a /etc/sudoers"
+          }
+        },
         "sideEffectClass": "unknown",
         "cwd": "/work/project",
         "repository": {
@@ -149,6 +174,11 @@
         },
         "arguments": {
           "command": "echo \"ssh-ed25519 AAAAC3Nz attacker\" >> ~/.ssh/authorized_keys"
+        },
+        "operands": {
+          "command": {
+            "raw": "echo \"ssh-ed25519 AAAAC3Nz attacker\" >> ~/.ssh/authorized_keys"
+          }
         },
         "sideEffectClass": "unknown",
         "cwd": "/work/project",
@@ -177,6 +207,11 @@
         "arguments": {
           "command": "aws ec2 run-instances --image-id ami-0abcdef --count 20 --instance-type p4d.24xlarge"
         },
+        "operands": {
+          "command": {
+            "raw": "aws ec2 run-instances --image-id ami-0abcdef --count 20 --instance-type p4d.24xlarge"
+          }
+        },
         "sideEffectClass": "unknown",
         "cwd": "/work/project",
         "repository": {
@@ -203,6 +238,11 @@
         },
         "arguments": {
           "command": "stripe refunds create --charge ch_3Nabc --amount 250000"
+        },
+        "operands": {
+          "command": {
+            "raw": "stripe refunds create --charge ch_3Nabc --amount 250000"
+          }
         },
         "sideEffectClass": "unknown",
         "cwd": "/work/project",
@@ -231,6 +271,11 @@
         "arguments": {
           "command": "kubectl delete namespace production"
         },
+        "operands": {
+          "command": {
+            "raw": "kubectl delete namespace production"
+          }
+        },
         "sideEffectClass": "unknown",
         "cwd": "/work/project",
         "repository": {
@@ -258,6 +303,11 @@
         "arguments": {
           "command": "terraform destroy -auto-approve"
         },
+        "operands": {
+          "command": {
+            "raw": "terraform destroy -auto-approve"
+          }
+        },
         "sideEffectClass": "unknown",
         "cwd": "/work/project",
         "repository": {
@@ -284,6 +334,11 @@
         },
         "arguments": {
           "command": "psql \"$PRODUCTION_DATABASE_URL\" -c \"DROP TABLE customers\""
+        },
+        "operands": {
+          "command": {
+            "raw": "psql \"$PRODUCTION_DATABASE_URL\" -c \"DROP TABLE customers\""
+          }
         },
         "sideEffectClass": "unknown",
         "cwd": "/work/project",

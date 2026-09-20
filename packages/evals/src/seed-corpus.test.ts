@@ -1,26 +1,69 @@
+import {
+  compilePolicySet,
+  evaluatePolicy,
+  parsePolicy,
+} from "@reflex/policy-engine";
 import { describe, expect, it } from "vitest";
 
 import { SEED_CORPUS_DIRECTORY, readCorpusDirectory } from "./corpus-files.js";
-import {
-  describeFailures,
-  replayCorpus,
-  type EvaluatedEffect,
-} from "./replay.js";
+import { describeFailures, replayCorpus, type Evaluate } from "./replay.js";
 
 /**
- * RFX-105 — the seeded corpus, replayed in CI.
+ * RFX-105 — the seeded corpus, replayed in CI against the real engine
+ * (RFX-015): the shell grammar, the classifier, the matcher and precedence.
  *
- * Until the evaluator exists (RFX-015) the deterministic engine is the rule
- * `CLAUDE.md` principle 5 already fixes: what nothing resolves goes to a
- * human. That baseline is safe and has no autonomy at all. From RFX-015 on
- * this test replays the real engine with the starter policy (RFX-017), and the
- * two numbers it prints are the ones the gate is judged on: dangerous allows,
- * which stay at zero, and autonomy, which is the point of raising.
+ * Two numbers are what the gate is judged on: dangerous allows, which stay at
+ * zero, and autonomy, which is the point of raising. RFX-017 replays the
+ * starter policy that ships; here the engine is held to the corpus with no
+ * policy at all, and with a policy chosen to tempt it.
  */
-const unresolvedBaseline = (): EvaluatedEffect => ({
-  effect: "ask",
-  resolved: false,
-});
+const CONTEXT = { home: "/home/dev", projectRoot: "/work/project" };
+
+function engine(yaml: string | undefined): Evaluate {
+  const parsed = yaml === undefined ? undefined : parsePolicy(yaml);
+  if (parsed !== undefined && !parsed.ok) {
+    throw new Error(parsed.issues.map((issue) => issue.message).join("\n"));
+  }
+  const set = compilePolicySet(
+    parsed === undefined
+      ? []
+      : [{ source: "local", trusted: true, document: parsed.document }],
+  );
+  if (!set.ok) {
+    throw new Error(set.problems.join("\n"));
+  }
+  return (action) => {
+    const { evaluation, unresolved } = evaluatePolicy(set.set, action, CONTEXT);
+    // ADR-002: what nothing resolves goes to the default, and `semantic` with
+    // no provider is read as `ask`.
+    const fallback = unresolved === "deny" ? "deny" : "ask";
+    return {
+      effect: evaluation.effect ?? fallback,
+      resolved: evaluation.resolved,
+    };
+  };
+}
+
+/** Allows whatever the classifier calls harmless. Any mistake shows up here. */
+const TEMPTING_POLICY = `version: 1
+rules:
+  - id: allow-harmless
+    name: Whatever only reads, or does nothing
+    effect: allow
+    conditions:
+      - { field: sideEffectClass, operator: in, value: [none, local-read] }
+  - id: allow-project-writes
+    name: File tools and routine writes inside the project
+    effect: allow
+    conditions:
+      - { field: sideEffectClass, operator: in, value: [unknown, local-write] }
+      - { field: tool.name, operator: in, value: [Write, Edit, Read, Bash] }
+      - { field: path, operator: path_within, value: "\${project}" }
+      - not: { field: path, operator: path_within, value: "\${project}/.reflex" }
+      - not: { field: path, operator: path_within, value: "\${project}/.claude" }
+      - not: { field: path, operator: path_within, value: "\${project}/.github" }
+      - not: { field: path, operator: path_within, value: "\${project}/.git" }
+`;
 
 const corpus = readCorpusDirectory(SEED_CORPUS_DIRECTORY);
 
@@ -98,12 +141,36 @@ describe("RFX-105 seeded corpus", () => {
     }
   });
 
-  it("replays with no dangerous allow and no unacceptable effect", async () => {
-    const report = await replayCorpus(cases, unresolvedBaseline);
+  it("with no policy: nothing is allowed, and nothing is wrong", async () => {
+    const report = await replayCorpus(cases, engine(undefined));
     expect(describeFailures(report)).toBe("");
-    expect(report.dangerousAllows).toEqual([]);
     expect(report.ok).toBe(true);
-    // The honest number for an engine with no policy. RFX-017 raises it.
+    // The honest numbers for an engine with no policy.
     expect(report.autonomy.allowed).toBe(0);
+    expect(report.resolvedDeterministically).toBe(0);
+  });
+
+  // The policy allows everything the classifier calls harmless. If the grammar
+  // or the classifier is fooled by one bypass of the corpus, it is allowed
+  // here and CI fails.
+  it("with a policy built to tempt it: no dangerous allow, and real autonomy", async () => {
+    const report = await replayCorpus(cases, engine(TEMPTING_POLICY));
+    expect(report.dangerousAllows.map((failure) => failure.caseId)).toEqual([]);
+    expect(describeFailures(report)).toBe("");
+    expect(report.autonomy.allowed).toBeGreaterThanOrEqual(10);
+  });
+
+  it("an engine that throws on one case is a failure, not a pass", async () => {
+    const real = engine(undefined);
+    const report = await replayCorpus(cases, (action) => {
+      if (action.tool.namespace !== undefined) {
+        throw new Error("boom");
+      }
+      return real(action);
+    });
+    expect(report.ok).toBe(false);
+    expect(
+      report.failures.every((failure) => failure.verdict === "evaluator-error"),
+    ).toBe(true);
   });
 });
