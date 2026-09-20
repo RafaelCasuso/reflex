@@ -25,6 +25,7 @@ import {
   fieldSpec,
   type FieldSpec,
 } from "./fields.js";
+import { compilePattern } from "./pattern.js";
 
 /**
  * RFX-012 — the v1 policy document parser.
@@ -470,9 +471,20 @@ function readCondition(
         "value",
         POLICY_LIMITS.textLength,
       );
-      return value === undefined
-        ? undefined
-        : { field: field.name, operator, value };
+      if (value === undefined) {
+        return undefined;
+      }
+      // RFX-098: a pattern that cannot run in linear time, or that is too
+      // large to run within the budget, is rejected here and never at match
+      // time.
+      if (operator === "matches") {
+        const compiled = compilePattern(value);
+        if (!compiled.ok) {
+          parse.at("invalid_value", valuePath, valueNode, compiled.message);
+          return undefined;
+        }
+      }
+      return { field: field.name, operator, value };
     }
   }
 }

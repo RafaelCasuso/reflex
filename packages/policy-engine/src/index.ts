@@ -19,3 +19,9 @@ export {
   type PolicyIssueCode,
   type PolicyParseResult,
 } from "./parser.js";
+export {
+  PATTERN_LIMITS,
+  compilePattern,
+  type CompiledPattern,
+  type PatternCompileResult,
+} from "./pattern.js";

@@ -18,10 +18,12 @@
     "build": "tsc -p tsconfig.build.json",
     "typecheck": "tsc -p tsconfig.json",
     "lint": "eslint --max-warnings 0 .",
-    "test": "vitest run"
+    "test": "vitest run",
+    "bench": "vitest bench --run"
   },
   "dependencies": {
     "@reflex/contracts": "workspace:*",
+    "re2js": "^2.8.6",
     "yaml": "^2.9.1"
   }
 }

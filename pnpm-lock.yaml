@@ -128,6 +128,9 @@ importers:
       '@reflex/contracts':
         specifier: workspace:*
         version: link:../contracts
+      re2js:
+        specifier: ^2.8.6
+        version: 2.8.6
       yaml:
         specifier: ^2.9.1
         version: 2.9.1
@@ -799,6 +802,10 @@ packages:
   qified@0.10.1:
     resolution: {integrity: sha512-+Owyggi9IxT1ePKGafcI87ubSmxol6smwJ+RAHDQlx9+9cPwFWDiKFFCPuWhr9ignlGpZ9vDQLw67N4dcTVFEA==}
     engines: {node: '>=20'}
+
+  re2js@2.8.6:
+    resolution: {integrity: sha512-xLgQil4kIUCrAzVk9fRSkxkFNwmygLFjVxXrLc65aE1F0+Zsb8rxumFBy4XKyvgMCTL6kilDq3EZ0piE2dP/Dg==}
+    engines: {node: '>=18.0.0'}
 
   rolldown@1.2.9:
     resolution: {integrity: sha512-hx/Pv0N1haXRb11qkfnK5MXB/iqr7i0yjWQqmO9uHqZpBgQSqzc8UsSnEpalsh+j1I8qQ2CkXAkJC8Br3dKSlg==}
@@ -1551,6 +1558,8 @@ snapshots:
   qified@0.10.1:
     dependencies:
       hookified: 2.2.0
+
+  re2js@2.8.6: {}
 
   rolldown@1.2.9:
     dependencies:

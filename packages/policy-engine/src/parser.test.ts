@@ -358,6 +358,25 @@ rules:
       expect(issues[0]?.message).toContain("an allow rule cannot be mandatory");
     });
 
+    // RFX-098: a pattern is rejected when the policy is compiled, with the
+    // line it is on, and never discovered to be slow at match time.
+    it.each([
+      ["a backreference", "(a)\\1", /backreferences are not supported/],
+      ["a lookahead", "a(?=b)", /lookaheads and lookbehinds/],
+      ["a pattern too complex to bound", "[a-z0-9]{1,500}", /too complex/],
+      ["a pattern that is not one", "(unclosed", /not a valid regular/],
+    ])("rejects %s at its line", (_label, pattern, message) => {
+      const issues = issuesOf(withLine(32, `        value: '${pattern}'`));
+      expect(issues).toMatchObject([
+        {
+          code: "invalid_value",
+          path: "rules[2].conditions[0].value",
+          line: 32,
+        },
+      ]);
+      expect(issues[0]?.message).toMatch(message);
+    });
+
     it("rejects a rule with no condition, which would match everything", () => {
       const issues = issuesOf(
         "version: 1\nrules:\n  - { id: all, name: All, effect: allow, conditions: [] }\n",
