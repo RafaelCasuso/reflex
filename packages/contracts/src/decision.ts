@@ -49,6 +49,12 @@ export type FallbackReason = (typeof FALLBACK_REASONS)[number];
 export interface DecisionRequest {
   action: CanonicalAction;
   mode: ReflexMode;
+  /**
+   * A requested ceiling on leniency, not an instruction (ADR-003). The engine
+   * applies the stricter of this, the configured mode and the floor of the
+   * action's class, so a client can ask to be treated more strictly and never
+   * less.
+   */
   failureMode: FailureMode;
   policySetHash?: string;
   deadlineMs?: DurationMs;

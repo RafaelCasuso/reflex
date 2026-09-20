@@ -41,6 +41,24 @@ const FORBIDDEN_DEPENDENCIES = [
     forbidden: ["@reflex/core"],
     reason: "provider-jev -> core is forbidden.",
   },
+  {
+    files: ["packages/command-classifier/**"],
+    forbidden: [
+      "@reflex/core",
+      "@reflex/policy-engine",
+      "@reflex/context-compiler",
+      "@reflex/semantic-provider",
+      "@reflex/provider-*",
+      "@reflex/adapter-*",
+      "@reflex/telemetry",
+      "@reflex/cli",
+      "@reflex/auth",
+      "@reflex/evals",
+      "@reflex/sdk-*",
+    ],
+    reason:
+      "command-classifier -> contracts only (ADR-011): it is shared by adapters and by the engine, so it may depend on neither.",
+  },
 ];
 
 /** Reaching into another package's src/ or dist/ bypasses its manifest. */

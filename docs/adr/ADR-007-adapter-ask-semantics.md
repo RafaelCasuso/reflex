@@ -1,6 +1,6 @@
 # ADR-007: Adapter ASK semantics
 
-- **Status:** Proposed
+- **Status:** Accepted
 - **Date:** 2026-09-20
 - **Tickets:** RFX-117, RFX-043, RFX-046, RFX-049, RFX-074
 - **Supersedes:** none
@@ -23,9 +23,7 @@ Hosts differ, and one of them has now been measured (RFX-087, Claude Code
 
 ## Decision
 
-Not decided.
-
-Recommendation (not binding):
+Accepted by the maintainer on 2026-09-20, as recommended when it was proposed.
 
 ### 1. Capability matrix
 

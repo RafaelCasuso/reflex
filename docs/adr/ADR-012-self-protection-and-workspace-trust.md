@@ -1,7 +1,7 @@
 # ADR-012: Self-protection and workspace trust
 
-- **Status:** Proposed
-- **Date:** 2026-09-18
+- **Status:** Accepted
+- **Date:** 2026-09-20
 - **Tickets:** RFX-101, RFX-102, RFX-103, RFX-104
 - **Supersedes:** none
 
@@ -44,9 +44,8 @@ actions REFLEX governs, and any tampering must be visible.
 
 ## Decision
 
-Not decided.
-
-Recommendation (not binding): **2, 3 and 4 together**, with one rule that makes
+Accepted by the maintainer on 2026-09-20, as recommended when it was proposed:
+**2, 3 and 4 together**, with one rule that makes
 workspace trust safe by default.
 
 - Option 1 is rejected: the default install would be trivially bypassable, and
@@ -60,8 +59,6 @@ workspace trust safe by default.
   it. What is forbidden is doing it without a human.
 
 ## Consequences
-
-If the recommendation is accepted:
 
 ### Positive
 

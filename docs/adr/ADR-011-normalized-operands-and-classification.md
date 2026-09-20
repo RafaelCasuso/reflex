@@ -1,7 +1,7 @@
 # ADR-011: Normalized operands and classification ownership
 
-- **Status:** Proposed
-- **Date:** 2026-09-18
+- **Status:** Accepted
+- **Date:** 2026-09-20
 - **Tickets:** RFX-095, RFX-096, RFX-097, RFX-098
 - **Supersedes:** none
 
@@ -51,9 +51,8 @@ Classification ownership:
 
 ## Decision
 
-Not decided.
-
-Recommendation (not binding): **O2 and C3**, with one matching principle.
+Accepted by the maintainer on 2026-09-20, as recommended when it was proposed:
+**O2 and C3**, with one matching principle.
 
 - O1 makes policies host-specific, which defeats ADR-001.
 - O2 keeps translation in adapters, where host knowledge lives, and gives
@@ -73,8 +72,6 @@ exact in `docs/architecture.md`, so accepting this ADR means updating the
 layout and the dependency rules in `CLAUDE.md` in the same change.
 
 ## Consequences
-
-If the recommendation is accepted:
 
 ### Positive
 

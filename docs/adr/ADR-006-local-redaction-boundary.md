@@ -1,6 +1,6 @@
 # ADR-006: Local redaction boundary
 
-- **Status:** Proposed
+- **Status:** Accepted
 - **Date:** 2026-09-20
 - **Tickets:** RFX-116, RFX-031, RFX-033, RFX-060, RFX-123
 - **Supersedes:** none
@@ -26,9 +26,8 @@ without seeing what it was.
 
 ## Decision
 
-Not decided.
-
-Recommendation (not binding): **raw values exist in memory on the user's
+Accepted by the maintainer on 2026-09-20, as recommended when it was proposed:
+**raw values exist in memory on the user's
 machine and nowhere else.**
 
 ### 1. What is redacted where

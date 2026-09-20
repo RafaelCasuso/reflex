@@ -29,6 +29,25 @@ export const FORBIDDEN_EDGES: readonly ForbiddenEdge[] = [
   { from: "contracts", to: "*", rule: "contracts -> anything" },
   { from: "adapter-*", to: "provider-jev", rule: "adapter -> provider-jev" },
   { from: "provider-jev", to: "core", rule: "provider-jev -> core" },
+  // ADR-011: the classifier is shared by adapters and by the engine, so it may
+  // depend on neither. It knows commands, not hosts, policies or providers.
+  ...[
+    "core",
+    "policy-engine",
+    "context-compiler",
+    "semantic-provider",
+    "provider-*",
+    "adapter-*",
+    "telemetry",
+    "cli",
+    "auth",
+    "evals",
+    "sdk-*",
+  ].map((to) => ({
+    from: "command-classifier",
+    to,
+    rule: "command-classifier -> contracts only",
+  })),
 ];
 
 export interface BoundaryViolation {

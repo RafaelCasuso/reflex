@@ -227,6 +227,10 @@ Decision orchestration and domain logic.
 ### `packages/policy-engine`
 Pure deterministic policy evaluation.
 
+### `packages/command-classifier`
+Shell command normalization and side-effect classification, shared by every host (ADR-011).
+Knows commands. Knows nothing about hosts, policies or providers.
+
 ### `packages/context-compiler`
 Minimal semantic context construction and local redaction pipeline.
 
@@ -256,6 +260,9 @@ Allowed:
 `gateway -> core`
 `core -> contracts`
 `core -> policy-engine`
+`core -> command-classifier`
+`policy-engine -> command-classifier`
+`adapter -> command-classifier`
 `core -> context-compiler`
 `core -> semantic-provider`
 `provider-jev -> semantic-provider`
@@ -265,6 +272,7 @@ Forbidden:
 
 `core -> adapter-*`
 `policy-engine -> provider-*`
+`command-classifier -> anything but contracts`
 `contracts -> anything`
 `dashboard -> database`
 `adapter -> provider-jev`

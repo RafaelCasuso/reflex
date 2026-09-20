@@ -1,6 +1,6 @@
 # ADR-003: Fail behavior
 
-- **Status:** Proposed
+- **Status:** Accepted
 - **Date:** 2026-09-20
 - **Tickets:** RFX-113, RFX-020, RFX-022, RFX-043
 - **Supersedes:** none
@@ -24,9 +24,7 @@ Two facts from G1.5 shape the answer:
 
 ## Decision
 
-Not decided.
-
-Recommendation (not binding):
+Accepted by the maintainer on 2026-09-20, as recommended when it was proposed.
 
 ### 1. Who decides the failure mode
 

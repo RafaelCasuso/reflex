@@ -1,6 +1,6 @@
 # ADR-002: Decision precedence and effective effect
 
-- **Status:** Proposed
+- **Status:** Accepted
 - **Date:** 2026-09-20
 - **Tickets:** RFX-112, RFX-014, RFX-019, RFX-043
 - **Supersedes:** none
@@ -26,9 +26,7 @@ all three effects.
 
 ## Decision
 
-Not decided.
-
-Recommendation (not binding):
+Accepted by the maintainer on 2026-09-20, as recommended when it was proposed.
 
 ### 1. Stages, in order
 

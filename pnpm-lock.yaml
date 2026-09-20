@@ -93,6 +93,12 @@ importers:
         specifier: workspace:*
         version: link:../telemetry
 
+  packages/command-classifier:
+    dependencies:
+      '@reflex/contracts':
+        specifier: workspace:*
+        version: link:../contracts
+
   packages/context-compiler:
     dependencies:
       '@reflex/contracts':

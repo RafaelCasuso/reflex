@@ -124,6 +124,11 @@ reflex/
 │   │       ├── precedence.ts
 │   │       └── evaluator.ts
 │   │
+│   ├── command-classifier/   # ADR-011: one classifier for every host
+│   │   └── src/
+│   │       ├── shell/        # grammar: segments, or "not understood"
+│   │       └── classify.ts   # side-effect class; escalates, never lowers
+│   │
 │   ├── context-compiler/
 │   │   └── src/
 │   │       ├── compile.ts
@@ -528,23 +533,25 @@ Create these before Gate 2:
 - ADR-001 canonical action model
   ([accepted](./adr/ADR-001-canonical-action-model.md))
 - ADR-002 decision precedence
-  ([proposed](./adr/ADR-002-decision-precedence-and-effective-effect.md))
-- ADR-003 fail behavior ([proposed](./adr/ADR-003-fail-behavior.md))
-- ADR-004 policy precedence ([proposed](./adr/ADR-004-policy-precedence.md))
+  ([accepted](./adr/ADR-002-decision-precedence-and-effective-effect.md))
+- ADR-003 fail behavior ([accepted](./adr/ADR-003-fail-behavior.md))
+- ADR-004 policy precedence ([accepted](./adr/ADR-004-policy-precedence.md))
 - ADR-005 provider abstraction
-  ([proposed](./adr/ADR-005-provider-abstraction.md))
+  ([accepted](./adr/ADR-005-provider-abstraction.md))
 - ADR-006 local redaction boundary
-  ([proposed](./adr/ADR-006-local-redaction-boundary.md))
+  ([accepted](./adr/ADR-006-local-redaction-boundary.md))
 - ADR-007 adapter ASK semantics
-  ([proposed](./adr/ADR-007-adapter-ask-semantics.md))
+  ([accepted](./adr/ADR-007-adapter-ask-semantics.md))
 - ADR-008 telemetry persistence strategy
-  ([proposed](./adr/ADR-008-telemetry-persistence-strategy.md))
+  ([accepted](./adr/ADR-008-telemetry-persistence-strategy.md))
 
 Written since: ADR-009 contract versioning and compatibility
 ([accepted](./adr/ADR-009-contract-versioning.md)), ADR-010 decision placement
 and hook latency
 ([accepted](./adr/ADR-010-decision-placement-and-hook-latency.md)), ADR-013
 action outcome observation
-([accepted](./adr/ADR-013-action-outcome-observation.md)). Still proposed:
-[ADR-011](./adr/ADR-011-normalized-operands-and-classification.md) and
-[ADR-012](./adr/ADR-012-self-protection-and-workspace-trust.md).
+([accepted](./adr/ADR-013-action-outcome-observation.md)). Also accepted:
+[ADR-011](./adr/ADR-011-normalized-operands-and-classification.md) normalized
+operands and classification ownership, and
+[ADR-012](./adr/ADR-012-self-protection-and-workspace-trust.md) self-protection
+and workspace trust.

@@ -1,6 +1,6 @@
 # ADR-005: Provider abstraction
 
-- **Status:** Proposed
+- **Status:** Accepted
 - **Date:** 2026-09-20
 - **Tickets:** RFX-115, RFX-025, RFX-026, RFX-027, RFX-029
 - **Supersedes:** none
@@ -26,9 +26,7 @@ requires (Jev gives no confidence for a yes/no answer).
 
 ## Decision
 
-Not decided.
-
-Recommendation (not binding):
+Accepted by the maintainer on 2026-09-20, as recommended when it was proposed.
 
 ### 1. Where things live
 

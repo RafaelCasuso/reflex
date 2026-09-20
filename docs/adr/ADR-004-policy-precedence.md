@@ -1,6 +1,6 @@
 # ADR-004: Policy precedence
 
-- **Status:** Proposed
+- **Status:** Accepted
 - **Date:** 2026-09-20
 - **Tickets:** RFX-114, RFX-012, RFX-014, RFX-015, RFX-016
 - **Supersedes:** none
@@ -25,9 +25,8 @@ organization, environment, project, user or local. The contract has
 
 ## Decision
 
-Not decided.
-
-Recommendation (not binding): **defaults cascade down, mandates hold from
+Accepted by the maintainer on 2026-09-20, as recommended when it was proposed:
+**defaults cascade down, mandates hold from
 above.**
 
 ### 1. Sources

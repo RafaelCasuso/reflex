@@ -1,6 +1,6 @@
 # ADR-008: Telemetry persistence strategy
 
-- **Status:** Proposed
+- **Status:** Accepted
 - **Date:** 2026-09-20
 - **Tickets:** RFX-118, RFX-023, RFX-059, RFX-060, RFX-085, RFX-121
 - **Supersedes:** none
@@ -22,9 +22,7 @@ sent. Any number below is a threshold to measure against, not a finding.
 
 ## Decision
 
-Not decided.
-
-Recommendation (not binding):
+Accepted by the maintainer on 2026-09-20, as recommended when it was proposed.
 
 ### 1. PostgreSQL until a named measurement says otherwise
 

@@ -25,6 +25,7 @@ const EXPECTED_WORKSPACES: Readonly<Record<string, readonly string[]>> = {
     "adapter-mcp",
     "auth",
     "cli",
+    "command-classifier",
     "context-compiler",
     "contracts",
     "core",
