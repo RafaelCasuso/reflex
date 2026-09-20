@@ -532,11 +532,15 @@ This gate opens with the decisions the policy engine depends on (RFX-112 to RFX-
 
 **Why:** RFX-028 assumes parallel per-dimension calls. Eleven model calls per action against a 400 ms p95 is a hypothesis to test, not a design to build.
 
+**Status:** Done (2026-09-20), pulled forward from G4 at the maintainer's request so that ADR-010 can be decided on measured numbers. `packages/provider-jev/live/probe-latency.mjs` assessed the eleven dimensions of `SemanticAssessment` against the real TypeSafe API (`jev-1.13.0`, pinned), forty samples per variant, synthetic data only, under six cents in total. **One request with eleven questions:** p50 264 ms, p95 372 ms, $0.070 per 1,000 actions. **Batched in three:** p50 279 ms, p95 358 ms, $0.120. **Eleven in parallel:** p50 334 ms, p95 445 ms, $0.320, and eleven requests of a 1,200 per minute allowance. The provider reports 95 ms (p50) and 148 ms (p95) of its own time; the rest is about 160 ms of round trip from the laptop that measured. **Recommendation for RFX-028: one request.** Answers were the same alone as together, so nothing is traded for the speed. **Reported before RFX-028 starts, as the acceptance requires:** the 400 ms p95 is met by one request and missed by eleven; the 150 ms p50 is out of reach from a laptop and reachable only from somewhere close to the provider, whose region is unknown. A new connection per call adds about 340 ms, so whatever calls the provider has to stay up. The written result is `docs/jev-provider.md`; the record is checked in and `src/live-evidence.test.ts` holds the document to it in CI. Measured from one machine on one afternoon, never above twelve requests a second; accuracy was not measured and is G6's question.
+
 ### RFX-028 — Implement parallel semantic dimensions
 
 **Goal:** Evaluate independent dimensions with bounded concurrency.
 
 **Acceptance:** Result includes confidence for each required dimension.
+
+**Note (RFX-107, 2026-09-20):** the premise did not survive measurement. Jev evaluates every question of a request in parallel on its side; eleven requests are slower at p95, 4.6 times dearer and rate-limited eleven times sooner, for identical answers. For this provider the ticket becomes: assess every dimension in one request, and return a confidence for each, including the one boolean dimension, for which the provider gives none (`docs/jev-provider.md` §3). How many requests an assessment takes stays inside the provider package. The goal and acceptance above are left as written until the maintainer rewords them.
 
 ### RFX-029 — Provider fixture/fake implementation
 

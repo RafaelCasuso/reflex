@@ -111,4 +111,8 @@ If option B is accepted:
   "UX rules"
 - `docs/architecture.md`: §1, §3, §12
 - `packages/contracts/README.md`: validation latency baseline
-- `docs/backlog.md`: RFX-024, RFX-058, RFX-087, RFX-088, RFX-094
+- `docs/backlog.md`: RFX-024, RFX-058, RFX-087, RFX-088, RFX-094, RFX-107
+- `docs/jev-provider.md`: measured semantic latency (RFX-107). A connection
+  opened per call adds about 340 ms to an assessment, and the 150 ms semantic
+  p50 is reachable only from close to the provider. Evidence for this decision,
+  not a decision
