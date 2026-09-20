@@ -159,6 +159,42 @@ describe("RFX-011 frozen fixtures are not edited", () => {
       "vocabulary.json":
         "dbc0ea5e0636fb3cde9d85a1d84a7f5135bdc93b3c34083e86b7172431214ca7",
     },
+    "v1.2": {
+      "action-outcome.blocked-by-host.json":
+        "b8eeb7e6f6fdad5d12dba1de4bfc48925ea5d5fb36dd5ba94761922a631c6faf",
+      "action-outcome.executed-without-prompt.json":
+        "2f180556d6e4b8af436cad974c8f050822012a0d28102a5fec8d5f03463f1b03",
+      "action-outcome.no-signal.json":
+        "890d1ef1d2e74c906ee27970813d1ff8bc4190b6d8b2e7e9d5898774000c7862",
+      "action-outcome.prompted-approved.json":
+        "59d73999ea1ed752709d572b98ba504388e1ba88bbd5ef24a7f56d831dd407f1",
+      "action-outcome.prompted-rejected.json":
+        "89bd7e8d9990ea802be02a4939ad65da9a32e9b815c7c718e658766550f74455",
+      "canonical-action.full.json":
+        "09fffb3d041294c4146df1ed0f66d97b7127303a840019f30ca672423b2ebba3",
+      "canonical-action.minimal.json":
+        "f2db44d14d19b90bd8f8ee20278c1fdf33aa47d9307662bdaa9c1647b0b4b3e8",
+      "canonical-action.operands-argv.json":
+        "3126914b06fe8f92cd1be2ff027e9df7cd548a739392be9f8000fce185995762",
+      "canonical-action.operands.json":
+        "aa704159bd41621233daab41dc5a693fc8558a7ded77b53b8379c13346814735",
+      "decision-feedback.full.json":
+        "47f4b241fbcfef750b407df12386f8b058d6fdec8d2150a94fb1e62a4f06514a",
+      "decision-feedback.minimal.json":
+        "90161dd81364a974b154c8adfc2ca190148c0ecc302ce940dc22868b1d583e95",
+      "decision-request.full.json":
+        "5e4563884a0132b2c68dad92c6b716aab198a715d2084a0f1193229788dae28c",
+      "decision-request.minimal.json":
+        "ace2d9ca0ba8bc0b28bfc44d255d8d26b7e29a38c34623c5bf24a14563bdcfa3",
+      "reflex-decision.full.json":
+        "901e4c4da0f7d3bb31ffff22d262542d16ffd534521bb67a30b1dff6fa699afc",
+      "reflex-decision.minimal.json":
+        "0232b3f7fbb27cd6f491d58cd3a598b0824285a888fc9302050cddcf02c3d1c7",
+      "semantic-assessment.json":
+        "a832bca12b82a1c5c3a6d35d81bfc7aec0d1c708dbd6ba5f034fa84379e563f9",
+      "vocabulary.json":
+        "8c437629d9877455bb41d042af96d0499c4f264aa506122cbaf6b9a67a5b7d81",
+    },
   };
 
   it("has a checksum entry for every released fixture set", () => {
@@ -325,7 +361,12 @@ describe("RFX-011 vocabulary only grows", () => {
 });
 
 describe("RFX-011 limits only loosen", () => {
-  const LIMITS_V1_0: Readonly<Record<keyof typeof CONTRACT_LIMITS, number>> = {
+  // Each limit at the value it was released with, under the minor that
+  // released it. Every limit of the contract has to appear here.
+  const LIMITS_AT_RELEASE: Readonly<
+    Record<keyof typeof CONTRACT_LIMITS, number>
+  > = {
+    // v1.0
     nameLength: 256,
     textLength: 8_192,
     pathLength: 4_096,
@@ -335,10 +376,13 @@ describe("RFX-011 limits only loosen", () => {
     reasonCodes: 64,
     jsonDepth: 64,
     jsonNodes: 100_000,
+    // v1.2 (ADR-011)
+    commandLength: 1_048_576,
+    operandItems: 1_024,
   };
 
-  it.each(Object.entries(LIMITS_V1_0))(
-    "%s is at least its v1.0 value",
+  it.each(Object.entries(LIMITS_AT_RELEASE))(
+    "%s is at least the value it was released with",
     (name, released) => {
       expect(
         CONTRACT_LIMITS[name as keyof typeof CONTRACT_LIMITS],

@@ -386,3 +386,73 @@ describe("RFX-007 resolveEnvironment (ADR-001 §4)", () => {
     expect(resolveEnvironment(action)).toBe("production");
   });
 });
+
+/** ADR-011, contract v1.2 — canonical operands. */
+describe("ADR-011 operands", () => {
+  const base = {
+    id: "act_01J8ZC2N6Q4T7V9X3B5D8F0H2K",
+    agent: { host: "claude-code" },
+    tool: { name: "Bash" },
+    arguments: { command: "git status" },
+    sideEffectClass: "unknown",
+    createdAt: "2026-09-20T10:15:30Z",
+  };
+  const withOperands = (operands: unknown): unknown => ({ ...base, operands });
+
+  it("accepts a command as text, as a vector, or as both", () => {
+    for (const command of [
+      { raw: "git status" },
+      { argv: ["git", "status"] },
+      { raw: "git status", argv: ["git", "status"] },
+    ]) {
+      expect(parseCanonicalAction(withOperands({ command })).ok).toBe(true);
+    }
+    expect(
+      parseCanonicalAction(
+        withOperands({
+          paths: ["/work/project/a.ts"],
+          networkHosts: ["example.test"],
+        }),
+      ).ok,
+    ).toBe(true);
+    // An action with no operands is as valid as it was in v1.1.
+    expect(parseCanonicalAction(base).ok).toBe(true);
+  });
+
+  // Adversarial: operands are what policy is matched against, so nothing in
+  // them may be tolerated, defaulted or repaired.
+  it.each([
+    ["a command that is neither text nor a vector", { command: {} }],
+    ["an empty command", { command: { raw: "" } }],
+    ["an empty vector", { command: { argv: [] } }],
+    ["a vector that is not text", { command: { argv: ["git", 1] } }],
+    ["a host-shaped key in the command", { command: { raw: "ls", cmd: "ls" } }],
+    [
+      "a key the contract does not know",
+      { command: { raw: "ls" }, trusted: true },
+    ],
+    [
+      "a classification smuggled in",
+      { command: { raw: "ls" }, sideEffectClass: "none" },
+    ],
+    ["paths that are not text", { paths: [42] }],
+    ["a path as an object", { paths: [{ path: "/x" }] }],
+    ["too many paths", { paths: Array.from({ length: 1_025 }, () => "/x") }],
+    [
+      "a host with a control character",
+      { networkHosts: [`a${String.fromCodePoint(10)}b`] },
+    ],
+    ["operands that are not an object", "rm -rf ~"],
+  ])("rejects %s", (_label, operands) => {
+    expect(parseCanonicalAction(withOperands(operands)).ok).toBe(false);
+  });
+
+  it("bounds a command and never echoes it in an issue", () => {
+    const secret = "sk-live-5e8b1f0a9c3d";
+    const result = parseCanonicalAction(
+      withOperands({ command: { raw: `${secret}${"x".repeat(1_048_577)}` } }),
+    );
+    expect(result.ok).toBe(false);
+    expect(JSON.stringify(result)).not.toContain(secret);
+  });
+});

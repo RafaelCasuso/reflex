@@ -45,6 +45,8 @@ export const POLICY_LIMITS = {
   sourceBytes: 256 * 1024,
   rules: 2_000,
   conditionsPerRule: 64,
+  /** `not` inside `any_of` inside `not`. Deeper than this is a program. */
+  conditionDepth: 4,
   listValues: 1_024,
   nameLength: 256,
   textLength: 1_024,
@@ -318,19 +320,98 @@ function readScalarValue(
   return undefined;
 }
 
+/** RFX-097: where `path_within` may point. Nothing relative, nothing with `..`. */
+const PATH_ROOT = /^(?:\/|~(?:\/|$)|\$\{(?:project|home)\}(?:\/|$))/;
+
 function readCondition(
   parse: Parse,
   node: Node | null,
   path: string,
+  depth = 0,
 ): PolicyCondition | undefined {
   const entries = parse.map(
     node,
     path,
-    ["field", "operator", "value"],
+    ["field", "operator", "value", "any_of", "not"],
     "a condition",
   );
   if (entries === undefined) {
     return undefined;
+  }
+
+  // RFX-097: composition. A condition is a comparison, an `any_of` or a `not`,
+  // and never two of them at once.
+  const composite = ["any_of", "not"].filter((key) => entries.has(key));
+  if (composite.length > 0) {
+    if (composite.length > 1 || entries.size > 1) {
+      parse.at(
+        "invalid_value",
+        path,
+        node,
+        "a condition is a comparison (field, operator, value), an any_of, or a not: only one of them",
+      );
+      return undefined;
+    }
+    if (depth >= POLICY_LIMITS.conditionDepth) {
+      parse.at(
+        "too_many",
+        path,
+        node,
+        `conditions nest at most ${String(POLICY_LIMITS.conditionDepth)} levels deep`,
+      );
+      return undefined;
+    }
+    if (entries.has("not")) {
+      const inner = readCondition(
+        parse,
+        entries.get("not") ?? null,
+        `${path}.not`,
+        depth + 1,
+      );
+      return inner === undefined ? undefined : { not: inner };
+    }
+    const anyNode = entries.get("any_of");
+    const anyPath = `${path}.any_of`;
+    if (!parse.plain(anyNode, anyPath)) {
+      return undefined;
+    }
+    if (!isSeq(anyNode) || anyNode.items.length === 0) {
+      // An empty any_of is never true. In a deny rule that is a rule that
+      // quietly never fires.
+      parse.at(
+        "invalid_type",
+        anyPath,
+        anyNode,
+        "any_of must be a non-empty list of conditions",
+      );
+      return undefined;
+    }
+    if (anyNode.items.length > POLICY_LIMITS.conditionsPerRule) {
+      parse.at(
+        "too_many",
+        anyPath,
+        anyNode,
+        `any_of holds at most ${String(POLICY_LIMITS.conditionsPerRule)} conditions`,
+      );
+      return undefined;
+    }
+    const before = parse.issues.length;
+    const inner = anyNode.items.map((item, index) =>
+      readCondition(
+        parse,
+        item as Node | null,
+        `${anyPath}[${String(index)}]`,
+        depth + 1,
+      ),
+    );
+    return parse.issues.length > before
+      ? undefined
+      : {
+          any_of: inner.filter(
+            (condition): condition is PolicyCondition =>
+              condition !== undefined,
+          ),
+        };
   }
 
   const fieldNode = entries.get("field");
@@ -448,6 +529,41 @@ function readCondition(
       return parse.issues.length > before
         ? undefined
         : { field: field.name, operator, value: values };
+    }
+
+    case "path_within": {
+      if (!entries.has("value")) {
+        parse.at("missing_key", path, node, "path_within needs a directory");
+        return undefined;
+      }
+      if (field.name !== "path") {
+        parse.at(
+          "invalid_value",
+          `${path}.operator`,
+          operatorNode,
+          `path_within works on the field path; ${field.name} is not a path`,
+        );
+        return undefined;
+      }
+      const value = parse.text(
+        valueNode,
+        valuePath,
+        "value",
+        POLICY_LIMITS.textLength,
+      );
+      if (value === undefined) {
+        return undefined;
+      }
+      if (!PATH_ROOT.test(value) || value.split("/").includes("..")) {
+        parse.at(
+          "invalid_value",
+          valuePath,
+          valueNode,
+          "path_within needs a directory that starts with /, ~, ${project} or ${home}, and holds no .. segment",
+        );
+        return undefined;
+      }
+      return { field: field.name, operator, value };
     }
 
     case "starts_with":

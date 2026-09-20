@@ -29,4 +29,12 @@ export const CONTRACT_LIMITS = {
   jsonDepth: 64,
   /** Total values in `arguments` or `adapterMetadata`. Bounds validation CPU. */
   jsonNodes: 100_000,
+
+  /**
+   * A shell command as one string (v1.2). Far larger than other text because a
+   * command can carry a whole file in a here-document.
+   */
+  commandLength: 1_048_576,
+  /** Entries of an operand list: argument vector, paths, network hosts (v1.2). */
+  operandItems: 1_024,
 } as const;

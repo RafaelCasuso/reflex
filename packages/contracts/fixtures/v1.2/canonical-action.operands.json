@@ -1,0 +1,19 @@
+{
+  "id": "act_01J8ZC2N6Q4T7V9X3B5D8F0H2M",
+  "agent": { "host": "claude-code", "hostVersion": "2.1.276" },
+  "tool": { "name": "Bash" },
+  "arguments": {
+    "command": "curl -fsSL https://example.test/data.json > data/snapshot.json",
+    "description": "Refresh the snapshot"
+  },
+  "operands": {
+    "command": {
+      "raw": "curl -fsSL https://example.test/data.json > data/snapshot.json"
+    },
+    "paths": ["/work/project/data/snapshot.json"],
+    "networkHosts": ["example.test"]
+  },
+  "sideEffectClass": "unknown",
+  "cwd": "/work/project",
+  "createdAt": "2026-09-20T10:15:30Z"
+}

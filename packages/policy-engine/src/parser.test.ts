@@ -343,6 +343,156 @@ rules:
     });
   });
 
+  /** RFX-097 — `path_within`, `any_of` and `not`, as syntax. */
+  describe("composition and path containment", () => {
+    const rule = (conditions: string): string => `version: 1
+rules:
+  - id: r
+    name: R
+    effect: allow
+    conditions:
+${conditions}
+`;
+
+    it("parses any_of, not and path_within into the contract's shapes", () => {
+      const result = parsePolicy(
+        rule(`      - field: path
+        operator: path_within
+        value: "\${project}/src"
+      - any_of:
+          - { field: command.name, operator: equals, value: git }
+          - not: { field: tool.namespace, operator: exists }`),
+      );
+      expect(result).toMatchObject({
+        ok: true,
+        document: {
+          rules: [
+            {
+              conditions: [
+                {
+                  field: "path",
+                  operator: "path_within",
+                  value: "${project}/src",
+                },
+                {
+                  any_of: [
+                    { field: "command.name", operator: "equals", value: "git" },
+                    { not: { field: "tool.namespace", operator: "exists" } },
+                  ],
+                },
+              ],
+            },
+          ],
+        },
+      });
+    });
+
+    it.each([
+      ["/srv/app"],
+      ["~/code"],
+      ["~"],
+      ["${project}"],
+      ["${home}/.config"],
+    ])("accepts the directory %s", (directory) => {
+      expect(
+        parsePolicy(
+          rule(
+            `      - { field: path, operator: path_within, value: "${directory}" }`,
+          ),
+        ).ok,
+      ).toBe(true);
+    });
+
+    // Adversarial: a root that is not one. A relative directory depends on
+    // where the engine happens to run, and `..` leaves the directory it names.
+    it.each([
+      ["a relative directory", "src", /starts with \/, ~/],
+      ["a parent segment", "/srv/app/../..", /no \.\. segment/],
+      [
+        "a parent segment after a placeholder",
+        "${project}/../other",
+        /no \.\. segment/,
+      ],
+      ["an unknown placeholder", "${cwd}/x", /starts with \/, ~/],
+      ["a user's home by name", "~root/x", /starts with \/, ~/],
+      ["an empty directory", "", /must not be empty/],
+    ])("rejects %s", (_label, directory, message) => {
+      const issues = issuesOf(
+        rule(
+          `      - { field: path, operator: path_within, value: "${directory}" }`,
+        ),
+      );
+      expect(issues.map((issue) => issue.message).join("\n")).toMatch(message);
+    });
+
+    it("keeps path_within for paths", () => {
+      const issues = issuesOf(
+        rule(
+          `      - { field: command.text, operator: path_within, value: "/srv" }`,
+        ),
+      );
+      expect(issues[0]?.message).toContain(
+        "path_within works on the field path",
+      );
+    });
+
+    it.each([
+      [
+        "an empty any_of, which is never true",
+        "      - any_of: []",
+        /non-empty list/,
+      ],
+      [
+        "any_of that is not a list",
+        "      - any_of: { field: path, operator: exists }",
+        /non-empty list/,
+      ],
+      [
+        "a comparison and a not at once",
+        "      - { field: path, operator: exists, not: { field: path, operator: exists } }",
+        /only one of them/,
+      ],
+      [
+        "any_of and not at once",
+        "      - { any_of: [{ field: path, operator: exists }], not: { field: path, operator: exists } }",
+        /only one of them/,
+      ],
+      [
+        "a not that is not a condition",
+        "      - not: path",
+        /a condition must be a mapping/,
+      ],
+    ])("rejects %s", (_label, conditions, message) => {
+      expect(
+        issuesOf(rule(conditions))
+          .map((issue) => issue.message)
+          .join("\n"),
+      ).toMatch(message);
+    });
+
+    it("bounds how deep conditions nest", () => {
+      const deep = `${"not: { ".repeat(POLICY_LIMITS.conditionDepth + 1)}field: path, operator: exists${" }".repeat(POLICY_LIMITS.conditionDepth + 1)}`;
+      expect(issuesOf(rule(`      - { ${deep} }`))).toMatchObject([
+        { code: "too_many" },
+      ]);
+    });
+
+    it("says where a problem inside a composition is", () => {
+      const issues = issuesOf(
+        rule(`      - any_of:
+          - { field: path, operator: exists }
+          - not: { field: comand.name, operator: exists }`),
+      );
+      expect(issues).toMatchObject([
+        {
+          code: "unknown_field",
+          path: "rules[0].conditions[0].any_of[1].not.field",
+          line: 9,
+        },
+      ]);
+    });
+  });
+
   // Adversarial: every way a policy file could quietly mean something else,
   // or cost more than a policy should.
   describe("adversarial", () => {

@@ -15,14 +15,33 @@ export const POLICY_OPERATORS = [
   "matches",
   "in",
   "exists",
+  /** v1.2 (RFX-097): the path is inside this directory, after normalization. */
+  "path_within",
 ] as const;
 export type PolicyOperator = (typeof POLICY_OPERATORS)[number];
 
-export interface PolicyCondition {
+export interface PolicyFieldCondition {
   field: string;
   operator: PolicyOperator;
   value?: unknown;
 }
+
+/** v1.2 (RFX-097): true when at least one of the conditions is. */
+export interface PolicyAnyOfCondition {
+  any_of: readonly PolicyCondition[];
+}
+
+/** v1.2 (RFX-097): true when the condition is not. */
+export interface PolicyNotCondition {
+  not: PolicyCondition;
+}
+
+/**
+ * The conditions of a rule all have to hold. Inside them, `any_of` and `not`
+ * compose (RFX-097).
+ */
+export type PolicyCondition =
+  PolicyFieldCondition | PolicyAnyOfCondition | PolicyNotCondition;
 
 export interface PolicyRule {
   id: string;

@@ -68,10 +68,12 @@ export {
 export {
   resolveEnvironment,
   type ActionRepository,
+  type ActionOperands,
   type ActionResource,
   type ActionTool,
   type AgentIdentity,
   type CanonicalAction,
+  type CommandOperand,
   type PriorActionSummary,
 } from "./action.js";
 
@@ -96,11 +98,14 @@ export type {
 
 export {
   POLICY_OPERATORS,
+  type PolicyAnyOfCondition,
   type PolicyCondition,
   type PolicyDefaults,
   type PolicyDocument,
+  type PolicyFieldCondition,
   type PolicyEvaluation,
   type PolicyMatch,
+  type PolicyNotCondition,
   type PolicyOperator,
   type PolicyRule,
   type PolicyUnresolvedDefault,

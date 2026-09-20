@@ -1,0 +1,54 @@
+{
+  "id": "act_01J8ZC2N6Q4T7V9X3B5D8F0H2M",
+  "organizationId": "org_7f3k2m9x",
+  "projectId": "prj_reflex-demo",
+  "sessionId": "ses_b1946ac92492d2347c6235b4d2611184",
+  "agent": {
+    "id": "agt_cc-macbook",
+    "name": "Claude Code",
+    "host": "claude-code",
+    "hostVersion": "2.4.1",
+    "model": "claude-fable-5-1"
+  },
+  "userObjective": "Fix the failing date parser test and open a pull request.",
+  "taskSummary": "Open a pull request with the date parser fix.",
+  "tool": {
+    "name": "create_pull_request",
+    "namespace": "github",
+    "description": "Create a pull request on GitHub."
+  },
+  "operation": "create",
+  "arguments": {
+    "title": "Fix date parser for ISO week dates",
+    "base": "main",
+    "draft": false,
+    "labels": ["bug"],
+    "reviewers": null,
+    "metadata": { "attempt": 2, "ratio": 0.5 }
+  },
+  "resource": {
+    "type": "repository",
+    "identifier": "github.com/acme/webapp",
+    "environment": "development",
+    "isProduction": false
+  },
+  "sideEffectClass": "external-write",
+  "cwd": "/Users/dev/code/webapp",
+  "repository": {
+    "root": "/Users/dev/code/webapp",
+    "branch": "fix/date-parser",
+    "remoteHost": "github.com"
+  },
+  "priorActions": [
+    {
+      "actionId": "act_01J8ZC2N6Q4T7V9X3B5D8F0H2K",
+      "toolName": "Bash",
+      "operation": "execute",
+      "effect": "allow",
+      "occurredAt": "2026-09-18T10:15:30Z"
+    },
+    { "toolName": "Edit", "occurredAt": "2026-09-18T10:15:30.900Z" }
+  ],
+  "adapterMetadata": { "hookEvent": "PreToolUse", "toolUseId": "toolu_01ABC" },
+  "createdAt": "2026-09-18T10:15:31.250Z"
+}

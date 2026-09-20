@@ -51,6 +51,42 @@ const priorActionSummarySchema = z.strictObject({
   occurredAt: timestampSchema,
 });
 
+const commandOperandSchema = z
+  .strictObject({
+    raw: z.string().min(1).max(CONTRACT_LIMITS.commandLength).exactOptional(),
+    argv: z
+      .array(z.string().max(CONTRACT_LIMITS.commandLength))
+      .min(1)
+      .max(CONTRACT_LIMITS.operandItems)
+      .readonly()
+      .exactOptional(),
+  })
+  .check((context) => {
+    const { raw, argv } = context.value;
+    if (raw === undefined && argv === undefined) {
+      context.issues.push({
+        code: "custom",
+        input: context.value,
+        path: ["raw"],
+        params: { reflexCode: "missing", expected: "raw or argv" },
+      });
+    }
+  });
+
+const actionOperandsSchema = z.strictObject({
+  command: commandOperandSchema.exactOptional(),
+  paths: z
+    .array(pathSchema)
+    .max(CONTRACT_LIMITS.operandItems)
+    .readonly()
+    .exactOptional(),
+  networkHosts: z
+    .array(nameSchema)
+    .max(CONTRACT_LIMITS.operandItems)
+    .readonly()
+    .exactOptional(),
+});
+
 /**
  * Strict at every level: an action is an input to a safety decision, and the
  * decision-maker does not ignore what it does not understand. Host- or
@@ -71,6 +107,7 @@ export const canonicalActionSchema = z.strictObject({
   operation: nameSchema.exactOptional(),
 
   arguments: jsonObjectSchema,
+  operands: actionOperandsSchema.exactOptional(),
 
   resource: actionResourceSchema.exactOptional(),
   sideEffectClass: z.enum(SIDE_EFFECT_CLASSES),

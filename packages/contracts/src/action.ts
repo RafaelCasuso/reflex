@@ -56,6 +56,36 @@ export interface PriorActionSummary {
   occurredAt: IsoTimestamp;
 }
 
+/**
+ * What an action operates on, in a shape that is the same for every host
+ * (ADR-011, contract v1.2).
+ *
+ * `arguments` is host-shaped: one host calls a shell command `command`,
+ * another delivers an argument vector under another key. A policy written
+ * against `arguments` means something different on every host, which is the
+ * failure ADR-001 exists to prevent. Operands are what a policy is written
+ * against instead.
+ *
+ * The adapter fills what the host tells it, without interpreting it: it copies
+ * the command string, it does not parse it. An operand the adapter cannot fill
+ * is absent, and absent is unknown, never safe (ADR-001 §4).
+ */
+export interface CommandOperand {
+  /** The command as one string, exactly as the shell will receive it. */
+  raw?: string;
+  /** The command as an argument vector, for hosts that run it without a shell. */
+  argv?: readonly string[];
+}
+
+export interface ActionOperands {
+  /** At least one of `raw` and `argv`. */
+  command?: CommandOperand;
+  /** File-system paths the host says the action touches. */
+  paths?: readonly string[];
+  /** Hosts the host says the action contacts. */
+  networkHosts?: readonly string[];
+}
+
 export interface CanonicalAction {
   id: ActionId;
   organizationId?: OrganizationId;
@@ -75,6 +105,8 @@ export interface CanonicalAction {
    * Never log this object before redaction.
    */
   arguments: Readonly<Record<string, unknown>>;
+  /** Host-agnostic operands, for policy to be written against (v1.2). */
+  operands?: ActionOperands;
 
   resource?: ActionResource;
   sideEffectClass: SideEffectClass;
