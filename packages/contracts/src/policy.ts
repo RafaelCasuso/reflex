@@ -40,7 +40,12 @@ export interface PolicyDefaults {
 
 export interface PolicyDocument {
   version: 1;
-  defaults: PolicyDefaults;
+  /**
+   * Optional on purpose (ADR-004 §6). A source that declares no default is not
+   * a source that declares `ask`: across sources the most restrictive declared
+   * value applies, and a filled-in default would be counted as a declaration.
+   */
+  defaults?: PolicyDefaults;
   rules: readonly PolicyRule[];
 }
 

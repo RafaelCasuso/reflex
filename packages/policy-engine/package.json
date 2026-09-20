@@ -21,6 +21,7 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "@reflex/contracts": "workspace:*"
+    "@reflex/contracts": "workspace:*",
+    "yaml": "^2.9.1"
   }
 }
