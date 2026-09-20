@@ -123,7 +123,7 @@ importers:
         specifier: workspace:*
         version: link:../contracts
       '@reflex/policy-engine':
-        specifier: workspace:^
+        specifier: workspace:*
         version: link:../policy-engine
 
   packages/policy-engine:
