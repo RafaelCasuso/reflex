@@ -1,4 +1,5 @@
 import {
+  STARTER_POLICY_YAML,
   compilePolicySet,
   evaluatePolicy,
   parsePolicy,
@@ -145,9 +146,27 @@ describe("RFX-105 seeded corpus", () => {
     const report = await replayCorpus(cases, engine(undefined));
     expect(describeFailures(report)).toBe("");
     expect(report.ok).toBe(true);
-    // The honest numbers for an engine with no policy.
+    // The honest number for an engine with no policy.
     expect(report.autonomy.allowed).toBe(0);
-    expect(report.resolvedDeterministically).toBe(0);
+    // REFLEX's own rules are part of every set (RFX-103): the only cases the
+    // engine resolves by itself are the ones aimed at REFLEX.
+    const selfProtection = cases.filter((testCase) =>
+      testCase.tags.includes("self-protection"),
+    );
+    expect(report.resolvedDeterministically).toBe(selfProtection.length);
+  });
+
+  // RFX-017: the policy that ships. Its promise is that it never allows
+  // anything destructive, external, privileged, financial or touching
+  // credentials by itself. The corpus is where that promise is kept.
+  it("with the starter policy that ships: no dangerous allow, and real autonomy", async () => {
+    const report = await replayCorpus(cases, engine(STARTER_POLICY_YAML));
+    expect(report.dangerousAllows.map((failure) => failure.caseId)).toEqual([]);
+    expect(describeFailures(report)).toBe("");
+    expect(report.ok).toBe(true);
+    // Reads, file tools inside the project and routine local work.
+    expect(report.autonomy.allowed).toBeGreaterThanOrEqual(12);
+    expect(report.autonomy.allowed).toBeLessThan(report.autonomy.eligible);
   });
 
   // The policy allows everything the classifier calls harmless. If the grammar

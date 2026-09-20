@@ -321,7 +321,9 @@ rules:
   - { id: b, name: B, effect: ask, conditions: [{ not: { field: command.text, operator: matches, value: "sk-live-[0-9a-f]{12}" } }] }
 `),
       );
-      expect(twice.patterns.size).toBe(1);
+      // One for the two rules above, and the built-in rules bring their own.
+      const builtInOnly = compiled().patterns.size;
+      expect(twice.patterns.size).toBe(builtInOnly + 1);
     });
   });
 

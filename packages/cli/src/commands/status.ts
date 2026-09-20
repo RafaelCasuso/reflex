@@ -1,4 +1,8 @@
-import { inspectSettings, OBSERVED_EVENTS } from "@reflex/adapter-claude-code";
+import {
+  buildHookCommand,
+  inspectSettings,
+  OBSERVED_EVENTS,
+} from "@reflex/adapter-claude-code";
 import type { ActionOutcome } from "@reflex/contracts";
 import {
   assembleOutcomes,
@@ -30,6 +34,11 @@ export type HookHealth =
   | "missing"
   /** `disableAllHooks` is set in that file. */
   | "disabled"
+  /**
+   * RFX-103: the hook is there and runs something else. It still carries
+   * REFLEX's marker, so nothing but its command gives it away.
+   */
+  | "altered"
   | "unreadable";
 
 export interface AdapterStatus {
@@ -107,7 +116,10 @@ export async function collectStatus(
       continue;
     }
     const file = await fileSystem.read(install.settingsPath);
-    const inspection = inspectSettings(file?.content.toString("utf8"));
+    const inspection = inspectSettings(
+      file?.content.toString("utf8"),
+      buildHookCommand(environment.nodePath, environment.entryPath),
+    );
     const complete = OBSERVED_EVENTS.every(({ event }) =>
       inspection.installedEvents.includes(event),
     );
@@ -119,9 +131,11 @@ export async function collectStatus(
           ? "unreadable"
           : inspection.hooksDisabled
             ? "disabled"
-            : complete
-              ? "active"
-              : "missing",
+            : !complete
+              ? "missing"
+              : inspection.alteredEvents.length > 0
+                ? "altered"
+                : "active",
     });
   }
 

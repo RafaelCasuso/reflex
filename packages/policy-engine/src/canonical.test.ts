@@ -189,11 +189,13 @@ rules:
     );
   });
 
-  // A change to the canonical form changes every recorded hash. If this fails,
-  // that is what happened: bump POLICY_SET_FORMAT and say so in the commit.
+  // A change to the canonical form changes every recorded hash, and so does a
+  // change to REFLEX's built-in rules, which are part of every set (RFX-103).
+  // If this fails, one of the two happened: say which in the commit, and bump
+  // POLICY_SET_FORMAT if it was the form.
   it("is frozen for a known policy", () => {
     expect(hashOf("version: 1\nrules: []\n")).toBe(
-      "sha256:5eac805b7e3d49a677aacd6d6668f3998a380b003e8b6fd7e3d9408fc9a00c86",
+      "sha256:d187253de6b7056c3be281aa8b7931e95908e4f9c85be3a2824056632563804c",
     );
   });
 });

@@ -63,3 +63,5 @@ export {
   type Subject,
   type SubjectSet,
 } from "./subjects.js";
+export { BUILT_IN_POLICY_YAML, builtInPolicy } from "./packs/built-in.js";
+export { STARTER_POLICY_YAML, starterPolicy } from "./packs/starter.js";

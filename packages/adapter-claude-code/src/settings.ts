@@ -99,15 +99,25 @@ export interface SettingsInspection {
   readonly managedHooksOnly: boolean;
   /** Events that already carry a REFLEX-managed hook. */
   readonly installedEvents: readonly string[];
+  /**
+   * RFX-103: events whose REFLEX-managed hook no longer runs the command that
+   * was expected. The marker is still there and the hook does something else,
+   * for example nothing. Only filled when an expected command is given.
+   */
+  readonly alteredEvents: readonly string[];
   /** Hooks that belong to the user or to other tools. Never touched. */
   readonly foreignHooks: number;
 }
 
-export function inspectSettings(text: string | undefined): SettingsInspection {
+export function inspectSettings(
+  text: string | undefined,
+  expectedCommand?: string,
+): SettingsInspection {
   const empty = {
     hooksDisabled: false,
     managedHooksOnly: false,
     installedEvents: [],
+    alteredEvents: [],
     foreignHooks: 0,
   };
   if (text === undefined) {
@@ -120,11 +130,21 @@ export function inspectSettings(text: string | undefined): SettingsInspection {
 
   const { root } = parsed;
   const installedEvents: string[] = [];
+  const alteredEvents: string[] = [];
   let foreignHooks = 0;
   for (const event of Object.keys(isRecord(root.hooks) ? root.hooks : {})) {
     const hooks = hookGroups(root, event).flatMap(groupHooks);
-    if (hooks.some(isManagedHook)) {
+    const managed = hooks.filter(isManagedHook);
+    if (managed.length > 0) {
       installedEvents.push(event);
+      if (
+        expectedCommand !== undefined &&
+        !managed.some(
+          (hook) => isRecord(hook) && hook.command === expectedCommand,
+        )
+      ) {
+        alteredEvents.push(event);
+      }
     }
     foreignHooks += hooks.filter((hook) => !isManagedHook(hook)).length;
   }
@@ -134,6 +154,7 @@ export function inspectSettings(text: string | undefined): SettingsInspection {
     hooksDisabled: root.disableAllHooks === true,
     managedHooksOnly: root.allowManagedHooksOnly === true,
     installedEvents,
+    alteredEvents,
     foreignHooks,
   };
 }

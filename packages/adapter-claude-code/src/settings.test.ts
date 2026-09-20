@@ -79,12 +79,33 @@ describe("RFX-041 detection", () => {
       hooksDisabled: false,
       managedHooksOnly: false,
       installedEvents: [],
+      alteredEvents: [],
       foreignHooks: 2,
     });
     expect(inspectSettings(installed(USER_SETTINGS))).toMatchObject({
       installedEvents: expect.arrayContaining(EVENTS) as unknown,
       foreignHooks: 2,
     });
+  });
+
+  // RFX-103: a hook that keeps REFLEX's marker and runs something else.
+  it("tells a hook that runs the expected command from one that was altered", () => {
+    const text = installed(USER_SETTINGS);
+    expect(inspectSettings(text, COMMAND).alteredEvents).toEqual([]);
+    // Without an expected command there is nothing to compare with.
+    expect(inspectSettings(text).alteredEvents).toEqual([]);
+
+    const altered = text.replace(
+      JSON.stringify(COMMAND),
+      JSON.stringify("REFLEX_MANAGED=1 true"),
+    );
+    expect(altered).not.toBe(text);
+    const inspection = inspectSettings(altered, COMMAND);
+    expect(inspection.alteredEvents).toHaveLength(1);
+    // Still counted as installed: the marker is there, which is the point.
+    expect(inspection.installedEvents).toEqual(
+      expect.arrayContaining(EVENTS) as unknown,
+    );
   });
 
   // An install that can never run must be said out loud (CLAUDE.md §5).

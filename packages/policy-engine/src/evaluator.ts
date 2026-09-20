@@ -11,6 +11,7 @@ import type {
 
 import { canonicalizePolicySet } from "./canonical.js";
 import { ruleMatches, type MatchContext } from "./matcher.js";
+import { builtInPolicy } from "./packs/built-in.js";
 import type { PathContext } from "./paths.js";
 import { compilePattern, type CompiledPattern } from "./pattern.js";
 import {
@@ -72,11 +73,24 @@ function patternsIn(condition: PolicyCondition, found: Set<string>): void {
   }
 }
 
-/** Everything that can be done once is done here, not per evaluation. */
+/**
+ * Everything that can be done once is done here, not per evaluation.
+ *
+ * REFLEX's own rules (RFX-103) are part of every set. They are added here and
+ * nowhere else, so that no caller can leave them out and no policy source can
+ * take their place.
+ */
 export function compilePolicySet(
-  sources: readonly PolicySourceDocument[],
+  given: readonly PolicySourceDocument[],
 ): CompileResult {
   const problems: string[] = [];
+  if (given.some((entry) => entry.source === "built-in")) {
+    problems.push("built-in is REFLEX's own source and cannot be supplied");
+  }
+  const sources: readonly PolicySourceDocument[] = [
+    { source: "built-in", trusted: true, document: builtInPolicy() },
+    ...given.filter((entry) => entry.source !== "built-in"),
+  ];
   const rules: SourcedRule[] = [];
   const sources_ = new Set<string>();
   let unresolved: PolicyUnresolvedDefault | undefined;

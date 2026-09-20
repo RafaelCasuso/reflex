@@ -143,14 +143,14 @@ from the execution path**, which `CLAUDE.md` principle 5 forbids. The host will
 not close them for us: apart from exit code 2, Claude Code fails open on
 everything. They have to be closed or made loud on REFLEX's side:
 
-| Fail-open path                        | Closed or surfaced by                                                                                          |
-| ------------------------------------- | -------------------------------------------------------------------------------------------------------------- |
-| hook removed, disabled or excluded    | `rfx status` already re-reads the file and reports `HOOK MISSING` / `DISABLED`; RFX-103 adds self-protection   |
-| command missing after an upgrade/move | `rfx init` is self-healing and re-points the hook; RFX-055 (`rfx doctor`) should check the path                |
-| crash, invalid output                 | the enforcing hook must catch everything and answer explicitly (`ask` or `deny`) per ADR-003; never exit non-2 |
-| timeout                               | the enforcing hook needs its own deadline, shorter than the host's, and must answer before it (RFX-022)        |
-| a local daemon that is down           | ADR-010 must define what the hook answers when it cannot reach it                                              |
-| host schema drift                     | RFX-124 (canary)                                                                                               |
+| Fail-open path                              | Closed or surfaced by                                                                                                                                                                                                                                                                          |
+| ------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| hook removed, disabled, altered or excluded | `rfx status` re-reads the file and reports `HOOK MISSING`, `DISABLED` or `HOOK ALTERED` (the marker is still there and the command is not the one this `rfx` installs); built-in mandatory rules make every write to REFLEX's files or to the host's hook settings ask a human first (RFX-103) |
+| command missing after an upgrade/move       | `rfx init` is self-healing and re-points the hook; RFX-055 (`rfx doctor`) should check the path                                                                                                                                                                                                |
+| crash, invalid output                       | the enforcing hook must catch everything and answer explicitly (`ask` or `deny`) per ADR-003; never exit non-2                                                                                                                                                                                 |
+| timeout                                     | the enforcing hook needs its own deadline, shorter than the host's, and must answer before it (RFX-022)                                                                                                                                                                                        |
+| a local daemon that is down                 | ADR-010 must define what the hook answers when it cannot reach it                                                                                                                                                                                                                              |
+| host schema drift                           | RFX-124 (canary)                                                                                                                                                                                                                                                                               |
 
 One more consequence: an enforcing hook that wants `deny` on failure must
 produce it **itself**, quickly and reliably. "Fail closed" cannot rely on the

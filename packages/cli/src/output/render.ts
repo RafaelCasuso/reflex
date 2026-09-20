@@ -170,6 +170,8 @@ const HEALTH: Readonly<Record<string, string>> = {
     'HOOK MISSING: removed or edited since install. Run "rfx init" to repair.',
   disabled:
     'DISABLED by "disableAllHooks" in that file. REFLEX is not running.',
+  altered:
+    'HOOK ALTERED: it no longer runs the command this rfx installs. Run "rfx init" to repair.',
   unreadable: "UNREADABLE: that file is not valid JSON.",
 };
 
