@@ -559,6 +559,19 @@ function classifySegment(segment: ShellSegment): ClassifiedSegment {
   let kind = program.kind;
   const paths = [...program.paths];
 
+  // Whatever the program is, an argument that is written like a path may be
+  // one: `curl -T ~/.ssh/id_ed25519`, `gh release upload v1 ./secret.pem`. For
+  // a rule that restricts, one path too many is the safe mistake.
+  for (const arg of segment.args) {
+    // `-d @file`, `-F upload=@file`, `--data-binary=@file`
+    const attached = /(?:^|=)@(.+)$/.exec(arg)?.[1];
+    if (attached !== undefined && attached !== "-") {
+      paths.push(attached);
+    } else if (!isOption(arg) && looksLikePath(arg)) {
+      paths.push(arg);
+    }
+  }
+
   for (const redirect of segment.redirects) {
     const { operator, target } = redirect;
     if (

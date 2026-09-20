@@ -703,6 +703,15 @@ class Parser {
     if (name === "eval" || name === "source" || name === ".") {
       reasons.add("dynamic-command");
     }
+    if (name !== undefined && SHELLS.has(name)) {
+      const flagAt = rest.findIndex(
+        (word) => word.text === "-c" || /^-[a-z]*c$/.test(word.text),
+      );
+      const script = flagAt === -1 ? undefined : rest[flagAt + 1];
+      if (flagAt !== -1 && script?.literal !== true) {
+        reasons.add("dynamic-command");
+      }
+    }
     if (name !== undefined && SHELLS.has(name) && input === "here-document") {
       this.#hereDocumentIsCode = true;
     }
@@ -731,12 +740,16 @@ class Parser {
     }
 
     if (name !== undefined) {
-      this.#unwrap(name, rest);
+      this.#unwrap(name, rest, input);
     }
   }
 
   /** The command a wrapper runs becomes a segment of its own. */
-  #unwrap(name: string, rest: readonly Word[]): void {
+  #unwrap(
+    name: string,
+    rest: readonly Word[],
+    input: ShellInput | undefined,
+  ): void {
     const literalRest = rest.every((word) => word.literal);
 
     if (SHELLS.has(name) || name === "eval") {
@@ -795,7 +808,9 @@ class Parser {
       }
       const reasons: NotUnderstoodReason[] =
         name === "xargs" ? ["runtime-arguments"] : [];
-      this.#segment(inner, [], undefined, reasons);
+      // `curl ... | sudo bash`: the pipe feeds the shell, through the wrapper.
+      // `xargs` consumes its input itself and hands over arguments instead.
+      this.#segment(inner, [], name === "xargs" ? undefined : input, reasons);
       return;
     }
 

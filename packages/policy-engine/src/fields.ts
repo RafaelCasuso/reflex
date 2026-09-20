@@ -1,3 +1,4 @@
+import { NOT_UNDERSTOOD_REASONS } from "@reflex/command-classifier";
 import {
   ENVIRONMENT_KINDS,
   HOST_KINDS,
@@ -90,6 +91,14 @@ export const POLICY_FIELDS: readonly FieldSpec[] = [
     multi: false,
     description:
       "A shell segment as normalized text: the program name and its arguments, joined by single spaces.",
+  },
+  {
+    name: "command.reasons",
+    kind: "enum",
+    values: NOT_UNDERSTOOD_REASONS,
+    multi: true,
+    description:
+      "Why a shell segment was not fully understood, if it was not: a substitution, a variable, a glob, a shell fed by a pipe. Absent when it was understood.",
   },
   {
     name: "path",

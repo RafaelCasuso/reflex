@@ -27,6 +27,7 @@ import { valuesOf, type FieldValue, type Subject } from "./subjects.js";
  * | a pattern on a very long text | does not match              | is evaluated all the same    |
  * | a path that matches by case only | is not within            | is within                    |
  * | a directory that is unknown  | is not within                | is within                    |
+ * | arguments that cannot be read (`rm -rf $DIR`) | never matches | may point anywhere: "every path is inside" is false |
  * | a tool from an MCP server    | only if the rule names `tool.namespace` | matches as usual    |
  *
  * Under `not` the reading flips, so that the rule as a whole keeps leaning the
@@ -40,6 +41,8 @@ export interface MatchContext extends PathContext {
   /** Compiled once per policy set, never per evaluation. */
   readonly pattern: (source: string) => CompiledPattern | undefined;
 }
+
+const isList = (field: string): boolean => fieldSpec(field)?.multi === true;
 
 const kindOf = (rule: PolicyRule): RuleKind =>
   rule.effect === "allow" ? "permits" : "restricts";
@@ -124,11 +127,20 @@ function holds(
       // out false: "not rm" must not allow a tool call that has no command.
       return easy;
     }
+    // `exists` asks a plain question, and the answer for nothing is no.
+    if (condition.operator === "exists") {
+      return false;
+    }
+    // A segment whose arguments could not be read may point anywhere. "Every
+    // path is inside the project" cannot be said of `rm -rf $HOME`.
+    if (!easy && subject.openLists && isList(condition.field)) {
+      return false;
+    }
     // For a rule that restricts, absence is a plain fact. A field that holds
     // a list (paths, arguments, hosts) is an empty list: no value satisfies
     // anything, and every value satisfies everything, so a rule about paths
     // says nothing about an action that touches none.
-    if (fieldSpec(condition.field)?.multi === true) {
+    if (isList(condition.field)) {
       return !easy;
     }
     // A field that holds one value simply has none: nothing equals it, and it
@@ -138,7 +150,12 @@ function holds(
   }
   const test = (value: FieldValue): boolean =>
     compare(condition, value, kind, context);
-  return easy ? values.some(test) : values.every(test);
+  if (easy) {
+    return values.some(test);
+  }
+  // Read the hard way, every value has to satisfy it, and the values that
+  // could not be read count as ones that do not.
+  return !(subject.openLists && isList(condition.field)) && values.every(test);
 }
 
 const mentionsNamespace = (condition: PolicyCondition): boolean =>

@@ -34,6 +34,12 @@ export interface Subject {
    * or a path could not be made absolute.
    */
   readonly understood: boolean;
+  /**
+   * True when the segment has arguments that could not be read (a variable, a
+   * glob, a substitution, what `xargs` supplies). Its lists of arguments,
+   * paths and hosts are then incomplete: it may point anywhere.
+   */
+  readonly openLists: boolean;
   /** The host's own arguments, for `arguments.<key>` fields. */
   readonly rawArguments: Readonly<Record<string, unknown>>;
 }
@@ -143,6 +149,7 @@ export function subjectsOf(
         {
           fields,
           understood: declaredPaths.complete,
+          openLists: false,
           rawArguments: action.arguments,
         },
       ],
@@ -188,15 +195,19 @@ export function subjectsOf(
     if (hosts.length > 0) {
       fields.set("network.host", [...new Set(hosts)]);
     }
-    return fields;
+    if (entry.segment.reasons.length > 0) {
+      fields.set("command.reasons", entry.segment.reasons);
+    }
+    return { fields, openLists: !entry.segment.understood };
   });
 
   // One segment that is not understood taints them all: `ls; $X` cannot be
   // allowed by allowing `ls`.
   return {
-    subjects: drafts.map((fields) => ({
+    subjects: drafts.map(({ fields, openLists }) => ({
       fields,
       understood,
+      openLists,
       rawArguments: action.arguments,
     })),
     sideEffectClass: overall,

