@@ -90,6 +90,39 @@ layout and the dependency rules in `CLAUDE.md` in the same change.
   in `CONTRACT_LIMITS`.
 - A new package and a change to a layout that is declared exact.
 
+## Implementation notes
+
+Made precise while implementing RFX-096 (2026-09-20). They narrow the accepted
+decision and do not change it.
+
+- **What "indirection" means.** A command is not understood when the program
+  that runs, or the arguments it runs with, are not in the command text: a
+  substitution, a variable, a glob, `eval`, a shell fed by a pipe or a
+  here-document, the arguments `xargs` and `find -exec` supply at run time. No
+  allow rule matches such a command.
+- **A script runner is a different thing.** In `pnpm test`, `make release` or
+  `./deploy.sh` the program and its arguments are fully visible; what is
+  defined elsewhere is what they do. That is a question of class, not of
+  understanding: such a segment is marked `indirect` and its class is
+  `unknown`, never better. An allow rule for it can be written, and is a
+  statement of trust in the repository, which the threat model lists as an
+  accepted risk. Without this, the most common action of a coding agent,
+  running the tests, could never be allowed by any rule.
+- **Wrappers are decomposed.** `sudo`, `env`, `nohup`, `timeout`, `xargs`,
+  `find -exec`, `bash -c '...'`, `$(...)`, backticks, subshells, the body of a
+  shell's here-document: the inner command is a segment of its own, so a deny
+  rule sees the program that really runs.
+- **Where the classifier runs.** The adapter fills operands without parsing
+  anything, because it runs in the per-call process (ADR-010). The classifier
+  runs where the engine runs. C3 holds as written: a class is only ever raised.
+- **Paths are lexical.** No symlink is resolved and the disk is never read. The
+  classifier is pure; resolving what a path really points to belongs to the
+  component that has a file system, and to RFX-103 for REFLEX's own files.
+- **A truncating redirection is destructive.** `> file` empties what was there,
+  and whether anything was there is not known. `>> file`, and `>` into a
+  temporary directory, are local writes. Output discarded into `/dev/null`
+  touches nothing.
+
 ## Open questions
 
 - Which operands are in the first cut? Command, paths and network targets are

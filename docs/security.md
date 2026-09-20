@@ -97,13 +97,13 @@ A repository the user clones and opens. It can ship its own
 `.reflex/policy.yaml`, its own host settings, scripts, package-manager hooks
 and file names chosen to confuse a matcher.
 
-| Mitigation                                                                                                                      | Ticket                    |
-| ------------------------------------------------------------------------------------------------------------------------------- | ------------------------- |
-| A project policy is untrusted until the user trusts that content; untrusted can only tighten: its allow rules are ignored       | ADR-012, ADR-004, RFX-104 |
-| Trust is bound to the content and asked again when it changes                                                                   | RFX-104                   |
-| REFLEX installs into the user's local settings by default, through a reversible transaction, and reports the state of its hooks | RFX-044, RFX-056          |
-| Package-manager scripts are indirect execution, and are never "fully understood" for an allow rule                              | RFX-096                   |
-| A policy cannot make evaluation slow: regular expressions are bounded, and so is document size                                  | RFX-098, RFX-012          |
+| Mitigation                                                                                                                                                                                   | Ticket                    |
+| -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------- |
+| A project policy is untrusted until the user trusts that content; untrusted can only tighten: its allow rules are ignored                                                                    | ADR-012, ADR-004, RFX-104 |
+| Trust is bound to the content and asked again when it changes                                                                                                                                | RFX-104                   |
+| REFLEX installs into the user's local settings by default, through a reversible transaction, and reports the state of its hooks                                                              | RFX-044, RFX-056          |
+| A program that runs code defined in the repository (`pnpm test`, `make`, `./deploy.sh`) is marked indirect and is never of a better class than `unknown`; allowing it takes an explicit rule | RFX-096                   |
+| A policy cannot make evaluation slow: regular expressions are bounded, and so is document size                                                                                               | RFX-098, RFX-012          |
 
 **Accepted risk:** a repository whose allowed build or test commands are
 malicious. See "REFLEX is not a sandbox".
