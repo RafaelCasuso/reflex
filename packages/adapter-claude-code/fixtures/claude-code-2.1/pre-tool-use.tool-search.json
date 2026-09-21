@@ -5,14 +5,10 @@
   "prompt_id": "550e8400-e29b-41d4-a716-446655440000",
   "permission_mode": "default",
   "hook_event_name": "PreToolUse",
-  "tool_name": "mcp__notes__save_note",
+  "tool_name": "ToolSearch",
   "tool_input": {
-    "title": "first",
-    "body": "remember the milk"
+    "query": "select:mcp__notes__save_note",
+    "max_results": 1
   },
-  "tool_use_id": "toolu_01McpSaveNote000000007",
-  "mcp_server": {
-    "name": "notes",
-    "source": "dynamic"
-  }
+  "tool_use_id": "toolu_01ToolSearch0000000005"
 }

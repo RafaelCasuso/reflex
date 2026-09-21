@@ -5,12 +5,9 @@
   "prompt_id": "550e8400-e29b-41d4-a716-446655440000",
   "permission_mode": "default",
   "hook_event_name": "PreToolUse",
-  "tool_name": "Edit",
+  "tool_name": "Read",
   "tool_input": {
-    "file_path": "/work/project/greeting.txt",
-    "old_string": "hello world",
-    "new_string": "hello reflex",
-    "replace_all": false
+    "file_path": "/work/project/greeting.txt"
   },
-  "tool_use_id": "toolu_01EditGreeting00000004"
+  "tool_use_id": "toolu_01ReadGreeting00000003"
 }

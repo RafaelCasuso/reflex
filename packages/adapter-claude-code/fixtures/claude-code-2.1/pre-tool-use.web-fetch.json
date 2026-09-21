@@ -1,0 +1,14 @@
+{
+  "session_id": "0b9f2d6e-5c1a-4f7b-9e3d-2a8c6f4b1d70",
+  "transcript_path": "/home/dev/.claude/projects/-private-var-folders-1s--nj51k2909334n3796ht9-c00000gn-T-reflex-rfx089-6Ru7RO-webfetch/0b9f2d6e-5c1a-4f7b-9e3d-2a8c6f4b1d70.jsonl",
+  "cwd": "/work/project",
+  "prompt_id": "550e8400-e29b-41d4-a716-446655440000",
+  "permission_mode": "default",
+  "hook_event_name": "PreToolUse",
+  "tool_name": "WebFetch",
+  "tool_input": {
+    "url": "https://example.com/",
+    "prompt": "what is the title of this page?"
+  },
+  "tool_use_id": "toolu_01WebFetchExample00008"
+}

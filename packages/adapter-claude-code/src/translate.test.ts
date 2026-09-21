@@ -24,7 +24,7 @@ describe("RFX-042 reading the hook payload", () => {
     ["pre-tool-use.bash", "PreToolUse", "Bash"],
     ["pre-tool-use.write", "PreToolUse", "Write"],
     ["pre-tool-use.edit", "PreToolUse", "Edit"],
-    ["pre-tool-use.mcp", "PreToolUse", "mcp__github__create_pull_request"],
+    ["pre-tool-use.mcp", "PreToolUse", "mcp__notes__save_note"],
     ["permission-request.bash", "PermissionRequest", "Bash"],
     ["post-tool-use.bash", "PostToolUse", "Bash"],
     ["post-tool-use-failure.bash", "PostToolUseFailure", "Bash"],
@@ -115,6 +115,65 @@ describe("RFX-042 reading the hook payload", () => {
   ])("returns a typed failure for %s", (_label, stdin, reason) => {
     expect(readHookInput(stdin)).toEqual({ ok: false, reason });
   });
+
+  // RFX-089: seen live, `mcp_server` is an object, not a string. Reading it as
+  // a string found nothing and quietly fell back to splitting the tool name.
+  describe("the host's statement of an MCP tool's server", () => {
+    const withServer = (mcpServer: unknown): string =>
+      JSON.stringify({
+        hook_event_name: "PreToolUse",
+        tool_name: "mcp__notes__save_note",
+        tool_input: {},
+        mcp_server: mcpServer,
+      });
+
+    it("reads the name from the object the host sends", () => {
+      expect(
+        readHookInput(withServer({ name: "notes", source: "dynamic" })),
+      ).toMatchObject({ ok: true, event: { mcpServer: "notes" } });
+    });
+
+    it("reads it from the fixture captured live", () => {
+      expect(toolEvent("pre-tool-use.mcp").mcpServer).toBe("notes");
+      expect(toolEvent("pre-tool-use.write").mcpServer).toBeUndefined();
+    });
+
+    it("reads a bare string as the name", () => {
+      expect(readHookInput(withServer("notes"))).toMatchObject({
+        ok: true,
+        event: { mcpServer: "notes" },
+      });
+    });
+
+    it("treats none, and null, as a tool of the host's own", () => {
+      expect(readHookInput(withServer(undefined))).toMatchObject({
+        ok: true,
+        event: { mcpServer: undefined },
+      });
+      expect(readHookInput(withServer(null))).toMatchObject({
+        ok: true,
+        event: { mcpServer: undefined },
+      });
+    });
+
+    // Adversarial: a statement that is there and cannot be read must not be
+    // passed over, because what is left is guessing the server from the name.
+    it.each([
+      ["an object without a name", { source: "dynamic" }],
+      ["a name that is not a string", { name: ["notes"] }],
+      ["an empty name", { name: "" }],
+      ["an empty string", ""],
+      ["a number", 7],
+      ["a list", ["notes"]],
+      ["true", true],
+      ["an absurdly long name", { name: "x".repeat(10_000) }],
+    ])("fails the event for %s", (_label, mcpServer) => {
+      expect(readHookInput(withServer(mcpServer))).toEqual({
+        ok: false,
+        reason: "invalid-tool-event",
+      });
+    });
+  });
 });
 
 describe("RFX-042 translating to the canonical action", () => {
@@ -149,7 +208,7 @@ describe("RFX-042 translating to the canonical action", () => {
   it("splits an MCP tool into namespace and name", () => {
     expect(
       toCanonicalAction(toolEvent("pre-tool-use.mcp"), context).tool,
-    ).toEqual({ name: "create_pull_request", namespace: "github" });
+    ).toEqual({ name: "save_note", namespace: "notes" });
   });
 
   it("keeps host-specific data in adapterMetadata and nowhere else", () => {
@@ -241,16 +300,72 @@ describe("RFX-042 MCP tool names", () => {
     expect(parseToolName(hostName)).toEqual(expected);
   });
 
-  // Adversarial: a malformed name is kept whole, never repaired into a
-  // namespace and a tool it did not declare.
-  it.each([
-    "mcp__",
-    "mcp____tool",
-    "mcp__server",
-    "mcp__server__",
-    "mcp_single__x",
-  ])("keeps the malformed name %s whole", (hostName) => {
-    expect(parseToolName(hostName)).toEqual({ name: hostName });
+  // Adversarial: a malformed name is kept whole, never repaired into a tool
+  // it did not declare. And it always gets a namespace: a name that starts
+  // with `mcp__` must never pass for one of the host's own tools, which is
+  // what an allow rule without `tool.namespace` reaches (ADR-011).
+  it.each(["mcp__", "mcp____tool", "mcp__server", "mcp__server__"])(
+    "keeps the malformed name %s whole, and never as a built-in tool",
+    (hostName) => {
+      const tool = parseToolName(hostName);
+      expect(tool.name).toBe(hostName);
+      expect(tool.namespace).toBeDefined();
+      expect(tool.namespace).not.toBe("");
+    },
+  );
+
+  it("leaves a name alone that only looks like the prefix", () => {
+    expect(parseToolName("mcp_single__x")).toEqual({ name: "mcp_single__x" });
+    expect(parseToolName("mcp")).toEqual({ name: "mcp" });
+  });
+
+  // RFX-089: seen live, the host states the server in `mcp_server`. The name
+  // alone splits in more than one way, and a server could choose its name to
+  // be read as another one.
+  describe("when the host says which server it is", () => {
+    it("takes the namespace from the host and the tool from what follows", () => {
+      expect(parseToolName("mcp__notes__save_note", "notes")).toEqual({
+        name: "save_note",
+        namespace: "notes",
+      });
+    });
+
+    it("is not fooled by a server whose name reads like another one", () => {
+      // Split by name alone this is the tool `admin__delete` of `github`.
+      expect(parseToolName("mcp__github__admin__delete")).toEqual({
+        name: "admin__delete",
+        namespace: "github",
+      });
+      // The host knows better: it is the tool `delete` of `github__admin`.
+      expect(
+        parseToolName("mcp__github__admin__delete", "github__admin"),
+      ).toEqual({
+        name: "delete",
+        namespace: "github__admin",
+      });
+    });
+
+    it("keeps the whole name when the two disagree, so that no rule about a tool matches by accident", () => {
+      expect(parseToolName("mcp__github__get_issue", "evil")).toEqual({
+        name: "mcp__github__get_issue",
+        namespace: "evil",
+      });
+      expect(parseToolName("mcp__evil__", "evil")).toEqual({
+        name: "mcp__evil__",
+        namespace: "evil",
+      });
+    });
+
+    it("gives a namespace to a tool that claims a built-in name", () => {
+      expect(parseToolName("Bash", "helper")).toEqual({
+        name: "Bash",
+        namespace: "helper",
+      });
+    });
+
+    it("ignores an empty statement", () => {
+      expect(parseToolName("Bash", "")).toEqual({ name: "Bash" });
+    });
   });
 });
 

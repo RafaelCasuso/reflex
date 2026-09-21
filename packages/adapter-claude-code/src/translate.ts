@@ -25,8 +25,37 @@ export interface TranslationContext {
 const MCP_PREFIX = "mcp__";
 const MCP_SEPARATOR = "__";
 
-/** `mcp__<server>__<tool>`: the server is the namespace, the tool the name. */
-export function parseToolName(hostToolName: string): ActionTool {
+/**
+ * The namespace of a tool is what an allow rule trusts (ADR-011: an allow rule
+ * reaches an MCP tool only if it names `tool.namespace`), so it must never be
+ * guessed wrong.
+ *
+ * The host names an MCP tool `mcp__<server>__<tool>`, and that does not split
+ * in one way only: `mcp__github__admin__delete` is the tool `admin__delete` of
+ * the server `github`, or the tool `delete` of the server `github__admin`. A
+ * server could choose its name to be read as another one. The host also says
+ * which server it is, in `mcp_server.name` (seen live on 2.1.276, RFX-089),
+ * and that is authoritative.
+ *
+ * - With `mcp_server`: it is the namespace. The tool is what follows the exact
+ *   prefix. If the name does not carry that prefix the two disagree, and the
+ *   whole name is kept, so that no rule about a tool name matches by accident.
+ * - Without it (a host that does not say): split at the first separator, as
+ *   documented.
+ * - A name that starts with `mcp__` always gets a namespace, however badly it
+ *   is formed. It must never pass for one of the host's own tools.
+ */
+export function parseToolName(
+  hostToolName: string,
+  mcpServer?: string,
+): ActionTool {
+  if (mcpServer !== undefined && mcpServer !== "") {
+    const prefix = `${MCP_PREFIX}${mcpServer}${MCP_SEPARATOR}`;
+    return hostToolName.startsWith(prefix) &&
+      hostToolName.length > prefix.length
+      ? { name: hostToolName.slice(prefix.length), namespace: mcpServer }
+      : { name: hostToolName, namespace: mcpServer };
+  }
   if (!hostToolName.startsWith(MCP_PREFIX)) {
     return { name: hostToolName };
   }
@@ -34,10 +63,8 @@ export function parseToolName(hostToolName: string): ActionTool {
   const separator = rest.indexOf(MCP_SEPARATOR);
   const namespace = rest.slice(0, separator);
   const name = rest.slice(separator + MCP_SEPARATOR.length);
-  // Anything that does not split cleanly stays whole. A malformed name must
-  // not be "repaired" into a namespace and a tool it never declared.
   return separator <= 0 || name === ""
-    ? { name: hostToolName }
+    ? { name: hostToolName, namespace: rest === "" ? "mcp" : rest }
     : { name, namespace };
 }
 
@@ -55,6 +82,10 @@ const SETTLED_BY_NAME: Readonly<Record<string, SideEffectClass>> = {
   WebSearch: "external-read",
   // Edits the agent's own to-do list.
   TodoWrite: "none",
+  // Loads the definition of a deferred tool. The host calls it before the
+  // first use of an MCP tool or of `WebFetch` (seen live, RFX-089). It touches
+  // nothing, and left as `unknown` it would put a prompt before every such call.
+  ToolSearch: "none",
 };
 
 export function classifyByName(tool: ActionTool): SideEffectClass {
@@ -135,7 +166,7 @@ export function toCanonicalAction(
   event: ClaudeToolEvent,
   context: TranslationContext,
 ): CanonicalAction {
-  const tool = parseToolName(event.toolName);
+  const tool = parseToolName(event.toolName, event.mcpServer);
   const operands = operandsOf(tool, event.toolInput);
 
   return {

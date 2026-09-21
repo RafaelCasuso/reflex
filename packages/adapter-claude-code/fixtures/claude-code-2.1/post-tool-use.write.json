@@ -4,11 +4,20 @@
   "cwd": "/work/project",
   "prompt_id": "550e8400-e29b-41d4-a716-446655440000",
   "permission_mode": "default",
-  "hook_event_name": "PreToolUse",
+  "hook_event_name": "PostToolUse",
   "tool_name": "Write",
   "tool_input": {
     "file_path": "/work/project/notes.txt",
     "content": "hello from reflex"
   },
-  "tool_use_id": "toolu_01WriteNotes0000000002"
+  "tool_response": {
+    "type": "create",
+    "filePath": "/work/project/notes.txt",
+    "content": "hello from reflex",
+    "structuredPatch": [],
+    "originalFile": null,
+    "userModified": false
+  },
+  "tool_use_id": "toolu_01WriteNotes0000000002",
+  "duration_ms": 3
 }

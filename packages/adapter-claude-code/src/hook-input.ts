@@ -30,6 +30,12 @@ export interface ClaudeToolEvent {
   readonly toolInput: Readonly<Record<string, unknown>>;
   readonly cwd: string | undefined;
   readonly permissionMode: string | undefined;
+  /**
+   * The name of the MCP server a tool belongs to, as the host states it in
+   * `mcp_server` (seen live on 2.1.276, RFX-089). Absent for the host's own
+   * tools.
+   */
+  readonly mcpServer: string | undefined;
 }
 
 export interface ClaudeTurnEndedEvent {
@@ -62,6 +68,28 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 
 function optionalString(value: unknown): string | undefined {
   return typeof value === "string" && value !== "" ? value : undefined;
+}
+
+type McpServerReading =
+  | { readonly ok: true; readonly name: string | undefined }
+  | { readonly ok: false };
+
+/**
+ * The host states an MCP tool's server as `{ name, source }` (seen live on
+ * 2.1.276, RFX-089). A bare string is read as the name. A statement that is
+ * there and cannot be read fails the event: the alternative is guessing the
+ * server from the tool name, which is the ambiguity this field ends.
+ */
+function readMcpServer(value: unknown): McpServerReading {
+  if (value === undefined || value === null) {
+    return { ok: true, name: undefined };
+  }
+  const name = isRecord(value) ? value.name : value;
+  return typeof name === "string" &&
+    name !== "" &&
+    name.length <= MAX_NAME_LENGTH
+    ? { ok: true, name }
+    : { ok: false };
 }
 
 function isToolEvent(name: string): name is ToolEventName {
@@ -105,6 +133,10 @@ export function readHookInput(stdin: string): HookInputResult {
   ) {
     return { ok: false, reason: "invalid-tool-event" };
   }
+  const mcpServer = readMcpServer(payload.mcp_server);
+  if (!mcpServer.ok) {
+    return { ok: false, reason: "invalid-tool-event" };
+  }
 
   return {
     ok: true,
@@ -117,6 +149,7 @@ export function readHookInput(stdin: string): HookInputResult {
       toolInput,
       cwd: optionalString(payload.cwd),
       permissionMode: optionalString(payload.permission_mode),
+      mcpServer: mcpServer.name,
     },
   };
 }

@@ -91,7 +91,7 @@ export function toObservationRecord(
       if (actionId === undefined && event.sessionId === undefined) {
         return undefined;
       }
-      const tool = parseToolName(event.toolName);
+      const tool = parseToolName(event.toolName, event.mcpServer);
       return {
         kind: "signal",
         recordVersion: RECORD_VERSION,

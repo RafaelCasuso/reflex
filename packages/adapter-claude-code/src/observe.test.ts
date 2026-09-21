@@ -43,8 +43,8 @@ describe("RFX-086 the record of an observed action", () => {
 
   it("names an MCP tool by namespace and name", () => {
     expect(records("pre-tool-use.mcp")[0]).toMatchObject({
-      toolName: "create_pull_request",
-      toolNamespace: "github",
+      toolName: "save_note",
+      toolNamespace: "notes",
     });
   });
 
