@@ -115,12 +115,12 @@ descriptions, its schemas and everything it returns. It can name a tool to look
 like a trusted one, describe a destructive tool as a read, and return text
 written for the agent (adversary 2).
 
-| Mitigation                                                                                                                   | Ticket              |
-| ---------------------------------------------------------------------------------------------------------------------------- | ------------------- |
-| An MCP tool is never classified from its name or description: its side-effect class is `unknown` until policy says otherwise | RFX-042, ADR-001 §4 |
-| Tools are addressed by namespace and name, so a server cannot impersonate another server's tool                              | RFX-042, RFX-074    |
-| The proxy decides before forwarding and forwards only what was allowed                                                       | RFX-073, RFX-074    |
-| What a tool returns is never an input to a decision about that same call                                                     | RFX-074             |
+| Mitigation                                                                                                                                                                                                             | Ticket                    |
+| ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------- |
+| An MCP tool is never classified from its name or description: its side-effect class is `unknown` until policy says otherwise                                                                                           | RFX-042, ADR-001 §4       |
+| Tools are addressed by namespace and name, and the namespace is the server the host states, never one read out of a name that a server or a repository can shape, so a server cannot impersonate another server's tool | RFX-042, RFX-089, RFX-074 |
+| The proxy decides before forwarding and forwards only what was allowed                                                                                                                                                 | RFX-073, RFX-074          |
+| What a tool returns is never an input to a decision about that same call                                                                                                                                               | RFX-074                   |
 
 **Accepted risk:** what the server does with a call that was legitimately
 allowed. REFLEX governs the call, not the server.

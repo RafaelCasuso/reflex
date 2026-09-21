@@ -86,7 +86,8 @@ Every row above is backed by a recorded live run and a test. What follows is
   runs the call when no hook does.
 - **Not observed:** the interactive terminal (every run was headless), and what
   the user is shown when a hook errors. The hook engine is the same, but that
-  is an inference, not a measurement. RFX-089 is where it gets seen.
+  is an inference, not a measurement. RFX-089 closed without it: its runs were
+  headless too, because a harness has nobody to press a key.
 
 ### What else the live runs showed
 
@@ -114,7 +115,7 @@ These were not in the documentation consulted, and three of them changed code.
    only trace of a refusal, and it is what the outcome rule "prompted, turn
    ended, never executed ⇒ rejected" relies on. It was observed headless, where
    the host refuses on the human's behalf. A human pressing "no" in the
-   terminal has not been observed yet (RFX-089).
+   terminal has still not been observed: the RFX-089 runs were headless too.
 4. **`PermissionRequest` fires in headless mode** when a tool is not
    pre-approved, although nobody can answer.
 5. **A hook that answers `ask` where nobody can answer gets a refusal**, with
@@ -243,18 +244,21 @@ number excludes process start, so it is a lower bound on what the host waits.
 
 ## 5. Where these facts come from
 
-| Fact                                                        | Source                                                                                              |
-| ----------------------------------------------------------- | --------------------------------------------------------------------------------------------------- |
-| Envelope fields, output contract, exit codes, configuration | Official Claude Code hooks reference and settings reference, 2.1.x                                  |
-| `tool_input` field names                                    | `sdk-tools.d.ts` shipped inside `@anthropic-ai/claude-code` 2.1.276                                 |
-| The six event names exist in this version                   | Checked against the installed 2.1.276 binary, with a made-up name as a control                      |
-| Latency                                                     | Measured, this document                                                                             |
-| Host behavior on hook failure                               | **Verified live** on 2.1.276, headless (RFX-087, §3). Two rows remain documentation only and say so |
-| Real payload shapes                                         | `Bash` events **captured live** (RFX-087). File edits and MCP calls are still constructed (RFX-089) |
+| Fact                                                        | Source                                                                                                                                                                                                                                          |
+| ----------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Envelope fields, output contract, exit codes, configuration | Official Claude Code hooks reference and settings reference, 2.1.x                                                                                                                                                                              |
+| `tool_input` field names                                    | `sdk-tools.d.ts` shipped inside `@anthropic-ai/claude-code` 2.1.276                                                                                                                                                                             |
+| The six event names exist in this version                   | Checked against the installed 2.1.276 binary, with a made-up name as a control                                                                                                                                                                  |
+| Latency                                                     | Measured, this document                                                                                                                                                                                                                         |
+| Host behavior on hook failure                               | **Verified live** on 2.1.276, headless (RFX-087, §3). Two rows remain documentation only and say so                                                                                                                                             |
+| Real payload shapes                                         | **Captured live** on 2.1.276, headless: `Bash` (RFX-087); `Write`, `Read`, `Edit`, `WebFetch`, `ToolSearch` and an MCP tool (RFX-089, `docs/canonical-action-review.md`). `MultiEdit`, `NotebookEdit` and `PermissionDenied` have not been seen |
 
 A documentation summary consulted while building the adapter gave wrong field
 names for `Write` and `Edit` (`file_text`, `old_text`). The shipped type
-declarations contradicted it and were taken as authoritative. The adapter is
-built so that this class of error cannot hurt: it never reads inside
-`tool_input`, tolerates envelope fields it does not know, and returns a typed
-failure for an envelope it cannot use.
+declarations contradicted it, were taken as authoritative, and the live host has
+since confirmed them (RFX-089). The adapter is built so that this class of error
+cannot hurt: inside `tool_input` it reads three argument names (`command`,
+`file_path` or `notebook_path`, `url`) and only to copy them into `operands`,
+where a missing one satisfies no allow rule (ADR-011); it tolerates envelope
+fields it does not know, and returns a typed failure for an envelope it cannot
+use.

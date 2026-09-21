@@ -211,6 +211,12 @@ remain open.
 - **ADR-005 (planned):** `SemanticDecisionProvider` and `DecisionEngine`
   currently live in `@reflex/contracts`, while `packages/semantic-provider` is
   described as owning the provider interface. Decide the home before G4.
+- **Review against real payloads (RFX-089, done 2026-09-21):**
+  `docs/canonical-action-review.md`. The model held. One source was wrong:
+  `tool.namespace` was parsed out of the tool name where the host states the
+  server. Three host data are recorded there as candidates for promotion under
+  §3.7 (a turn identifier, the action's own duration, the host's approval
+  mode). None is promoted by the review.
 
 ## Alternatives considered
 
