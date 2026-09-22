@@ -116,6 +116,9 @@ importers:
       '@reflex/contracts':
         specifier: workspace:*
         version: link:../contracts
+      '@reflex/policy-engine':
+        specifier: workspace:*
+        version: link:../policy-engine
 
   packages/evals:
     dependencies:

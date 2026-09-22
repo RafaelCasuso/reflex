@@ -118,6 +118,39 @@ shorter than the host's hook timeout, it answers by itself:
 The client reads the mode and the failure mode from its install-time
 configuration, because it has to know them with the daemon down.
 
+## Implementation notes
+
+Made precise while starting G3 (2026-09-22). They narrow the accepted decision
+and do not change it.
+
+- **The daemon is `apps/decision-gateway`, listening on a Unix domain socket.**
+  `CLAUDE.md` already defines that app as the latency-sensitive runtime
+  decision endpoint, deployable on its own, and the G3 tickets are written for
+  it. One server, two ways to listen: a socket path on the user's machine
+  (same user, no account, no key), and TCP for the remote service that G14
+  puts behind API keys. The handler for `POST /v1/decisions` is the same code
+  in both. No new package.
+- **The protocol over the socket is HTTP/1.1.** Node serves it on a socket
+  path natively, the client needs nothing but `node:http`, and the tickets of
+  this gate are HTTP concepts (a size limit is 413, a rate limit 429, an
+  idempotency conflict 409). What it costs against a raw frame is one of the
+  numbers RFX-024 reports, and the choice is reversible: the client sees a
+  request and a response, not a wire format.
+- **The socket is private to the user.** It lives in a directory of mode
+  `0700` under the REFLEX home, the socket file is `0600`, and the daemon
+  binds nothing else unless told to. A TCP listener that is not loopback
+  refuses to start without an authenticator (G14), because "fail explicit"
+  applies to configuration too.
+- **The daemon treats every client as untrusted input.** Every request is
+  parsed strictly at the boundary (ADR-009), bounded in size before it is read
+  and in rate before it is validated (RFX-119), and answered with a typed
+  error, never a stack trace.
+- **Who starts the daemon is not this gate's work.** The client's own answer
+  when the daemon is down is RFX-043 (G7); starting it on demand, keeping one
+  daemon for many projects, upgrading it while it runs and removing it on
+  uninstall need a ticket of their own, RFX-138, which G3 adds to G7 ahead
+  of RFX-043.
+
 ## Consequences
 
 ### Positive

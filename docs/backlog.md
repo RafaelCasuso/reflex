@@ -714,11 +714,23 @@ This gate opens with the decisions the policy engine depends on (RFX-112 to RFX-
 
 RFX-041, RFX-042 and RFX-044 moved to G1.5, where the adapter is first exercised in Observe. This gate adds decisions to it.
 
+### RFX-138 — Daemon lifecycle
+
+**Goal:** Start, find, upgrade and remove the local decision daemon (ADR-010) so that the hook client can rely on it without the user ever managing a process.
+
+**Acceptance:** The first hook call after `rfx init` starts the daemon if it is not running, once, without a race when several hooks start at the same moment (one daemon per user, however many projects and hosts). A daemon of an older version than the client is replaced without losing a decision in flight. `rfx uninstall` stops it and removes the socket. The socket lives in a directory of mode `0700` under the REFLEX home and is `0600`. A daemon left behind by a crash (stale socket, stale PID) is detected and replaced, never joined. `rfx status` shows whether it runs, its version and its uptime.
+
+**Depends on:** RFX-021.
+
+**Why:** ADR-010 chose a long-lived daemon and listed its lifecycle as an open question. RFX-043 makes the client start it once when it does not answer; that is only safe if starting it is idempotent and the failure paths are defined.
+
 ### RFX-043 — Implement Claude decision mapper
 
 **Goal:** Map allow/ask/deny to supported native permission behavior.
 
-**Acceptance:** ASK delegates to host approval; DENY reliably blocks where supported.
+**Acceptance:** ASK delegates to host approval; DENY reliably blocks where supported. The client answers by itself, inside its own deadline, when the daemon does not answer (ADR-003 §4), after trying once to start it (RFX-138).
+
+**Depends on:** RFX-138.
 
 ### RFX-123 — Consent before action content leaves the machine
 
