@@ -1,6 +1,6 @@
 # ADR-015: Open core boundary
 
-- **Status:** Proposed
+- **Status:** Accepted
 - **Date:** 2026-09-22
 - **Tickets:** RFX-139
 - **Supersedes:** none
@@ -38,8 +38,8 @@ the same question as where the boundary is.
 
 ## Decision
 
-Proposed; the maintainer decides. The recommendation is **open core**, with
-the line drawn by one rule: **everything that runs on the user's machine,
+Accepted by the maintainer on 2026-09-22, as recommended when it was
+proposed the same day. **Open core**, with the line drawn by one rule: **everything that runs on the user's machine,
 and everything a third party needs to integrate with REFLEX or to write a
 provider, is open. Everything that needs an account, and the model itself,
 is private.**

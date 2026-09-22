@@ -1,8 +1,9 @@
 {
   "name": "reflex",
+  "license": "Apache-2.0",
   "version": "0.0.0",
   "private": true,
-  "description": "REFLEX — the autonomy control layer for AI agents.",
+  "description": "REFLEX \u2014 the autonomy control layer for AI agents.",
   "type": "module",
   "packageManager": "pnpm@9.12.0",
   "engines": {

@@ -25,8 +25,8 @@ ADR says so explicitly and the same change updates `CLAUDE.md`.
 | [ADR-011](./ADR-011-normalized-operands-and-classification.md)   | Normalized operands and classification ownership           | Accepted | 2026-09-20 | RFX-095 |
 | [ADR-012](./ADR-012-self-protection-and-workspace-trust.md)      | Self-protection and workspace trust                        | Accepted | 2026-09-20 | RFX-102 |
 | [ADR-013](./ADR-013-action-outcome-observation.md)               | Action outcome observation                                 | Accepted | 2026-09-19 | RFX-091 |
-| [ADR-015](./ADR-015-open-core-boundary.md)                       | Open core boundary                                         | Proposed | 2026-09-22 | RFX-139 |
-| [ADR-016](./ADR-016-decision-model-providers-and-shadow-mode.md) | Decision model providers, shadow mode and decision records | Proposed | 2026-09-22 | RFX-140 |
+| [ADR-015](./ADR-015-open-core-boundary.md)                       | Open core boundary                                         | Accepted | 2026-09-22 | RFX-139 |
+| [ADR-016](./ADR-016-decision-model-providers-and-shadow-mode.md) | Decision model providers, shadow mode and decision records | Accepted | 2026-09-22 | RFX-140 |
 
 ## When an ADR is required
 

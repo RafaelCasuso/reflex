@@ -1,7 +1,15 @@
+import { readdirSync } from "node:fs";
+
 import { ESLint } from "eslint";
 import { describe, expect, it } from "vitest";
 
-import { REPO_ROOT, repoPath } from "./support/repo.js";
+import {
+  REPO_ROOT,
+  readJson,
+  readManifest,
+  readText,
+  repoPath,
+} from "./support/repo.js";
 
 /**
  * Adversarial tests for the lint layer of the architectural boundaries.
@@ -102,6 +110,16 @@ const FORBIDDEN: readonly BoundaryCase[] = [
     packageDir: "packages/telemetry",
     code: 'import "../../auth/src/index.js";',
   },
+  {
+    label: "nothing imports from rdm/ (ADR-016 §5)",
+    packageDir: "packages/core",
+    code: 'import "../../../rdm/inference/client.js";',
+  },
+  {
+    label: "nothing re-exports from rdm/ either",
+    packageDir: "packages/telemetry",
+    code: 'export * from "../../../rdm/schema/index.js";',
+  },
 ];
 
 const ALLOWED: readonly BoundaryCase[] = [
@@ -156,5 +174,99 @@ describe("lint-enforced dependency direction", () => {
 
     expect(message).toContain("core -> adapter-* is forbidden");
     expect(message).toContain("CLAUDE.md");
+  });
+});
+
+/**
+ * ADR-015 — the open-core boundary, enforced in place until the repositories
+ * are split. `docs/open-core.md` is the list; this reads it.
+ */
+interface OpenCoreEntry {
+  readonly name: string;
+  readonly path: string;
+  readonly side: "open" | "private";
+}
+
+function openCoreList(): readonly OpenCoreEntry[] {
+  const text = readText("docs", "open-core.md");
+  const entries: OpenCoreEntry[] = [];
+  let side: OpenCoreEntry["side"] | undefined;
+  for (const line of text.split("\n")) {
+    if (line.startsWith("## Open")) {
+      side = "open";
+    } else if (line.startsWith("## Private")) {
+      side = "private";
+    } else if (line.startsWith("## ")) {
+      side = undefined;
+    }
+    const row =
+      /^\| `(@reflex\/[a-z-]+)`\s+\| `((?:apps|packages)\/[a-z-]+)`/.exec(line);
+    if (side !== undefined && row?.[1] !== undefined && row[2] !== undefined) {
+      entries.push({ name: row[1], path: row[2], side });
+    }
+  }
+  return entries;
+}
+
+function workspacePackageDirs(): readonly string[] {
+  return ["apps", "packages"].flatMap((parent) =>
+    readdirSync(repoPath(parent), { withFileTypes: true })
+      .filter((entry) => entry.isDirectory())
+      .map((entry) => `${parent}/${entry.name}`),
+  );
+}
+
+describe("open-core boundary (ADR-015)", () => {
+  const listed = openCoreList();
+  const byPath = new Map(listed.map((entry) => [entry.path, entry]));
+  const privateNames = new Set(
+    listed
+      .filter((entry) => entry.side === "private")
+      .map((entry) => entry.name),
+  );
+
+  it("lists every workspace package on one side, with the name its manifest has", () => {
+    expect(listed.length).toBeGreaterThan(10);
+    for (const dir of workspacePackageDirs()) {
+      const entry = byPath.get(dir);
+      expect(
+        entry,
+        `${dir} is on neither side of docs/open-core.md`,
+      ).toBeDefined();
+      expect(readManifest(dir).name, dir).toBe(entry?.name);
+    }
+  });
+
+  it("declares in every manifest the licence the list gives it", () => {
+    for (const entry of listed) {
+      const raw = readJson(entry.path, "package.json") as { license?: unknown };
+      expect(raw.license, entry.path).toBe(
+        entry.side === "open" ? "Apache-2.0" : "UNLICENSED",
+      );
+    }
+    expect(readText("LICENSE")).toContain("Apache License");
+    expect(readText("LICENSE")).toContain("Version 2.0, January 2004");
+  });
+
+  it("never lets an open package depend on a private one", () => {
+    for (const entry of listed) {
+      if (entry.side !== "open") {
+        continue;
+      }
+      const dependencies = Object.keys(
+        readManifest(entry.path).allDependencies,
+      );
+      for (const dependency of dependencies) {
+        expect(
+          privateNames.has(dependency),
+          `${entry.name} (open) depends on ${dependency} (private)`,
+        ).toBe(false);
+      }
+    }
+  });
+
+  it("keeps rdm/ out of the workspace, so no workspace-wide publish reaches it", () => {
+    expect(readText("pnpm-workspace.yaml")).not.toContain("rdm");
+    expect(listed.some((entry) => entry.path.startsWith("rdm"))).toBe(false);
   });
 });

@@ -645,7 +645,7 @@ This gate opens with the decisions the policy engine depends on (RFX-112 to RFX-
 
 ## R0 — RDM Gate 0: model independence
 
-The RDM briefing (2026-09-22) names a first milestone, "RDM Gate 0 — REFLEX model independence": REFLEX keeps working with Jev, Jev is one provider behind a generic interface, core holds nothing Jev-specific, a future RDM provider plugs into the same interface, shadow mode is structurally possible, decision events can be persisted and outcomes attached later, the first dataset schema and the refund generator exist, and tests pass. `docs/rdm/gate-0-assessment.md` measured that against the code: the interface, the stage order and the outcome linkage already exist (ADR-005, ADR-002, ADR-013), Jev is not wired to anything yet (G4 builds it), and what is missing is provider selection, shadow evaluation, a decision record with labelled provenance, a local-provider client and the `rdm/` module. ADR-015 draws the open-core line and ADR-016 the provider, shadow and record design; both are Proposed and wait for the maintainer.
+The RDM briefing (2026-09-22) names a first milestone, "RDM Gate 0 — REFLEX model independence": REFLEX keeps working with Jev, Jev is one provider behind a generic interface, core holds nothing Jev-specific, a future RDM provider plugs into the same interface, shadow mode is structurally possible, decision events can be persisted and outcomes attached later, the first dataset schema and the refund generator exist, and tests pass. `docs/rdm/gate-0-assessment.md` measured that against the code: the interface, the stage order and the outcome linkage already exist (ADR-005, ADR-002, ADR-013), Jev is not wired to anything yet (G4 builds it), and what is missing is provider selection, shadow evaluation, a decision record with labelled provenance, a local-provider client and the `rdm/` module. ADR-015 draws the open-core line and ADR-016 the provider, shadow and record design; both were accepted by the maintainer on 2026-09-22.
 
 This gate depends on G4's RFX-025 and RFX-029 (the interface with a typed result and a fake provider) and on nothing from G5 or G6. It can start as soon as the two ADRs are accepted, and it does not train a model.
 
@@ -657,11 +657,15 @@ This gate depends on G4's RFX-025 and RFX-029 (the interface with a typed result
 
 **Why:** Nothing in the repository says whether REFLEX is open source, and the answer decides where RDM and its training data live.
 
+**Status:** Done (2026-09-22). ADR-015 was **accepted by the maintainer the same day it was proposed, as recommended**: open core, Apache-2.0 for everything that runs on the user's machine and everything a third party needs to integrate, private for what needs an account and for the model; a user's own provider key in the open daemon is allowed. `LICENSE` at the root is the Apache License 2.0 as published by the ASF; fifteen open packages declare `Apache-2.0` and the three private ones (`apps/api`, `apps/dashboard`, `packages/auth`) declare `UNLICENSED`. `docs/open-core.md` is the list, and `tests/boundaries.test.ts` reads it: every workspace package must be on one side, every manifest must carry the licence the list gives it, no open package may depend on a private one, and `rdm/` must stay out of the workspace. ESLint refuses a relative import that reaches `rdm/` from any package, and the boundary test holds it with an import and a re-export. `docs/product.md` says what the plans add from the private side. **Not done here:** the repository split and the publish step, which belong with RFX-076.
+
 ### RFX-140 — Decide ADR-016 providers, shadow mode and decision records
 
 **Goal:** Accept, amend or reject ADR-016 before RFX-141 starts.
 
 **Acceptance:** ADR-016 is Accepted. The provider ids, the shadow rules (never affects a decision; sampling of resolved actions only for a local provider) and the record's shape and provenance vocabulary are the ones the tickets below implement.
+
+**Status:** Done (2026-09-22). ADR-016 was **accepted by the maintainer the same day it was proposed, as recommended.** Provider ids `none|jev|local|reflex|fake`; policy stays first; shadow providers are recorded and never used, and sampling of resolved actions is allowed only for a local provider; `DecisionRecord` is an additive contract with a closed provenance vocabulary; `rdm/` is a private Python module whose only contract with the product is the canonical one; the eleven dimensions are the taxonomy; training labels are dimension vectors and benchmark labels are effects from the real policy engine, never mixed.
 
 ### RFX-141 — Provider registry and daemon selection
 

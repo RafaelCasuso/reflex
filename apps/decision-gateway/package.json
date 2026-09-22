@@ -3,6 +3,7 @@
   "version": "0.0.0",
   "private": true,
   "description": "Latency-sensitive runtime decision endpoint. Deployable independently of dashboard/control-plane concerns.",
+  "license": "Apache-2.0",
   "type": "module",
   "scripts": {
     "build": "tsc -p tsconfig.build.json",

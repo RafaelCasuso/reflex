@@ -1,6 +1,6 @@
 # ADR-016: Decision model providers, shadow mode and decision records
 
-- **Status:** Proposed
+- **Status:** Accepted
 - **Date:** 2026-09-22
 - **Tickets:** RFX-140, RFX-141, RFX-142, RFX-143, RFX-144, RFX-145, RFX-146, RFX-147
 - **Supersedes:** none
@@ -29,7 +29,8 @@ the host then did, with the provenance of every label.
 
 ## Decision
 
-Proposed; the maintainer decides.
+Accepted by the maintainer on 2026-09-22, as recommended when it was
+proposed the same day.
 
 ### 1. One interface, three kinds of provider, one vocabulary
 

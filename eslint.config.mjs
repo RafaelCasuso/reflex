@@ -68,6 +68,14 @@ const CROSS_PACKAGE_RELATIVE_IMPORT = {
     "Import other workspace packages by name (@reflex/*), never by relative path.",
 };
 
+// ADR-015, ADR-016 §5: RDM is a private Python module whose only contract
+// with the product is the canonical one, over @reflex/provider-local.
+const RDM_RELATIVE_IMPORT = {
+  regex: "^(\\.\\./)+rdm(/|$)",
+  message:
+    "Nothing in packages/ or apps/ imports from rdm/. RDM is reached through @reflex/provider-local (ADR-016).",
+};
+
 /**
  * `no-restricted-imports` options are replaced, not merged, when several
  * config objects match a file — so every entry carries the global pattern.
@@ -75,7 +83,13 @@ const CROSS_PACKAGE_RELATIVE_IMPORT = {
 function restrictedImports(extraPatterns = []) {
   return [
     "error",
-    { patterns: [CROSS_PACKAGE_RELATIVE_IMPORT, ...extraPatterns] },
+    {
+      patterns: [
+        CROSS_PACKAGE_RELATIVE_IMPORT,
+        RDM_RELATIVE_IMPORT,
+        ...extraPatterns,
+      ],
+    },
   ];
 }
 

@@ -3,6 +3,7 @@
   "version": "0.0.0",
   "private": true,
   "description": "Installation, detection, configuration and diagnostics (rfx).",
+  "license": "Apache-2.0",
   "type": "module",
   "sideEffects": false,
   "bin": {

@@ -103,6 +103,17 @@ REFLEX applies the complete allow/ask/deny policy.
 
 ---
 
+## Open core
+
+Everything that runs on the user's machine is open under Apache-2.0 (ADR-015,
+`docs/open-core.md`): the CLI, the hook, the adapters, the policy engine and
+the classifier, the decision engine and the local daemon, the redaction
+boundary, the provider interface and the reference providers, the evals. A
+user can run the deterministic path and a semantic provider of their own,
+with their own key, without an account. What the plans below add comes from
+the private side: RDM as a hosted provider, approval learning, team and
+environment policies, replay, the dashboard, retention and support.
+
 ## Pricing hypothesis
 
 ### Developer — $0
