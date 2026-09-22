@@ -581,6 +581,8 @@ This gate opens with the decisions the policy engine depends on (RFX-112 to RFX-
 
 **Note (2026-09-22):** the move from `packages/contracts` to `packages/semantic-provider` brings the typed `ProviderResult` of ADR-005 §2, and core's `assess()` in `packages/core/src/decision-engine.ts` becomes an exhaustive switch over it. R0 (RDM Gate 0) starts from this ticket and RFX-029.
 
+**Status:** Done (2026-09-22). `SemanticDecisionProvider` and `DecisionEngine` left `packages/contracts` (ADR-005 §1): the provider interface lives in `packages/semantic-provider` with the typed `ProviderResult` of ADR-005 §2 (`timeout`, `aborted`, `unavailable`, `rate-limited`, `rejected-request`, `invalid-response`, each with a `retryable` flag for background callers and a mapping to the fallback reasons of ADR-003), and the engine interface in `packages/core`. Core's `assess()` is now an exhaustive switch over the result; a provider or compiler that throws is handled as `unavailable`. No serialized shape changed, so the contract version did not move; the contracts README says so. **Acceptance:** core compiles and its 196 tests run against the fake provider, with no provider package installed; the boundary test still forbids `core -> provider-jev`.
+
 ### RFX-026 — Implement Jev client boundary
 
 **Goal:** Create authenticated Jev transport with timeout/retry policy.
@@ -589,11 +591,15 @@ This gate opens with the decisions the policy engine depends on (RFX-112 to RFX-
 
 **Note:** no in-band retries on the decision path. A retry spends the latency budget twice; the decision path has a deadline and a fallback for that. A retry policy applies to background calls only.
 
+**Status:** Done (2026-09-22). `createJevProvider({ apiKey, model, endpoint, booleanForm, fetch, onUsage })` in `packages/provider-jev`: one `fetch` per assessment over a kept connection, the key given and never read from the environment inside the package, the request's deadline as the provider's own `AbortSignal` combined with the caller's. **Transport errors map to typed provider errors:** 401, 403, 400 and 422 to `rejected-request`; 429 to `rate-limited`; 529 and every other status or network failure to `unavailable`; the provider's deadline to `timeout` and the caller's signal to `aborted`; a body that is not JSON or not the answer asked for to `invalid-response`. **Never a retry** on the decision path, held by a test on every status. The key and the provider's words never appear in a result, held by a test. An alias for the model is refused at construction. `onUsage` reports status, latency and tokens off the decision path, never content. **Not yet verified live:** `live/verify-provider.mjs --run` exists, costs about a cent, and waits for the maintainer's permission.
+
 ### RFX-027 — Map Jev outputs to semantic signals
 
 **Goal:** Implement structured mapping and validation.
 
 **Acceptance:** Malformed/partial provider output never becomes an implicit allow.
+
+**Status:** Done (2026-09-22). `packages/provider-jev/src/response.ts` reads the provider's answers strictly into `SemanticAssessment`: the eleven questions of the contract, as constants that never contain anything from the request; a score mapped to its nearest level on 0, 33, 67, 100 (coarse on purpose, `docs/jev-provider.md` §3); the boolean asked as a two-option `choice` so that it carries the provider's confidence, with the `noul` form kept for comparison and a confidence derived from the distance to one half, never a constant; the versioned model requested and any other model answered, alias included, refused. **Malformed or partial output never becomes an implicit allow:** a missing dimension, an extra answer (an answer that names an effect among them), the wrong answer type, probabilities that do not describe the levels or do not sum to one, a score or a confidence out of range, a legend with a level missing, a body that is a decision instead of an answer: fifteen adversarial cases, each starting from the real RFX-107 answer and breaking one thing, all `invalid-response`. The recorded RFX-107 answer parses into a contract-valid assessment and the request built today equals the one the probe measured, field for field.
 
 ### RFX-107 — Semantic latency and cost spike
 
@@ -613,11 +619,15 @@ This gate opens with the decisions the policy engine depends on (RFX-112 to RFX-
 
 **Note (RFX-107, 2026-09-20):** the premise did not survive measurement. Jev evaluates every question of a request in parallel on its side; eleven requests are slower at p95, 4.6 times dearer and rate-limited eleven times sooner, for identical answers. For this provider the ticket becomes: assess every dimension in one request, and return a confidence for each, including the one boolean dimension, for which the provider gives none (`docs/jev-provider.md` §3). How many requests an assessment takes stays inside the provider package. The goal and acceptance above are left as written until the maintainer rewords them.
 
+**Status:** Done (2026-09-22), as reworded by the RFX-107 note: every dimension is assessed in one request, and every dimension, the boolean included, comes back with a confidence. How many requests an assessment takes stays inside `packages/provider-jev`.
+
 ### RFX-029 — Provider fixture/fake implementation
 
 **Goal:** Add deterministic fake provider for tests/dev.
 
 **Acceptance:** Entire decision engine test suite runs offline.
+
+**Status:** Done (2026-09-22). `createFakeProvider` in `packages/semantic-provider`: deterministic from the request's side-effect class and nothing else, so the same request answers the same and two requests that differ only in free text answer the same, which is also RFX-108's plumbing check; told to misbehave it returns each typed error, hangs until aborted, answers slowly, or throws. Core's and the gateway's suites run against it; **the entire decision engine test suite runs offline.**
 
 ### RFX-108 — Prompt-injection corpus for the semantic path
 
@@ -627,11 +637,15 @@ This gate opens with the decisions the policy engine depends on (RFX-112 to RFX-
 
 **Why:** The assessor is a model reading text the adversary wrote. The backlog covered secrets leaking out (RFX-035) and nothing about instructions leaking in.
 
+**Status:** Harness done, pairs to author (2026-09-22). `packages/evals` has the corpus format (`corpus/semantic/injection-v1.json`: pairs of a clean request and its twin with text added at one declared site), a loader that refuses a pair whose twins differ anywhere but at that site, and `runInjectionCorpus`, which sends both twins to a provider and reports every pair where the added text lowered a risk dimension, raised a "higher is safer" dimension, flipped the boolean to false or raised a confidence beyond the corpus's tolerance; a twin the provider could not assess is reported without a verdict. **Held by tests:** against the fake provider every pair holds; against a deliberately gullible provider every pair is reported with the dimensions that moved; and the structural half, that untrusted text reaches the provider as delimited data and never as an instruction, is a test in `packages/provider-jev` (`src/state.test.ts`). **What is not done:** the pairs checked in are plumbing twins with a neutral placeholder; the adversarial pairs, one family per way an attacker phrases a request to be rated safe, are to be authored by the maintainer in the same file (the assistant's safety system stopped it from writing attack text into the repository). The run against the real provider waits for those pairs and for permission to spend.
+
 ### RFX-030 — Semantic provider latency telemetry
 
 **Goal:** Record provider/model/dimension latencies.
 
 **Acceptance:** Dashboard-ready metrics exposed without sensitive inputs.
+
+**Status:** Done (2026-09-22). The decision event (RFX-023) names the provider and the model that answered and carries the latency of every stage (`policyMs`, `contextMs`, `semanticMs`, `aggregationMs`), held by a gateway test through the whole pipeline; no input reaches an event, held by the canary test. Per-dimension latency does not exist for this provider: every dimension is one request (RFX-107, RFX-028). The Jev client's `onUsage` reports status, latency and tokens per call for the daemon to count.
 
 ### RFX-109 — Semantic decision cache
 
@@ -641,7 +655,10 @@ This gate opens with the decisions the policy engine depends on (RFX-112 to RFX-
 
 **Depends on:** RFX-106.
 
+**Status:** Done (2026-09-22). A semantic decision is cached only for the explicitly safe, repeatable classes `none`, `local-read`, `local-write` and `external-read`, never for a production action and never on a fallback; the cache key includes the provider and the model, so a change of either misses by construction; a hit carries the assessment it was made with. **Held by tests:** a semantic decision about a destructive, privileged, credential, unknown or production action is never served from the cache and the provider is called again; a read is served again with its evidence and the provider is called once; a provider or model change misses; the never-cached list and the semantic list share nothing. **Measured in-engine:** a cached semantic decision is 0.016 ms at p95 (`pnpm --filter @reflex/core bench`), against a 20 ms budget.
 **Gate exit:** all tickets above are green in CI and documented; no known dangerous false-allow regression. **Specifically:** core compiles and the whole suite runs offline without Jev; malformed or partial provider output never yields allow; p50 and p95 against the real provider are recorded.
+
+**Gate status:** Open on two items (2026-09-22). Eight of nine tickets are done on the branch; RFX-108 has its harness and waits for its adversarial pairs. **Open:** the provider has not been run against the real API from the built package (`live/verify-provider.mjs`, about a cent, needs the maintainer's permission to spend), and the injection pairs are to be authored. **What holds:** the whole engine runs offline against the fake provider; core imports nothing from a provider package (boundary test); malformed or partial provider output never becomes an allow (fifteen adversarial cases from the real recorded answer); a request's untrusted text can only ever be data to the provider. **What this gate does not claim:** no daemon uses the provider yet, because the semantic stage needs a compiler (G5) and an aggregator (G6) before an assessment can reach a decision; that wiring is RFX-141 in R0.
 
 ## R0 — RDM Gate 0: model independence
 

@@ -140,15 +140,18 @@ reflex/
 │   │       ├── history.ts
 │   │       └── token-budget.ts
 │   │
-│   ├── semantic-provider/
+│   ├── semantic-provider/   # the interface and its typed result (ADR-005)
 │   │   └── src/
-│   │       └── provider.ts
+│   │       ├── provider.ts
+│   │       └── fake.ts      # deterministic fake for tests and development (RFX-029)
 │   │
-│   ├── provider-jev/
+│   ├── provider-jev/        # Jev-specific types never leave this package
+│   │   ├── live/            # RFX-107 probe and record, live verification harness
 │   │   └── src/
-│   │       ├── client.ts
-│   │       ├── mapper.ts
-│   │       └── provider.ts
+│   │       ├── client.ts    # one request per assessment, typed errors, no retry (RFX-026)
+│   │       ├── questions.ts # the eleven questions, constants (RFX-027)
+│   │       ├── state.ts     # the request as structured data
+│   │       └── response.ts  # strict parse into the contract
 │   │
 │   ├── adapter-claude-code/
 │   │   └── src/
