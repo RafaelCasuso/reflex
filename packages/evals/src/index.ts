@@ -26,3 +26,18 @@ export {
   type EvaluatedEffect,
   type ReplayReport,
 } from "./replay.js";
+export {
+  INJECTION_SITES,
+  compareTwins,
+  describeInjectionReport,
+  loadInjectionCorpus,
+  runInjectionCorpus,
+  type InjectionCorpus,
+  type InjectionCorpusLoadResult,
+  type InjectionPair,
+  type InjectionPairResult,
+  type InjectionReport,
+  type InjectionSite,
+  type InjectionTolerance,
+  type InjectionViolation,
+} from "./injection.js";

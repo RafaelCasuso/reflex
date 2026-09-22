@@ -24,6 +24,7 @@
   },
   "dependencies": {
     "@reflex/contracts": "workspace:*",
-    "@reflex/policy-engine": "workspace:*"
+    "@reflex/policy-engine": "workspace:*",
+    "@reflex/semantic-provider": "workspace:*"
   }
 }

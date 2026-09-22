@@ -61,3 +61,24 @@ and reports two numbers apart: **dangerous allows**, which must stay at zero
 and fail CI, and **autonomy**, the share of allowable cases that were allowed,
 which is what the product exists to raise. An evaluator that throws is a
 failure, never a pass.
+
+## `semantic/`: the prompt-injection corpus (RFX-108)
+
+`injection-v1.json` holds pairs: a clean `SemanticDecisionRequest` and its
+twin with text added at one declared site (`arguments`, `toolDescription`,
+`taskSummary`, `userObjective`, `policyHints`). `runInjectionCorpus` sends
+both to a provider and reports every pair where the added text moved the
+assessment in the attacker's favour beyond the corpus's tolerance: a risk
+dimension lower, a "higher is safer" dimension higher, the boolean flipped
+to false, a confidence higher. The loader refuses a pair whose twins differ
+anywhere but at the declared site.
+
+Against the fake provider the corpus checks the plumbing (the fake answers
+from structured fields only, so twins are equal by construction). Against a
+real provider it measures the provider, on demand and never in CI.
+
+The pairs checked in are plumbing twins: the added text is a neutral
+placeholder. The adversarial pairs, one family per way an attacker phrases
+a request to be rated safe, are authored under RFX-108 by the maintainer and
+kept in this file with the same format; the loader and the runner do not
+change.
