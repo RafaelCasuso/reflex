@@ -569,7 +569,7 @@ This gate opens with the decisions the policy engine depends on (RFX-112 to RFX-
 **Status:** Done (2026-09-22). `apps/decision-gateway/bench/gateway.bench.mjs` starts the built daemon on a socket with a 204-rule policy and measures the deterministic path at the three points ADR-010 names: in-engine (the engine's own report, and `pnpm --filter @reflex/core bench` at sub-millisecond resolution), over the socket from a warm client, and end to end from the start of a hook process to its exit, one process per request. The record is `bench/results/apple-m1-max-node24.json` and `src/bench-evidence.test.ts` holds the table in `docs/decision-gateway.md` §4 to it. **Baseline (Apple M1 Max, Node 24.9):** the gateway adds about 0.3 ms over the engine; a cache hit is 0.19 ms at p95 over the socket; end to end is 49 ms at p50 from a `node:http` client and **33 ms from a `node:net` client**, because loading `node:http` alone costs a per-call process 14 ms. That finding is now a constraint in ADR-010: the hook client writes HTTP/1.1 by hand over `node:net`. The floor for a Node client is about 33 ms, of which 26 ms is Node starting; the daemon is not what stands in the way of an end-to-end budget. Timing is not run in CI.
 **Gate exit:** all tickets above are green in CI and documented; no known dangerous false-allow regression. **Specifically:** a deterministically resolved action never reaches a provider; every failure path ends in an explicit, reported fallback; no telemetry field contains an argument value.
 
-**Gate status:** Closed on the local branch (2026-09-22), pending CI on `main`. All nine tickets are done. **The three specific exits are tests:** a deterministically resolved action never reaches a provider (`packages/core/src/decision-engine.test.ts`, with and without the cache, for a rule, a policy default and REFLEX's own rules); every failure path ends in an explicit, reported fallback (a provider that rejects, throws or hangs, a caller that cancels, a deadline policy alone used up, each with `fallback.used`, a reason and a reason code, and a `fallback` telemetry event of its own); no telemetry field contains an argument value (`apps/decision-gateway/src/telemetry.test.ts`, canaries for every item of ADR-008 §3 through the whole pipeline). **No known dangerous false allow:** nothing in this gate can produce an `allow` that policy did not, because there is no aggregator yet, and the engine applies the untrusted floor and `deny > ask > allow` after whatever aggregator G6 brings. **What this gate does not claim:** no semantic stage runs; every action gets the daemon's one policy set; nothing starts the daemon (RFX-138); TCP has no authentication and binds loopback only; the end-to-end number has no budget yet (ADR-010), and what this gate measured is that a Node client cannot go under about 33 ms.
+**Gate status:** Closed (2026-09-22). All nine tickets are done, merged and green in CI on `main`: pull request #13 passed both required checks, Quality gates and Security gates, and was rebase-merged as four self-contained commits (main head `641686c`). **The three specific exits are tests:** a deterministically resolved action never reaches a provider (`packages/core/src/decision-engine.test.ts`, with and without the cache, for a rule, a policy default and REFLEX's own rules); every failure path ends in an explicit, reported fallback (a provider that rejects, throws or hangs, a caller that cancels, a deadline policy alone used up, each with `fallback.used`, a reason and a reason code, and a `fallback` telemetry event of its own); no telemetry field contains an argument value (`apps/decision-gateway/src/telemetry.test.ts`, canaries for every item of ADR-008 §3 through the whole pipeline). **No known dangerous false allow:** nothing in this gate can produce an `allow` that policy did not, because there is no aggregator yet, and the engine applies the untrusted floor and `deny > ask > allow` after whatever aggregator G6 brings. **What this gate does not claim:** no semantic stage runs; every action gets the daemon's one policy set; nothing starts the daemon (RFX-138); TCP has no authentication and binds loopback only; the end-to-end number has no budget yet (ADR-010), and what this gate measured is that a Node client cannot go under about 33 ms.
 
 ## G4 — Semantic provider / Jev
 
@@ -578,6 +578,8 @@ This gate opens with the decisions the policy engine depends on (RFX-112 to RFX-
 **Goal:** Finalize provider abstraction package.
 
 **Acceptance:** Core compiles with fake provider and without Jev dependency.
+
+**Note (2026-09-22):** the move from `packages/contracts` to `packages/semantic-provider` brings the typed `ProviderResult` of ADR-005 §2, and core's `assess()` in `packages/core/src/decision-engine.ts` becomes an exhaustive switch over it. R0 (RDM Gate 0) starts from this ticket and RFX-029.
 
 ### RFX-026 — Implement Jev client boundary
 
@@ -640,6 +642,84 @@ This gate opens with the decisions the policy engine depends on (RFX-112 to RFX-
 **Depends on:** RFX-106.
 
 **Gate exit:** all tickets above are green in CI and documented; no known dangerous false-allow regression. **Specifically:** core compiles and the whole suite runs offline without Jev; malformed or partial provider output never yields allow; p50 and p95 against the real provider are recorded.
+
+## R0 — RDM Gate 0: model independence
+
+The RDM briefing (2026-09-22) names a first milestone, "RDM Gate 0 — REFLEX model independence": REFLEX keeps working with Jev, Jev is one provider behind a generic interface, core holds nothing Jev-specific, a future RDM provider plugs into the same interface, shadow mode is structurally possible, decision events can be persisted and outcomes attached later, the first dataset schema and the refund generator exist, and tests pass. `docs/rdm/gate-0-assessment.md` measured that against the code: the interface, the stage order and the outcome linkage already exist (ADR-005, ADR-002, ADR-013), Jev is not wired to anything yet (G4 builds it), and what is missing is provider selection, shadow evaluation, a decision record with labelled provenance, a local-provider client and the `rdm/` module. ADR-015 draws the open-core line and ADR-016 the provider, shadow and record design; both are Proposed and wait for the maintainer.
+
+This gate depends on G4's RFX-025 and RFX-029 (the interface with a typed result and a fake provider) and on nothing from G5 or G6. It can start as soon as the two ADRs are accepted, and it does not train a model.
+
+### RFX-139 — Open-core boundary and licensing
+
+**Goal:** Decide ADR-015 and make the boundary real in the repository before anything is published: which packages are open under which licence, which stay private, and a rule that keeps them apart.
+
+**Acceptance:** ADR-015 is Accepted or amended by the maintainer. `LICENSE` exists at the root and every open package declares the same `license`; a test holds the manifests to the list in `docs/open-core.md`. `tests/boundaries.test.ts` refuses an open package that depends on a private one. `rdm/` is excluded from every publish path by name. `docs/product.md` says which plan features come from the private side.
+
+**Why:** Nothing in the repository says whether REFLEX is open source, and the answer decides where RDM and its training data live.
+
+### RFX-140 — Decide ADR-016 providers, shadow mode and decision records
+
+**Goal:** Accept, amend or reject ADR-016 before RFX-141 starts.
+
+**Acceptance:** ADR-016 is Accepted. The provider ids, the shadow rules (never affects a decision; sampling of resolved actions only for a local provider) and the record's shape and provenance vocabulary are the ones the tickets below implement.
+
+### RFX-141 — Provider registry and daemon selection
+
+**Goal:** Choose the semantic provider by configuration: `--semantic-provider none|jev|local|reflex`, with `none` today's behavior and the default.
+
+**Acceptance:** A registry in `packages/semantic-provider` maps an id to a constructor; the daemon builds the semantic stage from it, or none. Every assessment records its provider, model and version, pinned, never an alias. With `none`, every existing engine and gateway test passes unchanged. `GET /v1/health` names the provider in use.
+
+**Depends on:** RFX-025, RFX-029, RFX-140.
+
+### RFX-142 — Shadow evaluation
+
+**Goal:** Evaluate one or more shadow providers alongside the primary one and record their answers without letting them touch the decision (ADR-016 §3).
+
+**Acceptance:** A shadow provider receives the same request as the primary, concurrently, under its own deadline; the decision returns when the primary is done. A test holds every field of the decision equal with and without shadows, for a shadow that answers the opposite, one that hangs and one that throws, with and without the cache. A shadow that would allow a `deny` leaves `deny`. `--shadow-sample all` is refused for any provider but `local`. With no shadow configured the engine's path is unchanged. Shadow latency and failures are telemetry of their own and never a fallback.
+
+**Depends on:** RFX-141.
+
+### RFX-143 — Decision records with labelled provenance
+
+**Goal:** Write the unit of training data: the redacted request that was sent, every provider's answer (primary and shadow), REFLEX's decision, and labels that each name their source; outcomes and feedback are appended later by id (ADR-016 §4).
+
+**Acceptance:** `DecisionRecord` is an additive contract, version 1.3, with frozen fixtures; a label without a source does not parse. Records are written after the answer, off the decision path, to a local size-rotated log kept 7 days (ADR-008 §4). The canary test of RFX-023 covers records: nothing on the never-stored list appears in one. Until the redactor exists (RFX-031) the request content is absent, and the field is optional so nothing is invented. An `ActionOutcome` and a `DecisionFeedback` can be joined to a record by `actionId` and `decisionId`, and a test does. RFX-060 ingests these records with consent (RFX-123).
+
+**Depends on:** RFX-142.
+
+### RFX-144 — Local provider client
+
+**Goal:** `packages/provider-local`: a `SemanticDecisionProvider` that calls a local inference server speaking the canonical contract (`POST /v1/assess`, `SemanticDecisionRequest` in, `SemanticAssessment` out), which is how RDM and Laya plug in without REFLEX knowing which is behind it.
+
+**Acceptance:** A fake server in tests; a partial or malformed answer is a provider failure, never a default (ADR-005 §3); the server's declared model and version are recorded and must match what was requested; the client keeps its connection and never retries on the decision path. The provider registers as `local`. No model exists yet.
+
+**Depends on:** RFX-141.
+
+### RFX-145 — `rdm/` module skeleton and dataset schema
+
+**Goal:** The private Python module of ADR-016 §5: the dataset record schema with the closed provenance vocabulary, the split rule that benchmark and training never share a seed, a template or an entity, and a CI job that runs its tests without publishing anything.
+
+**Acceptance:** `uv run pytest` passes in CI. The record schema is generated from, or checked against, the contract's frozen fixtures so the two cannot drift. A test fails when a benchmark seed, template or entity appears in a training split. Nothing in `packages/` or `apps/` imports from `rdm/`, held by the boundary test. No model, no training.
+
+**Depends on:** RFX-139, RFX-143.
+
+### RFX-146 — Refund scenario generator and counterfactual pairs
+
+**Goal:** The first scenario family, payment refunds, varying amount, automatic-approval threshold, agent permissions, customer type, fraud indicators, previous refunds, financial exposure, reversibility and policy requirements, generated as canonical actions (`tool: { name: "refunds.create", namespace: "stripe" }`, class `financial`).
+
+**Acceptance:** Training labels are dimension vectors with source `synthetic_rule`, never effects. Benchmark labels are effects produced by running each case through the real policy engine with the scenario's policy and a fixed aggregator configuration, source `deterministic_rule`, in a separate file. Every counterfactual pair differs in one variable and flips the effect end to end, and a test holds it for every pair. The benchmark runs through `packages/evals`' runner. The generator is deterministic from a seed.
+
+**Depends on:** RFX-145, RFX-036 (a fixed aggregator configuration to produce benchmark labels; until it exists, the pairs are held against policy alone).
+
+### RFX-147 — Laya behind the local server, measured against Jev
+
+**Goal:** Load Laya (open weights, Apache-2.0) in the local inference server and measure it against Jev on the semantic corpus, on the same cases, with the same harness.
+
+**Acceptance:** A written result like `docs/jev-provider.md`: accuracy per dimension on the corpus (RFX-038), latency p50 and p95 on a named machine, context limits met or not (Laya's English checkpoint takes 512 tokens; RFX-107 measured 1,669 for one request), calibration (RFX-110), and the adversarial corpus (RFX-108) on both. A recommendation on whether Laya is worth offering as a local provider, and on nothing else. No production decision depends on it.
+
+**Depends on:** RFX-144, RFX-038, RFX-039, RFX-108.
+
+**Gate exit:** all tickets above are green in CI and documented; no known dangerous false-allow regression. **Specifically, the briefing's criteria as tests:** REFLEX works with `none` and with `jev` as before; every provider sits behind `SemanticDecisionProvider` and core imports nothing from a provider package; a decision is byte-for-byte equal with and without shadows; a `DecisionRecord` parses, is written off the decision path, carries no never-stored value, and joins an outcome and a feedback by id; the refund generator produces counterfactual pairs that flip the effect end to end; benchmark and training splits share nothing; no model was trained.
 
 ## G5 — Context compiler and redaction
 

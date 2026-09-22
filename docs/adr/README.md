@@ -10,21 +10,23 @@ ADR says so explicitly and the same change updates `CLAUDE.md`.
 
 ## Index
 
-| ADR                                                              | Title                                            | Status   | Date       | Tickets |
-| ---------------------------------------------------------------- | ------------------------------------------------ | -------- | ---------- | ------- |
-| [ADR-001](./ADR-001-canonical-action-model.md)                   | Canonical action model                           | Accepted | 2026-09-18 | RFX-005 |
-| [ADR-002](./ADR-002-decision-precedence-and-effective-effect.md) | Decision precedence and effective effect         | Accepted | 2026-09-20 | RFX-112 |
-| [ADR-003](./ADR-003-fail-behavior.md)                            | Fail behavior                                    | Accepted | 2026-09-20 | RFX-113 |
-| [ADR-004](./ADR-004-policy-precedence.md)                        | Policy precedence                                | Accepted | 2026-09-20 | RFX-114 |
-| [ADR-005](./ADR-005-provider-abstraction.md)                     | Provider abstraction                             | Accepted | 2026-09-20 | RFX-115 |
-| [ADR-006](./ADR-006-local-redaction-boundary.md)                 | Local redaction boundary                         | Accepted | 2026-09-20 | RFX-116 |
-| [ADR-007](./ADR-007-adapter-ask-semantics.md)                    | Adapter ASK semantics                            | Accepted | 2026-09-20 | RFX-117 |
-| [ADR-008](./ADR-008-telemetry-persistence-strategy.md)           | Telemetry persistence strategy                   | Accepted | 2026-09-20 | RFX-118 |
-| [ADR-009](./ADR-009-contract-versioning.md)                      | Contract versioning and compatibility            | Accepted | 2026-09-18 | RFX-011 |
-| [ADR-010](./ADR-010-decision-placement-and-hook-latency.md)      | Decision placement and hook latency              | Accepted | 2026-09-20 | RFX-094 |
-| [ADR-011](./ADR-011-normalized-operands-and-classification.md)   | Normalized operands and classification ownership | Accepted | 2026-09-20 | RFX-095 |
-| [ADR-012](./ADR-012-self-protection-and-workspace-trust.md)      | Self-protection and workspace trust              | Accepted | 2026-09-20 | RFX-102 |
-| [ADR-013](./ADR-013-action-outcome-observation.md)               | Action outcome observation                       | Accepted | 2026-09-19 | RFX-091 |
+| ADR                                                              | Title                                                      | Status   | Date       | Tickets |
+| ---------------------------------------------------------------- | ---------------------------------------------------------- | -------- | ---------- | ------- |
+| [ADR-001](./ADR-001-canonical-action-model.md)                   | Canonical action model                                     | Accepted | 2026-09-18 | RFX-005 |
+| [ADR-002](./ADR-002-decision-precedence-and-effective-effect.md) | Decision precedence and effective effect                   | Accepted | 2026-09-20 | RFX-112 |
+| [ADR-003](./ADR-003-fail-behavior.md)                            | Fail behavior                                              | Accepted | 2026-09-20 | RFX-113 |
+| [ADR-004](./ADR-004-policy-precedence.md)                        | Policy precedence                                          | Accepted | 2026-09-20 | RFX-114 |
+| [ADR-005](./ADR-005-provider-abstraction.md)                     | Provider abstraction                                       | Accepted | 2026-09-20 | RFX-115 |
+| [ADR-006](./ADR-006-local-redaction-boundary.md)                 | Local redaction boundary                                   | Accepted | 2026-09-20 | RFX-116 |
+| [ADR-007](./ADR-007-adapter-ask-semantics.md)                    | Adapter ASK semantics                                      | Accepted | 2026-09-20 | RFX-117 |
+| [ADR-008](./ADR-008-telemetry-persistence-strategy.md)           | Telemetry persistence strategy                             | Accepted | 2026-09-20 | RFX-118 |
+| [ADR-009](./ADR-009-contract-versioning.md)                      | Contract versioning and compatibility                      | Accepted | 2026-09-18 | RFX-011 |
+| [ADR-010](./ADR-010-decision-placement-and-hook-latency.md)      | Decision placement and hook latency                        | Accepted | 2026-09-20 | RFX-094 |
+| [ADR-011](./ADR-011-normalized-operands-and-classification.md)   | Normalized operands and classification ownership           | Accepted | 2026-09-20 | RFX-095 |
+| [ADR-012](./ADR-012-self-protection-and-workspace-trust.md)      | Self-protection and workspace trust                        | Accepted | 2026-09-20 | RFX-102 |
+| [ADR-013](./ADR-013-action-outcome-observation.md)               | Action outcome observation                                 | Accepted | 2026-09-19 | RFX-091 |
+| [ADR-015](./ADR-015-open-core-boundary.md)                       | Open core boundary                                         | Proposed | 2026-09-22 | RFX-139 |
+| [ADR-016](./ADR-016-decision-model-providers-and-shadow-mode.md) | Decision model providers, shadow mode and decision records | Proposed | 2026-09-22 | RFX-140 |
 
 ## When an ADR is required
 
