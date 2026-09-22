@@ -63,11 +63,12 @@ export interface PathOptions {
 
 export interface DecisionEngineOptions {
   /**
-   * The compiled set in force, read per decision so that the daemon can
-   * replace it between two calls. A set that failed to compile is the
-   * caller's concern (ADR-003 §3): the last good one stays in force.
+   * The compiled set in force for this action, read per decision so that the
+   * daemon can replace it between two calls and serve one project's policy
+   * to that project. A set that failed to compile is the caller's concern
+   * (ADR-003 §3): the last good one stays in force.
    */
-  readonly policy: () => CompiledPolicySet;
+  readonly policy: (action: CanonicalAction) => CompiledPolicySet;
   /** Absent means REFLEX has nothing to assess with (ADR-002 §1, stage 2). */
   readonly semantic?: SemanticStage;
   /** Resolved from configuration by the caller, like policy (ADR-003 §1). */
@@ -334,7 +335,7 @@ export function createDecisionEngine(
 
     async decide(request, signal): Promise<ReflexDecision> {
       const startedAt = monotonic();
-      const set = options.policy();
+      const set = options.policy(request.action);
       const action = request.action;
 
       let cacheKey: string | undefined;

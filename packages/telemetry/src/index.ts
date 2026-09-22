@@ -1,9 +1,10 @@
 /**
- * @reflex/telemetry — what REFLEX observed, kept locally.
+ * @reflex/telemetry — what REFLEX observed and decided, kept locally.
  *
- * In Gate G1.5 this is the local observation log, the argument shape (keys,
- * types and sizes, never values) and the pure assembly of `ActionOutcome`s
- * from host signals. Nothing in this package sends anything anywhere.
+ * The local observation log (G1.5), the argument shape (keys, types and
+ * sizes, never values), the pure assembly of `ActionOutcome`s from host
+ * signals, and since G3 the structured decision events (RFX-023). Nothing in
+ * this package sends anything anywhere.
  */
 export {
   DEFAULT_SHAPE_LIMITS,
@@ -13,6 +14,30 @@ export {
 } from "./argument-shape.js";
 
 export { assembleOutcomes } from "./assemble-outcomes.js";
+
+export {
+  DECISION_EVENT_VERSION,
+  REJECTION_CODES,
+  decisionEventsOf,
+  rejectedRequestEvent,
+  riskBucketOf,
+  type DecisionEvent,
+  type DecisionEventInput,
+  type FallbackEvent,
+  type RejectedRequestEvent,
+  type RejectionCode,
+  type RiskBucket,
+  type TelemetryEvent,
+  type TelemetrySink,
+} from "./decision-events.js";
+
+export {
+  DecisionLog,
+  defaultDecisionLogDirectory,
+  type DecisionLogOptions,
+} from "./decision-log.js";
+
+export { RotatingJsonlLog, type RotatingLogOptions } from "./rotating-log.js";
 
 export {
   ObservationLog,
