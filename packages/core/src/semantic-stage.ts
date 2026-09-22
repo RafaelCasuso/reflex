@@ -7,10 +7,10 @@ import type {
   ReasonCode,
   RiskScore,
   SemanticAssessment,
-  SemanticDecisionProvider,
   SemanticDecisionRequest,
   SideEffectClass,
 } from "@reflex/contracts";
+import type { SemanticDecisionProvider } from "@reflex/semantic-provider";
 
 /**
  * The seams of the semantic stage (`docs/architecture.md` §3). The engine
@@ -20,10 +20,10 @@ import type {
  *   inside it (ADR-006): the engine hands it the raw action and sends the
  *   provider only what it returns. There is no default compiler on purpose,
  *   so that the engine can never send an argument value anywhere by itself.
- * - `SemanticDecisionProvider` is G4. Until RFX-025 moves it and gives it a
- *   typed result, it is the contract's interface: a rejected promise is a
- *   provider failure and is handled as `provider-error`, or as `timeout` when
- *   the deadline had passed (ADR-005 §2).
+ * - `SemanticDecisionProvider` is `@reflex/semantic-provider` (RFX-025): one
+ *   call in, a typed result out. A provider that is down or slow is an
+ *   expected outcome and comes back as a `ProviderError`; a provider that
+ *   throws is a bug and is handled as `unavailable` (ADR-005 §2).
  * - `RiskAggregator` is G6. The assessment is evidence; the aggregator turns
  *   it into an effect, a risk and a confidence. The engine then applies what
  *   the aggregator may not go under: the floor an untrusted policy set

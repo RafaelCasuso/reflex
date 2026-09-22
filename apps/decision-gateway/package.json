@@ -16,6 +16,7 @@
     "@reflex/contracts": "workspace:*",
     "@reflex/core": "workspace:*",
     "@reflex/policy-engine": "workspace:*",
+    "@reflex/semantic-provider": "workspace:*",
     "@reflex/telemetry": "workspace:*"
   }
 }

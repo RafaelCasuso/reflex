@@ -3,7 +3,6 @@ import { randomBytes } from "node:crypto";
 import type {
   CanonicalAction,
   DecisionEffect,
-  DecisionEngine,
   DecisionId,
   DecisionLatency,
   DecisionRequest,
@@ -21,8 +20,18 @@ import {
   type CompiledPolicySet,
   type PolicyEvaluationResult,
 } from "@reflex/policy-engine";
+import {
+  fallbackReasonOf,
+  providerError,
+  type ProviderResult,
+} from "@reflex/semantic-provider";
 
-import { DecisionCache, isCacheable, type CachedDecision } from "./cache.js";
+import {
+  DecisionCache,
+  isCacheable,
+  isSemanticCacheable,
+  type CachedDecision,
+} from "./cache.js";
 import {
   fallbackEffect,
   fallbackReasonCode,
@@ -85,6 +94,14 @@ export interface DecisionEngineOptions {
   readonly newDecisionId?: () => DecisionId;
 }
 
+/** What a caller of the engine sees (moved here from the contracts, ADR-005). */
+export interface DecisionEngine {
+  decide(
+    request: DecisionRequest,
+    signal?: AbortSignal,
+  ): Promise<ReflexDecision>;
+}
+
 export interface ReflexDecisionEngine extends DecisionEngine {
   /** The same keyed fingerprint the cache uses, for the caller's own keys. */
   fingerprint(action: CanonicalAction): string;
@@ -127,9 +144,11 @@ interface Verdict {
   readonly semanticMs?: number;
   readonly aggregationMs?: number;
   /**
-   * A pure function of the action and the policy set, and nothing else: what
-   * the cache may keep (RFX-106). An `ask` for want of a provider is not,
-   * because a provider can be configured while the daemon runs.
+   * What the cache may keep: a pure function of the action and the policy
+   * set (RFX-106), or a semantic decision of a repeatable class under the
+   * provider and model in the key (RFX-109). An `ask` for want of a provider
+   * is neither, because a provider can be configured while the daemon runs.
+   * A fallback never is.
    */
   readonly cacheable: boolean;
 }
@@ -181,25 +200,32 @@ export function createDecisionEngine(
       signal === undefined ? timeout : AbortSignal.any([signal, timeout]);
     const compileStarted = monotonic();
     let contextMs = 0;
+    let result: ProviderResult;
     try {
       const compiled = stage.compiler.compile(request.action, {
         maxInputTokens: stage.maxInputTokens,
         deadlineMs: budgetMs,
       });
       contextMs = monotonic() - compileStarted;
-      const assessment = await stage.provider.evaluate(compiled, combined);
-      return { ok: true, assessment, contextMs };
+      result = await stage.provider.evaluate(compiled, combined);
     } catch {
-      // ADR-005 §2: nothing the provider says is read. Aborted, by the
-      // deadline or by the caller, is a timeout; anything else is the
-      // provider's failure, a thrown exception included. A compiler that
-      // throws is a bug of the same kind and ends the same way.
-      return {
+      // ADR-005 §2: a provider or a compiler that throws is a bug, handled
+      // as a provider that is unavailable. If the deadline or the caller
+      // fired meanwhile, that is what happened.
+      result = {
         ok: false,
-        reason: combined.aborted ? "timeout" : "provider-error",
-        contextMs,
+        error: providerError(
+          combined.aborted ? "timeout" : "unavailable",
+          stage.provider.providerName,
+          monotonic() - compileStarted,
+        ),
       };
     }
+    if (result.ok) {
+      return { ok: true, assessment: result.assessment, contextMs };
+    }
+    // Nothing the provider says is read beyond the kind of its failure.
+    return { ok: false, reason: fallbackReasonOf(result.error), contextMs };
   }
 
   async function verdictOf(
@@ -281,7 +307,11 @@ export function createDecisionEngine(
         contextMs: outcome.contextMs,
         semanticMs,
         aggregationMs: monotonic() - aggregationStarted,
-        cacheable: false,
+        // RFX-109: kept only for the classes whose assessment is repeatable.
+        cacheable: isSemanticCacheable({
+          sideEffectClass,
+          environment: request.action.resource?.environment,
+        }),
       };
     }
 
@@ -322,6 +352,9 @@ export function createDecisionEngine(
       confidence: cached.confidence,
       reasonCodes: cached.reasonCodes,
       policyMatches: cached.policyMatches,
+      ...(cached.semanticAssessment === undefined
+        ? {}
+        : { semanticAssessment: cached.semanticAssessment }),
       policySetHash: cached.policySetHash,
       cached: true,
       cacheKey,
@@ -349,6 +382,14 @@ export function createDecisionEngine(
           ...(action.resource === undefined
             ? {}
             : { environment: action.resource.environment }),
+          ...(semantic === undefined
+            ? {}
+            : {
+                provider: semantic.provider.providerName,
+                ...(semantic.provider.model === undefined
+                  ? {}
+                  : { model: semantic.provider.model }),
+              }),
         });
         const hit = cache.get(cacheKey, startedAt);
         if (hit !== undefined) {
@@ -423,6 +464,9 @@ export function createDecisionEngine(
             policyMatches: decision.policyMatches,
             policySetHash: set.hash,
             sideEffectClass: evaluation.sideEffectClass,
+            ...(decision.semanticAssessment === undefined
+              ? {}
+              : { semanticAssessment: decision.semanticAssessment }),
           },
           finishedAt,
         );

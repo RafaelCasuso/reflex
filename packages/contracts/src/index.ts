@@ -80,7 +80,6 @@ export {
 export {
   FALLBACK_REASONS,
   REASON_CODES,
-  type DecisionEngine,
   type DecisionFallback,
   type DecisionLatency,
   type DecisionRequest,
@@ -91,7 +90,6 @@ export {
 
 export type {
   SemanticAssessment,
-  SemanticDecisionProvider,
   SemanticDecisionRequest,
   SemanticSignal,
 } from "./semantic.js";

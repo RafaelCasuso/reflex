@@ -4,8 +4,6 @@ import type {
   FailureMode,
   ReflexMode,
   SemanticAssessment,
-  SemanticDecisionProvider,
-  SemanticDecisionRequest,
   SideEffectClass,
 } from "@reflex/contracts";
 import {
@@ -14,6 +12,11 @@ import {
   type CompiledPolicySet,
   type PolicySourceDocument,
 } from "@reflex/policy-engine";
+import {
+  createFakeProvider,
+  type FakeBehavior,
+  type FakeProvider,
+} from "@reflex/semantic-provider";
 
 import type {
   Aggregation,
@@ -159,62 +162,6 @@ export function assessment(
   };
 }
 
-/**
- * A provider that records what it was asked and answers as told: with an
- * assessment, by rejecting, by hanging until aborted, or by throwing.
- */
-export type ProviderBehavior =
-  | { readonly kind: "assess"; readonly assessment?: SemanticAssessment }
-  | { readonly kind: "reject" }
-  | { readonly kind: "throw" }
-  | { readonly kind: "hang" }
-  | { readonly kind: "slow"; readonly ms: number };
-
-export interface FakeProvider extends SemanticDecisionProvider {
-  readonly calls: SemanticDecisionRequest[];
-  readonly signals: (AbortSignal | undefined)[];
-}
-
-export function fakeProvider(
-  behavior: ProviderBehavior = { kind: "assess" },
-): FakeProvider {
-  const calls: SemanticDecisionRequest[] = [];
-  const signals: (AbortSignal | undefined)[] = [];
-  return {
-    providerName: "fake",
-    calls,
-    signals,
-    evaluate(request, signal) {
-      calls.push(request);
-      signals.push(signal);
-      switch (behavior.kind) {
-        case "assess":
-          return Promise.resolve(behavior.assessment ?? assessment());
-        case "reject":
-          return Promise.reject(new Error("provider down"));
-        case "throw":
-          throw new TypeError("a bug in the provider");
-        case "hang":
-          return new Promise((_resolve, reject) => {
-            signal?.addEventListener("abort", () => {
-              reject(signal.reason as Error);
-            });
-          });
-        case "slow":
-          return new Promise((resolve, reject) => {
-            const timer = setTimeout(() => {
-              resolve(assessment());
-            }, behavior.ms);
-            signal?.addEventListener("abort", () => {
-              clearTimeout(timer);
-              reject(signal.reason as Error);
-            });
-          });
-      }
-    },
-  };
-}
-
 /** Selects the fields by name, as the G5 compiler will; no redaction here. */
 export const passThroughCompiler: ContextCompiler = {
   compile(action, budget) {
@@ -252,11 +199,12 @@ export interface StageHarness {
   readonly provider: FakeProvider;
 }
 
+/** The fake answers a fixed assessment unless told to misbehave. */
 export function stage(
-  behavior?: ProviderBehavior,
+  behavior: FakeBehavior = { kind: "fixed", assessment: assessment() },
   overrides: Partial<Omit<SemanticStage, "provider">> = {},
 ): StageHarness {
-  const provider = fakeProvider(behavior);
+  const provider = createFakeProvider({ behavior });
   return {
     provider,
     stage: {

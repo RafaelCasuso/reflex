@@ -10,7 +10,9 @@ export {
   DecisionCache,
   DEFAULT_CACHE_OPTIONS,
   NEVER_CACHED_CLASSES,
+  SEMANTIC_CACHEABLE_CLASSES,
   isCacheable,
+  isSemanticCacheable,
   type CacheabilityInput,
   type CachedDecision,
   type DecisionCacheOptions,
@@ -18,6 +20,7 @@ export {
 export {
   createDecisionEngine,
   type DeadlineOptions,
+  type DecisionEngine,
   type DecisionEngineOptions,
   type PathOptions,
   type ReflexDecisionEngine,

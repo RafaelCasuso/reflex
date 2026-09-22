@@ -11,6 +11,8 @@ import type {
 } from "@reflex/policy-engine";
 import { describe, expect, it } from "vitest";
 
+import { createFakeProvider } from "@reflex/semantic-provider";
+
 import { DecisionCache } from "./cache.js";
 import {
   createDecisionEngine,
@@ -388,7 +390,7 @@ describe("RFX-022 deadline and cancellation", () => {
 
 describe("RFX-020 fallback through the engine (ADR-003)", () => {
   it("falls back on a provider that rejects, and reports it", async () => {
-    const harness = stage({ kind: "reject" });
+    const harness = stage({ kind: "error", error: "unavailable" });
     const { decide } = engine({ stage: harness.stage, cache: false });
     const decision = await decide(shell("ls"));
     expect(decision).toMatchObject({
@@ -412,7 +414,7 @@ describe("RFX-020 fallback through the engine (ADR-003)", () => {
   });
 
   it("denies under fail-closed, and Assist turns that into a prompt", async () => {
-    const harness = stage({ kind: "reject" });
+    const harness = stage({ kind: "error", error: "unavailable" });
     const { decide } = engine({
       stage: harness.stage,
       cache: false,
@@ -430,7 +432,7 @@ describe("RFX-020 fallback through the engine (ADR-003)", () => {
   });
 
   it("fails open only for a read, and says so in the decision", async () => {
-    const harness = stage({ kind: "reject" });
+    const harness = stage({ kind: "error", error: "unavailable" });
     const { decide } = engine({
       stage: harness.stage,
       cache: false,
@@ -455,7 +457,7 @@ describe("RFX-020 fallback through the engine (ADR-003)", () => {
   // Adversarial: the client asks for fail-open on an action of unknown class,
   // and the daemon is configured fail-open as well. Unknown never fails open.
   it("never fails open for an unknown class, whatever anyone asks", async () => {
-    const harness = stage({ kind: "reject" });
+    const harness = stage({ kind: "error", error: "unavailable" });
     const { decide } = engine({
       stage: harness.stage,
       cache: false,
@@ -469,7 +471,7 @@ describe("RFX-020 fallback through the engine (ADR-003)", () => {
   });
 
   it("never fails open for a class the adapter understated", async () => {
-    const harness = stage({ kind: "reject" });
+    const harness = stage({ kind: "error", error: "unavailable" });
     const { decide } = engine({
       stage: harness.stage,
       cache: false,
@@ -486,7 +488,7 @@ describe("RFX-020 fallback through the engine (ADR-003)", () => {
   });
 
   it("holds an untrusted floor through a fallback", async () => {
-    const harness = stage({ kind: "reject" });
+    const harness = stage({ kind: "error", error: "unavailable" });
     const { decide } = engine({
       sources: [local(SEMANTIC_ONLY), untrustedProject(UNTRUSTED_ASK_ALL)],
       stage: harness.stage,
@@ -549,8 +551,8 @@ describe("RFX-106 deterministic cache through the engine", () => {
     ).toBe(false);
   });
 
-  it("never caches the classes on the list, a production action, a fallback or a semantic decision", async () => {
-    const rejecting = stage({ kind: "reject" });
+  it("never caches the classes on the list, a production action, a fallback or a semantic decision about a dangerous class", async () => {
+    const rejecting = stage({ kind: "error", error: "unavailable" });
     const denyAll = engine({ sources: [local(DENY_BY_DEFAULT)] });
     for (const action of [
       shell("rm -rf /work/project/build"),
@@ -569,13 +571,78 @@ describe("RFX-106 deterministic cache through the engine", () => {
     await fallingBack.decide(shell("ls"));
     expect((await fallingBack.decide(shell("ls"))).cached).toBe(false);
 
+    // RFX-109: a semantic decision about a destructive action is never
+    // served from the cache, whatever the aggregator said.
     const assessing = engine({ stage: stage().stage });
-    await assessing.decide(shell("ls"));
-    expect((await assessing.decide(shell("ls"))).cached).toBe(false);
+    await assessing.decide(shell("rm -rf /work/project/build"));
+    expect(
+      (await assessing.decide(shell("rm -rf /work/project/build"))).cached,
+    ).toBe(false);
 
     const unassessed = engine();
     await unassessed.decide(shell("ls"));
     expect((await unassessed.decide(shell("ls"))).cached).toBe(false);
+  });
+
+  // RFX-109: semantic caching only for explicitly safe, repeatable classes.
+  describe("semantic decisions (RFX-109)", () => {
+    it("serves a semantic decision about a read again, evidence included, under the same provider and model", async () => {
+      const harness = stage();
+      const { decide } = engine({ stage: harness.stage });
+      const first = await decide(shell("ls"));
+      const second = await decide(shell("ls"));
+      expect(first).toMatchObject({ effect: "allow", cached: false });
+      expect(second).toMatchObject({
+        effect: "allow",
+        cached: true,
+        risk: first.risk,
+        confidence: first.confidence,
+        semanticAssessment: first.semanticAssessment,
+      });
+      expect(harness.provider.calls).toHaveLength(1);
+    });
+
+    it.each([
+      ["a destructive command", shell("rm -rf /work/project/build")],
+      ["a privileged command", shell("sudo ls")],
+      ["a credential read", fileTool("Read", "/home/dev/.ssh/id_rsa")],
+      ["an unknown command", shell("./deploy.sh")],
+      [
+        "a production action",
+        { ...shell("ls"), resource: { environment: "production" as const } },
+      ],
+    ])(
+      "never serves a semantic decision about %s from the cache",
+      async (_label, action) => {
+        const harness = stage();
+        const { decide } = engine({ stage: harness.stage });
+        await decide(action);
+        expect((await decide(action)).cached).toBe(false);
+        expect(harness.provider.calls).toHaveLength(2);
+      },
+    );
+
+    it("misses when the provider or the model changes", async () => {
+      const set = [local(SEMANTIC_ONLY)];
+      const cache = new DecisionCache({ maxEntries: 100, ttlMs: 60_000 });
+      const one = engine({ sources: set, stage: stage().stage, cache });
+      await one.decide(shell("ls"));
+      const otherModel = createFakeProvider();
+      (otherModel as { model: string }).model = "fake-2";
+      const two = engine({
+        sources: set,
+        stage: { ...stage().stage, provider: otherModel },
+        cache,
+      });
+      expect((await two.decide(shell("ls"))).cached).toBe(false);
+    });
+
+    it("never caches a fallback, whatever the class", async () => {
+      const harness = stage({ kind: "error", error: "unavailable" });
+      const { decide } = engine({ stage: harness.stage });
+      await decide(shell("ls"));
+      expect((await decide(shell("ls"))).cached).toBe(false);
+    });
   });
 
   it("does cache a default ask or deny of a cacheable class", async () => {

@@ -69,6 +69,11 @@ and a contradiction between `environment` and `isProduction` toward
 - **Released fixtures are frozen.** Add `fixtures/vMAJOR.MINOR/`; never edit an
   existing directory.
 - **Do not put an input value in an issue message.** Inputs carry secrets.
+- **Shapes only.** `SemanticDecisionProvider` and `DecisionEngine` left this
+  package in RFX-025 (ADR-005 §1): the provider interface and its typed
+  result live in `@reflex/semantic-provider`, the engine interface in
+  `@reflex/core`. No serialized shape changed, so the contract version did
+  not move.
 - **`action.id` is an idempotency key.** A decision gateway decides an id
   once (RFX-120): the same id with the same content returns the same decision
   and counts once; the same id with different content is rejected. Retry with

@@ -103,10 +103,3 @@ export interface ReflexDecision {
 
   decidedAt: IsoTimestamp;
 }
-
-export interface DecisionEngine {
-  decide(
-    request: DecisionRequest,
-    signal?: AbortSignal,
-  ): Promise<ReflexDecision>;
-}

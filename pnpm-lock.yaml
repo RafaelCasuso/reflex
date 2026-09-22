@@ -56,6 +56,9 @@ importers:
       '@reflex/policy-engine':
         specifier: workspace:*
         version: link:../../packages/policy-engine
+      '@reflex/semantic-provider':
+        specifier: workspace:*
+        version: link:../../packages/semantic-provider
       '@reflex/telemetry':
         specifier: workspace:*
         version: link:../../packages/telemetry
@@ -128,6 +131,9 @@ importers:
       '@reflex/policy-engine':
         specifier: workspace:*
         version: link:../policy-engine
+      '@reflex/semantic-provider':
+        specifier: workspace:*
+        version: link:../semantic-provider
 
   packages/evals:
     dependencies:
@@ -137,6 +143,9 @@ importers:
       '@reflex/policy-engine':
         specifier: workspace:*
         version: link:../policy-engine
+      '@reflex/semantic-provider':
+        specifier: workspace:*
+        version: link:../semantic-provider
 
   packages/policy-engine:
     dependencies:
@@ -158,6 +167,9 @@ importers:
       '@reflex/contracts':
         specifier: workspace:*
         version: link:../contracts
+      '@reflex/semantic-provider':
+        specifier: workspace:*
+        version: link:../semantic-provider
 
   packages/sdk-typescript:
     dependencies:

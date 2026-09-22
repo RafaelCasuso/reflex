@@ -57,18 +57,3 @@ export interface SemanticDecisionRequest {
   maxInputTokens: number;
   deadlineMs: DurationMs;
 }
-
-/**
- * A provider assesses. It never decides, mutates or executes.
- *
- * Whether this interface ultimately lives here or in
- * `packages/semantic-provider` is for ADR-005 to settle before Gate G4.
- */
-export interface SemanticDecisionProvider {
-  readonly providerName: string;
-
-  evaluate(
-    request: SemanticDecisionRequest,
-    signal?: AbortSignal,
-  ): Promise<SemanticAssessment>;
-}

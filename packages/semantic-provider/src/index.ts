@@ -1,6 +1,27 @@
 /**
- * @reflex/semantic-provider — Semantic decision provider interface.
+ * @reflex/semantic-provider — the provider interface (ADR-005).
  *
- * Skeleton only (RFX-002). Implementation starts in Gate G4.
+ * Behavior lives here; the shapes an assessment is made of stay in
+ * `@reflex/contracts`, because an assessment is part of a decision and
+ * crosses the wire. Jev, a local inference server and the hosted gateway
+ * are providers behind this interface; core depends on nothing else.
  */
-export {};
+export {
+  PROVIDER_ERROR_KINDS,
+  fallbackReasonOf,
+  isRetryable,
+  providerError,
+  type ProviderError,
+  type ProviderErrorKind,
+  type ProviderResult,
+  type SemanticDecisionProvider,
+} from "./provider.js";
+export {
+  FAKE_MODEL,
+  FAKE_PROVIDER_NAME,
+  assessmentForClass,
+  createFakeProvider,
+  type FakeBehavior,
+  type FakeProvider,
+  type FakeProviderOptions,
+} from "./fake.js";
