@@ -145,6 +145,15 @@ and do not change it.
   parsed strictly at the boundary (ADR-009), bounded in size before it is read
   and in rate before it is validated (RFX-119), and answered with a typed
   error, never a stack trace.
+- **The client writes HTTP/1.1 by hand over `node:net`.** Measured in RFX-024
+  (`docs/decision-gateway.md` §4): a per-call Node process costs about 26 ms
+  empty, 28 ms with `node:net` loaded and 40 ms with `node:http` loaded. The
+  same request end to end is 33 ms at p50 from a `node:net` client and 49 ms
+  from a `node:http` one. So the hook client (RFX-043) loads `node:net` and
+  nothing else, and the protocol stays HTTP so that the daemon has one
+  handler. The floor for a Node client is about 33 ms end to end, of which
+  26 ms is Node starting; the open question about a client that is not a
+  Node script is unchanged, and the daemon is not what stands in the way.
 - **Who starts the daemon is not this gate's work.** The client's own answer
   when the daemon is down is RFX-043 (G7); starting it on demand, keeping one
   daemon for many projects, upgrading it while it runs and removing it on

@@ -83,13 +83,14 @@ reflex/
 │   │       ├── components/
 │   │       └── lib/
 │   │
-│   └── decision-gateway/
+│   └── decision-gateway/     # the local daemon and the remote gateway, one server (ADR-010)
+│       ├── bench/            # RFX-024 harness and its record
 │       └── src/
-│           ├── http/
-│           ├── orchestration/
-│           ├── config/
-│           ├── telemetry/
-│           └── server.ts
+│           ├── http/         # handler, body and rate limits, idempotency, typed problems
+│           ├── orchestration/# the policy set in force, engine assembly
+│           ├── config/       # the daemon's command line
+│           ├── server.ts     # listen on a socket or loopback TCP
+│           └── main.ts       # the daemon's entry point
 │
 ├── packages/
 │   ├── contracts/
@@ -111,10 +112,13 @@ reflex/
 │   │
 │   ├── core/
 │   │   └── src/
-│   │       ├── decision-engine.ts
-│   │       ├── risk-aggregator.ts
-│   │       ├── fallback.ts
-│   │       └── cache-policy.ts
+│   │       ├── decision-engine.ts   # stage order, deadline (ADR-002, RFX-019, RFX-022)
+│   │       ├── semantic-stage.ts    # the seams G4, G5 and G6 fill
+│   │       ├── fallback.ts          # failure modes (ADR-003, RFX-020)
+│   │       ├── risk.ts, modes.ts    # the tables of ADR-002
+│   │       ├── fingerprint.ts       # keyed action fingerprint, cache key (RFX-106)
+│   │       ├── cache.ts             # deterministic decision cache
+│   │       └── risk-aggregator.ts   # G6
 │   │
 │   ├── policy-engine/
 │   │   └── src/

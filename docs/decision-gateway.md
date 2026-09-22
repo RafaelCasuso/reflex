@@ -1,0 +1,163 @@
+# The decision gateway
+
+`apps/decision-gateway` is the runtime decision endpoint: `POST /v1/decisions`
+in, a `ReflexDecision` out. On the user's machine it is the local daemon of
+ADR-010, listening on a Unix domain socket, deciding the deterministic path
+with no network and no account. The same server, listening on TCP behind API
+keys, is the remote service of G14. This page is what it does today (G3) and
+what it measured.
+
+## 1. What it is made of
+
+| Piece                                   | Where                                       | Ticket              |
+| --------------------------------------- | ------------------------------------------- | ------------------- |
+| Stage order, deadline, cache, fallback  | `packages/core`                             | RFX-019/022/106/020 |
+| `POST /v1/decisions`, `GET /v1/health`  | `apps/decision-gateway/src/http/handler.ts` | RFX-021             |
+| Body size limit, rate limit             | `src/http/body.ts`, `src/http/limits.ts`    | RFX-119             |
+| Idempotency by `action.id`              | `src/http/idempotency.ts`                   | RFX-120             |
+| Decision events, local decision log     | `packages/telemetry`                        | RFX-023             |
+| The daemon process and its command line | `src/main.ts`, `src/config/arguments.ts`    | RFX-021             |
+| Benchmark harness                       | `bench/gateway.bench.mjs`                   | RFX-024             |
+
+The engine decides; the gateway validates, bounds, deduplicates, answers and
+then reports. Nothing in the gateway reads inside an action.
+
+## 2. The request, in order
+
+1. **Rate limit**, on arrival, before anything is read: a token bucket per
+   caller (one caller for a socket, one per address on TCP). Over the limit is
+   `429` with `Retry-After`. State is in memory and bounded; losing it starts a
+   caller over with one burst, never with no limit.
+2. **Media type**: anything but `application/json` is `415`.
+3. **Size**, before the body is read: a declared length over the limit is
+   `413` without reading; a body that lies is stopped at the limit and gets
+   `413` too. The default limit is 4 MiB.
+4. **Strict validation** (ADR-009): `parseDecisionRequest`. A failure is
+   `400` with the paths and codes of the issues, never a value from the input.
+5. **Idempotency** (RFX-120): the same `action.id` with the same content
+   (the engine's fingerprint, the mode, the requested failure mode) returns
+   the decision already made, byte for byte, with `X-Reflex-Replayed: true`,
+   and is not counted again; the same id with different content is `409`.
+6. **The engine.** A client that goes away aborts the decision it asked for.
+7. **The answer**: `200`, the decision as JSON, `X-Reflex-Decision-Id` and the
+   request's `X-Request-Id` (echoed when usable, made up otherwise).
+8. **Telemetry**, on the next turn of the event loop, after the answer has
+   left. A sink that throws changes nothing.
+
+Every rejection is `{ error: { code, message, issues? }, requestId }` with a
+closed `code`: `invalid-request`, `payload-too-large`, `rate-limited`,
+`idempotency-conflict`, `unsupported-media-type`, `not-found`,
+`method-not-allowed`, `internal-error`. There is no stack trace on the wire.
+
+## 3. The daemon
+
+```
+node apps/decision-gateway/dist/main.js [--socket <path> | --tcp <host:port>]
+  [--policy <file>]... [--failure-mode fail-open|fail-ask|fail-closed]
+  [--no-cache] [--no-telemetry] [--home <dir>] [--rate-limit <burst>/<per-second>]
+```
+
+- Default: the socket `<REFLEX_HOME>/run/reflex.sock`, in a directory of mode
+  `0700`, the socket `0600`. A socket nobody answers on is replaced; one that
+  answers means another daemon runs, and this one exits.
+- `--tcp` binds loopback only. Any other interface is refused until an
+  authenticator exists (G14).
+- `--policy` files are the user's own local policy. A file that does not load
+  is reported on stderr and REFLEX's own rules alone are in force (ADR-003
+  §3); `GET /v1/health` says so (`policyLoadedAt: null`, `policyProblems`).
+- Once listening, one JSON line on stdout: `{ "listening": {...}, "version" }`.
+  `SIGTERM` or `SIGINT` closes the connections, removes the socket and exits 0.
+- An unknown flag exits 2. A daemon that starts with a misread flag would run
+  with the wrong policy.
+
+Decision telemetry goes to `<REFLEX_HOME>/decisions/decisions.jsonl`, rotated
+by size, one event per line: a `decision` event per decision (effect, mode,
+risk bucket, reason codes, matched rule ids, cache status, latency, host,
+tool name; never an argument, a path or an objective), a `fallback` event of
+its own when one was used (ADR-003 §5), and a `rejected` event per request
+turned away. Canary values for every item of the never-stored list (ADR-008
+§3) go through the whole pipeline in `src/telemetry.test.ts` and must not
+come out.
+
+Who starts the daemon, keeps one per user, upgrades and removes it is RFX-138.
+
+## 4. What it costs (RFX-024)
+
+Measured on 2026-09-22 with `node bench/gateway.bench.mjs --runs 500` on an
+Apple M1 Max, darwin 25.6.0 arm64, Node v24.9.0, against a policy of 204
+rules (200 generated, one allow for reads, REFLEX's own three). The record is
+`bench/results/apple-m1-max-node24.json`, and `src/bench-evidence.test.ts`
+holds this table to it. Every number says where it was measured, as ADR-010
+requires. Milliseconds.
+
+| Case                         | Point of measurement                    |   p50 |   p95 |   p99 |
+| ---------------------------- | --------------------------------------- | ----: | ----: | ----: |
+| typical read (`allow`)       | in-engine, sub-millisecond, core bench  | 0.098 | 0.141 | 0.333 |
+|                              | over the socket, warm client, miss      |  0.27 |  0.42 |  0.63 |
+|                              | over the socket, warm client, cache hit |  0.12 |  0.19 |  0.22 |
+|                              | end to end, `node:http` client          | 49.18 | 54.72 | 64.27 |
+|                              | end to end, `node:net` client           | 33.42 | 37.22 | 51.90 |
+| compound, 6 segments (`ask`) | in-engine, sub-millisecond, core bench  | 0.644 | 0.820 | 1.073 |
+|                              | over the socket, warm client, miss      |  0.64 |  0.86 |  0.96 |
+|                              | end to end, `node:http` client          | 49.91 | 54.38 | 55.91 |
+|                              | end to end, `node:net` client           | 33.07 | 36.81 | 39.57 |
+| bypass attempt (`ask`)       | in-engine, sub-millisecond, core bench  | 1.369 | 1.607 | 2.005 |
+|                              | over the socket, warm client, miss      |  1.36 |  1.72 |  2.82 |
+|                              | end to end, `node:http` client          | 50.95 | 55.18 | 57.15 |
+|                              | end to end, `node:net` client           | 33.62 | 37.58 | 38.90 |
+
+"In-engine" is from a validated request in memory to a decision, inside the
+daemon; the engine reports it in whole milliseconds on every decision
+(`latency.totalMs`, which reads 0 or 1 here) and `pnpm --filter @reflex/core
+bench` measures it with sub-millisecond resolution, which is the row above.
+"Over the socket" is one warm client process, so it is the HTTP layer, the
+validation, the idempotency store and the socket on top of the engine. "End
+to end" is from the start of a fresh Node process to its exit, one per
+request, which is how a host runs a hook and what the user feels.
+
+### Against the budgets in `CLAUDE.md`
+
+| Budget                                         | Measured                                       | Holds |
+| ---------------------------------------------- | ---------------------------------------------- | ----- |
+| deterministic decision, p95 < 10 ms, in-engine | 0.14 to 1.6 ms                                 | yes   |
+| cached decision, p95 < 20 ms, in-engine        | 0.011 ms (core bench); 0.19 ms over the socket | yes   |
+| infrastructure overhead, p95 < 25 ms           | about 0.3 ms over the socket, warm             | yes   |
+| end to end                                     | no budget yet (ADR-010)                        |       |
+
+### What the harness found
+
+1. **The gateway adds about 0.3 ms.** Over the socket, a warm client sees the
+   engine's own time plus 0.2 to 0.3 ms for HTTP, validation and the
+   idempotency store. HTTP/1.1 over the socket costs nothing worth a wire
+   format of its own (ADR-010 implementation notes).
+2. **The client must not load `node:http`.** A per-call Node process costs
+   26.3 ms empty on this machine (p50). Importing `node:http` alone brings it
+   to 40.2 ms; importing `node:net` to 27.8 ms. The two end-to-end rows are the
+   same request from the same kind of process, and differ by 16 ms at p50 on
+   that import alone. The hook client (RFX-043) will write HTTP/1.1 by hand
+   over `node:net`, as `bench/client-net.mjs` does in forty lines: a request
+   line, four headers, the body; a status line, headers and a body of the
+   declared length.
+3. **The floor for a Node client is about 33 ms end to end**, of which 26 ms
+   is Node starting. That is the number ADR-010 left open: an end-to-end
+   budget under about 30 ms needs a client that is not a Node script. The
+   daemon is not what stands in the way.
+4. **The cache is worth 0.15 ms over the socket, and nothing for the classes
+   it never keeps.** The compound and bypass cases hit 0% because a command
+   with `rm -rf` or `sudo` is never cached (`docs/architecture.md` §11). That
+   is the intended trade: the cost of deciding such a command again is one
+   policy evaluation.
+
+## 5. What this gate does not claim
+
+- No policy is selected per project yet: every action gets the daemon's one
+  set. The engine takes the action when asked for a set, so that is a change
+  in `src/orchestration/policy-source.ts`, not in the engine.
+- No semantic stage runs: there is no provider (G4), no compiler (G5), no
+  aggregator (G6). Every action policy leaves open is `ask`, with confidence
+  0 and no fallback, because nothing failed.
+- The daemon does not start itself, and nothing stops a second user from
+  starting one for themselves: the socket is per user by its mode, not by
+  design. RFX-138.
+- TCP has no authentication and refuses to bind anywhere but loopback.
+- Timing was measured on one machine, once, and is not run in CI.

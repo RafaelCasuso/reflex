@@ -496,17 +496,23 @@ This gate opens with the decisions the policy engine depends on (RFX-112 to RFX-
 
 **Acceptance:** Deterministically resolved actions never invoke semantic provider.
 
+**Status:** Done (2026-09-22). `createDecisionEngine` in `packages/core` orders the stages as ADR-002 §1 fixes them: deterministic policy; the policy's own default for what no rule decided; the semantic stage, inside the deadline; a fallback when a stage that was needed could not complete. The semantic stage is three seams (`ContextCompiler`, G5; `SemanticDecisionProvider`, G4; `RiskAggregator`, G6) with no default compiler, so the engine can never send an argument value anywhere by itself; with no stage configured, `semantic` is read as `ask` with confidence 0 and no fallback, because nothing failed. The floor of an untrusted policy set (ADR-012) and `deny > ask > allow` are applied by the engine after the aggregator, so an aggregator cannot forget them. **The acceptance is a test in every combination:** a deterministically resolved action never reaches the provider, held with and without the cache, for a rule, for a policy default and for REFLEX's own mandatory rules. Every mode-by-effect cell of ADR-002 §2 is a test, the risk table is held to the ADR's own text, and every decision the engine produces is parsed by the contract. `effect` is computed the same way in every mode. Deterministic evaluation through the whole engine is 0.14 to 1.6 ms at p95 in-engine on an Apple M1 Max (`pnpm --filter @reflex/core bench`). **Assumptions, stated:** `confidence` is 1 for a rule or a policy default and 0 for a fallback; a request's `policySetHash` is informational, the daemon's set decides.
+
 ### RFX-020 — Implement failure-mode engine
 
 **Goal:** Implement fail-open/fail-ask/fail-closed with risk-class constraints.
 
 **Acceptance:** Unknown dangerous classes cannot silently fail open by default.
 
+**Status:** Done (2026-09-22). `packages/core/src/fallback.ts` is the table of ADR-003: the strictest of the requested mode, the configured mode and the class floor wins, only `none` and `local-read` may fail open, and `fail-open` decides `ask` with `fallback.configuredMode: fail-open`, which means defer to the host and is never an allow. **The acceptance holds by construction and by test:** every class by every requested and configured mode (90 cases), an adversarial case for a request that asks for `fail-open` on an unknown class with `fail-open` configured, and one for a class the adapter understated (`local-read` declared, `rm -rf` inside); both end at `fail-ask`. Through the engine: a provider that rejects, throws or hangs ends in a reported fallback with its reason code, `fail-closed` denies in Autopilot and prompts in Assist, and an untrusted floor holds through a fallback.
+
 ### RFX-021 — Create decision gateway HTTP endpoint
 
 **Goal:** Implement `POST /v1/decisions`.
 
 **Acceptance:** Validated request returns canonical decision with correlation ID.
+
+**Status:** Done (2026-09-22). `apps/decision-gateway` serves `POST /v1/decisions` and `GET /v1/health`, on a Unix domain socket private to the user (directory `0700`, socket `0600`) or on loopback TCP; any other interface is refused until an authenticator exists (G14). ADR-010's implementation notes say why it is this app and why HTTP over the socket. A validated request returns the canonical decision with `X-Reflex-Decision-Id` and the request's `X-Request-Id`, echoed when usable and made up otherwise; every other way out is a typed problem with a closed code and the correlation id, never a stack trace and never a value from the request. Validation is strict at the boundary (ADR-009), and the issues it reports name paths, never values, which a test holds with a secret in the body. `src/main.ts` is the daemon: `--socket`, `--tcp`, `--policy`, `--failure-mode`, `--no-cache`, `--no-telemetry`, `--home`, `--rate-limit`; an unknown flag exits 2; a policy that does not load leaves REFLEX's own rules in force and says so on stderr and in `/v1/health`; `SIGTERM` closes cleanly and removes the socket. Tested as a process. `docs/decision-gateway.md` is the page. **Not in this ticket:** one policy set per project (every action gets the daemon's set; the engine already takes the action when asked for one), and who starts the daemon (RFX-138).
 
 ### RFX-119 — Gateway rate limiting and request size limits
 
@@ -516,6 +522,8 @@ This gate opens with the decisions the policy engine depends on (RFX-112 to RFX-
 
 **Why:** The gateway is a public endpoint on the hot path. `docs/architecture.md` mentions rate limiting under Redis and no ticket built it.
 
+**Status:** Done (2026-09-22). The rate limit is a token bucket per caller, taken on arrival before anything is read (one caller for a socket; one per address on TCP until API keys name callers); over the limit is `429` with `Retry-After`, and an invalid request from a caller over the limit is turned away without being parsed, which a test holds. The size limit is checked against `Content-Length` before the body is read (`413` without reading) and enforced while reading for a body that lies about its length, which is stopped at the limit and answered `413`. Defaults: 4 MiB, 300 burst, 100 per second; `--rate-limit` changes the latter. **Losing state fails safe:** the store is in memory and bounded, a caller whose bucket was lost starts over with one burst and never with no limit, and a limiter that cannot be built refuses to start rather than letting everything through; tests hold each.
+
 ### RFX-120 — Idempotent decisions keyed by `action.id`
 
 **Goal:** Make a retried request with the same action ID return the same decision and count once.
@@ -524,11 +532,15 @@ This gate opens with the decisions the policy engine depends on (RFX-112 to RFX-
 
 **Why:** Adapters retry on timeouts. Without a stated idempotency key, a retry can be decided twice and billed twice, and RFX-079 would have to invent one later.
 
+**Status:** Done (2026-09-22). The gateway remembers each `action.id` with a hash of its content (the engine's keyed fingerprint of the action, the mode and the requested failure mode; the deadline is left out because a retry has less of it) for ten minutes, bounded. The same id with the same content returns the decision already made, byte for byte, with `X-Reflex-Replayed: true`, and emits no second decision event, so it is counted once; the same id with different content, a different mode or a different failure mode is `409 idempotency-conflict` and is not decided. Adapter metadata is no difference. The contract documents `action.id` as the idempotency key in `packages/contracts/src/action.ts` and its README, a clarification under ADR-009 that changes no wire shape. RFX-079 can build its metering on this.
+
 ### RFX-022 — Deadline and cancellation support
 
 **Goal:** Propagate deadlines/AbortSignal through engine.
 
 **Acceptance:** Timed-out semantic calls terminate and follow fallback policy.
+
+**Status:** Done (2026-09-22). The deadline is the request's `deadlineMs`, or the engine's default, and never more than the engine's maximum. What is left of it after policy becomes an `AbortSignal` the provider receives, combined with the caller's; the gateway's caller signal fires when the client goes away. A provider that does not answer in time is terminated and the decision follows the failure mode with reason `timeout`, and so does a cancellation by the caller (ADR-005 §2). When policy alone used the deadline up the provider is not called at all. Whole milliseconds, rounded down: a deadline is never extended. Tests: a provider that hangs, one that is slow but in time, a capped request, a default deadline, a caller's abort, and a clock that makes policy overrun.
 
 ### RFX-106 — Deterministic decision cache and action fingerprint
 
@@ -538,11 +550,15 @@ This gate opens with the decisions the policy engine depends on (RFX-112 to RFX-
 
 **Why:** The architecture has a caching section and `CLAUDE.md` has a budget for it, and neither had a ticket.
 
+**Status:** Done (2026-09-22). `packages/core/src/fingerprint.ts` is a keyed HMAC (ADR-006) of the action with identifiers, timestamps, the adapter's metadata bag, tenancy ids and the prior actions left out, over JSON with sorted keys; the key is random per engine and never written, so no cache key or telemetry field confirms a guessed command. The cache key is the fingerprint, the policy set hash, the project and the environment (`docs/architecture.md` §11), so **a policy change invalidates by construction**, held by a test that replaces the set between two calls. The cache is a bounded LRU with a TTL, and keeps only a decision that is a pure function of the action and the policy set: never a fallback, a semantic decision, an `ask` for want of a provider, a production action, or one of the classes §11 says never to cache. A hit is re-stamped with a new id, the request's mode and `cached: true`. **Every engine test runs with the cache on and off.** Measured in-engine: a hit is 0.011 ms at p95, against a 20 ms budget; the fingerprint and the lookup add about 0.02 ms to a miss. Adversarial: adapter metadata alone hits, a changed argument misses, and one action never answers for another that only looks the same.
+
 ### RFX-023 — Structured decision telemetry
 
 **Goal:** Emit latency/effect/cache/fallback metrics.
 
 **Acceptance:** Telemetry contains no raw action arguments.
+
+**Status:** Done (2026-09-22). `packages/telemetry` gains the decision events (`decision`, `fallback`, `rejected`), built from a decision and from three fields of the action selected by name (host, host version, tool), and `DecisionLog`, a local size-rotated JSON-lines log that writes off the caller's path and counts what the disk refuses instead of throwing. The gateway emits after the answer has left, on the next turn of the event loop, and a sink that throws changes nothing, which a test holds. Every item of `docs/architecture.md` §13 is in the decision event: decision id, latency by stage, cache status, provider, effect, risk bucket, fallback, host and host version. **The acceptance is a canary test:** a value for every item of ADR-008 §3 (an environment variable, an authorization header, an API key, a private key, an argument value, a path, an objective, tool output, provider text) goes through the whole pipeline, in the command, the arguments, the operands, the objective, the summary, the working directory and the adapter metadata, and none comes out of any event, for a decision and for a rejected request alike.
 
 ### RFX-024 — Gateway benchmark harness
 
@@ -550,7 +566,10 @@ This gate opens with the decisions the policy engine depends on (RFX-112 to RFX-
 
 **Acceptance:** Baseline report produced for deterministic path. Every number states where it was measured: inside the engine, and end to end from the hook (ADR-010).
 
+**Status:** Done (2026-09-22). `apps/decision-gateway/bench/gateway.bench.mjs` starts the built daemon on a socket with a 204-rule policy and measures the deterministic path at the three points ADR-010 names: in-engine (the engine's own report, and `pnpm --filter @reflex/core bench` at sub-millisecond resolution), over the socket from a warm client, and end to end from the start of a hook process to its exit, one process per request. The record is `bench/results/apple-m1-max-node24.json` and `src/bench-evidence.test.ts` holds the table in `docs/decision-gateway.md` §4 to it. **Baseline (Apple M1 Max, Node 24.9):** the gateway adds about 0.3 ms over the engine; a cache hit is 0.19 ms at p95 over the socket; end to end is 49 ms at p50 from a `node:http` client and **33 ms from a `node:net` client**, because loading `node:http` alone costs a per-call process 14 ms. That finding is now a constraint in ADR-010: the hook client writes HTTP/1.1 by hand over `node:net`. The floor for a Node client is about 33 ms, of which 26 ms is Node starting; the daemon is not what stands in the way of an end-to-end budget. Timing is not run in CI.
 **Gate exit:** all tickets above are green in CI and documented; no known dangerous false-allow regression. **Specifically:** a deterministically resolved action never reaches a provider; every failure path ends in an explicit, reported fallback; no telemetry field contains an argument value.
+
+**Gate status:** Closed on the local branch (2026-09-22), pending CI on `main`. All nine tickets are done. **The three specific exits are tests:** a deterministically resolved action never reaches a provider (`packages/core/src/decision-engine.test.ts`, with and without the cache, for a rule, a policy default and REFLEX's own rules); every failure path ends in an explicit, reported fallback (a provider that rejects, throws or hangs, a caller that cancels, a deadline policy alone used up, each with `fallback.used`, a reason and a reason code, and a `fallback` telemetry event of its own); no telemetry field contains an argument value (`apps/decision-gateway/src/telemetry.test.ts`, canaries for every item of ADR-008 §3 through the whole pipeline). **No known dangerous false allow:** nothing in this gate can produce an `allow` that policy did not, because there is no aggregator yet, and the engine applies the untrusted floor and `deny > ask > allow` after whatever aggregator G6 brings. **What this gate does not claim:** no semantic stage runs; every action gets the daemon's one policy set; nothing starts the daemon (RFX-138); TCP has no authentication and binds loopback only; the end-to-end number has no budget yet (ADR-010), and what this gate measured is that a Node client cannot go under about 33 ms.
 
 ## G4 — Semantic provider / Jev
 
