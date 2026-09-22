@@ -22,6 +22,7 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "@reflex/contracts": "workspace:*"
+    "@reflex/contracts": "workspace:*",
+    "@reflex/semantic-provider": "workspace:*"
   }
 }

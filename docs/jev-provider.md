@@ -157,6 +157,40 @@ meet the 150 ms p50.
 - **No retry on the decision path** (RFX-026). The documented retryable errors
   are 429 and 529. A retry spends the latency budget twice.
 
+### What RFX-027 implemented (2026-09-22)
+
+`packages/provider-jev` is the provider: `createJevProvider({ apiKey, model })`
+returns a `SemanticDecisionProvider` (ADR-005, `packages/semantic-provider`).
+
+- **One request, eleven questions** (RFX-028 as reworded by RFX-107). The
+  questions are the constants the probe measured, word for word, and never
+  contain anything from the request; the request travels as a structured
+  `state` whose fields the questions name in backticks. Injected text can
+  sit inside `state` and cannot become an instruction (`src/state.test.ts`).
+- **The boolean is asked as a two-option `choice`** by default, which
+  carries the provider's confidence; the `noul` form is kept for comparison
+  with a confidence derived from the distance of the probability to one
+  half, never a constant. Which of the two reads the world better is an
+  eval question (G6), and the option exists so that it can be asked.
+- **Coarse scale**: a score is mapped to its nearest level, on 0, 33, 67, 100. Magnitudes between levels are not read.
+- **Pinned model**: the versioned id is requested and an answer from any
+  other model, alias included, is `invalid-response`. `createJevProvider`
+  refuses an alias in configuration.
+- **Strict parse**: a missing dimension, an extra answer, the wrong answer
+  type, probabilities that do not describe the levels or do not sum to one,
+  a score or a confidence out of range, a legend with a level missing, or a
+  body that is not the answer asked for is `invalid-response`, handled by the
+  fallback class (ADR-003). The recorded RFX-107 answer is the fixture, and
+  fifteen ways of breaking it are tests.
+- **Typed errors, no retry**: 401, 403, 400 and 422 are `rejected-request`;
+  429 is `rate-limited`; 529 and every other failure `unavailable`; the
+  provider's own deadline is `timeout` and the caller's signal `aborted`. One
+  `fetch` per assessment, ever. The key and the provider's words never appear
+  in a result.
+- **Not yet verified live**: `live/verify-provider.mjs --run` sends three
+  synthetic actions through the built provider and records the answers; it
+  costs about a cent and has not been run.
+
 ## 4. Weaknesses the vendor documents, and where REFLEX already covers them
 
 From the vendor's own "jaggedness" page for `jev-1.13`:
