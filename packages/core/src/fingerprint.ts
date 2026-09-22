@@ -89,15 +89,24 @@ export interface CacheKeyInput {
   readonly policySetHash: string;
   readonly projectId?: string;
   readonly environment?: EnvironmentKind;
+  /** RFX-109: a semantic decision is the answer of one provider and model. */
+  readonly provider?: string;
+  readonly model?: string;
 }
 
-/** `docs/architecture.md` §11: fingerprint, policy hash, environment, project. */
+/**
+ * `docs/architecture.md` §11: fingerprint, policy hash, environment, project,
+ * and, when a semantic stage is configured, which provider and model would
+ * answer, so that a change of either misses by construction.
+ */
 export function decisionCacheKey(input: CacheKeyInput): string {
   const payload = JSON.stringify([
     input.fingerprint,
     input.policySetHash,
     input.projectId ?? null,
     input.environment ?? null,
+    input.provider ?? null,
+    input.model ?? null,
   ]);
   return `sha256:${createHash("sha256").update(payload, "utf8").digest("hex")}`;
 }

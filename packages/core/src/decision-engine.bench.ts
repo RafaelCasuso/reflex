@@ -2,13 +2,18 @@ import { arch, cpus, platform, release } from "node:os";
 
 import { afterAll, describe, expect, test } from "vitest";
 
+import { createFakeProvider } from "@reflex/semantic-provider";
+
 import { DecisionCache } from "./cache.js";
 import { createDecisionEngine } from "./decision-engine.js";
 import {
   HOME,
+  SEMANTIC_ONLY,
   compiled,
   fileTool,
+  fixedAggregator,
   local,
+  passThroughCompiler,
   request,
   shell,
 } from "./engine.test-support.js";
@@ -172,6 +177,42 @@ describe("decision engine, in-engine", () => {
     rows.push(
       row(`cache ${cacheable ? "hit" : "never (class)"}: ${label}`, at),
     );
+    expect(at(0.95)).toBeLessThan(CACHED_BUDGET_MS);
+  });
+
+  // RFX-109: the cached semantic budget, p95 < 20 ms, in-engine. The
+  // provider is the fake; what is measured is the engine's own path from a
+  // request to a decision served from the cache.
+  test("semantic, cache hit: typical read", async () => {
+    const semanticSet = compiled(local(SEMANTIC_ONLY));
+    const engine = createDecisionEngine({
+      policy: () => semanticSet,
+      semantic: {
+        provider: createFakeProvider(),
+        compiler: passThroughCompiler,
+        aggregator: fixedAggregator(),
+        maxInputTokens: 600,
+      },
+      failureMode: "fail-ask",
+      deadline: { defaultMs: 1_000, maxMs: 5_000 },
+      paths: { home: HOME },
+      cache: new DecisionCache({ maxEntries: 1_000, ttlMs: 600_000 }),
+    });
+    const action = shell("git status --short");
+    await engine.decide(request(action));
+    const samples: number[] = [];
+    let hits = 0;
+    for (let run = 0; run < WARMUP + RUNS; run += 1) {
+      const started = performance.now();
+      const decision = await engine.decide(request(action));
+      if (run >= WARMUP) {
+        samples.push(performance.now() - started);
+        hits += decision.cached ? 1 : 0;
+      }
+    }
+    expect(hits).toBe(RUNS);
+    const at = percentiles(samples);
+    rows.push(row("semantic cache hit: typical read", at));
     expect(at(0.95)).toBeLessThan(CACHED_BUDGET_MS);
   });
 });

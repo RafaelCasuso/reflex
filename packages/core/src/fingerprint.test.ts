@@ -118,5 +118,11 @@ describe("RFX-106 cache key", () => {
     expect(decisionCacheKey({ ...base, environment: "production" })).not.toBe(
       decisionCacheKey(base),
     );
+    expect(decisionCacheKey({ ...base, provider: "jev" })).not.toBe(
+      decisionCacheKey(base),
+    );
+    expect(
+      decisionCacheKey({ ...base, provider: "jev", model: "jev-1.13.0" }),
+    ).not.toBe(decisionCacheKey({ ...base, provider: "jev" }));
   });
 });

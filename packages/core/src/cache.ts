@@ -5,6 +5,7 @@ import type {
   PolicyMatch,
   ReasonCode,
   RiskScore,
+  SemanticAssessment,
   SideEffectClass,
 } from "@reflex/contracts";
 
@@ -30,6 +31,8 @@ export interface CachedDecision {
   readonly policyMatches: readonly PolicyMatch[];
   readonly policySetHash: string;
   readonly sideEffectClass: SideEffectClass;
+  /** RFX-109: a semantic decision keeps its evidence. */
+  readonly semanticAssessment?: SemanticAssessment;
 }
 
 export interface DecisionCacheOptions {
@@ -59,6 +62,28 @@ export interface CacheabilityInput {
 export function isCacheable(input: CacheabilityInput): boolean {
   return (
     !NEVER_CACHED_CLASSES.has(input.sideEffectClass) &&
+    input.environment !== "production"
+  );
+}
+
+/**
+ * RFX-109 — semantic caching is allowed only for explicitly safe, repeatable
+ * classes (`docs/architecture.md` §11): the classes whose assessment does
+ * not change with the moment, and whose cost of being wrong twice is the
+ * cost of being wrong once. Everything on the never-cached list stays out,
+ * and so does `unknown`, because unknown is never safe.
+ */
+export const SEMANTIC_CACHEABLE_CLASSES: ReadonlySet<SideEffectClass> =
+  new Set<SideEffectClass>([
+    "none",
+    "local-read",
+    "local-write",
+    "external-read",
+  ]);
+
+export function isSemanticCacheable(input: CacheabilityInput): boolean {
+  return (
+    SEMANTIC_CACHEABLE_CLASSES.has(input.sideEffectClass) &&
     input.environment !== "production"
   );
 }

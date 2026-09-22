@@ -62,7 +62,9 @@ export interface DecisionEvent {
   readonly policySetHash?: string;
   readonly cached: boolean;
   readonly fallbackUsed: boolean;
+  /** RFX-030: which provider and model answered, when one did. */
   readonly provider?: string;
+  readonly model?: string;
   readonly latency: DecisionLatency;
 }
 
@@ -150,7 +152,12 @@ export function decisionEventsOf(
     fallbackUsed: decision.fallback?.used === true,
     ...(decision.semanticAssessment === undefined
       ? {}
-      : { provider: decision.semanticAssessment.provider }),
+      : {
+          provider: decision.semanticAssessment.provider,
+          ...(decision.semanticAssessment.model === undefined
+            ? {}
+            : { model: decision.semanticAssessment.model }),
+        }),
     latency: decision.latency,
   };
   if (decision.fallback?.used !== true) {

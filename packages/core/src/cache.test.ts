@@ -4,7 +4,9 @@ import { describe, expect, it } from "vitest";
 import {
   DecisionCache,
   NEVER_CACHED_CLASSES,
+  SEMANTIC_CACHEABLE_CLASSES,
   isCacheable,
+  isSemanticCacheable,
   type CachedDecision,
 } from "./cache.js";
 
@@ -89,5 +91,28 @@ describe("what is never cached (architecture §11)", () => {
     expect(
       isCacheable({ sideEffectClass: "local-read", environment: "local" }),
     ).toBe(true);
+  });
+});
+
+describe("what a semantic decision may be cached for (RFX-109)", () => {
+  it("is the safe, repeatable classes and nothing on the never-cached list", () => {
+    expect([...SEMANTIC_CACHEABLE_CLASSES].sort()).toEqual([
+      "external-read",
+      "local-read",
+      "local-write",
+      "none",
+    ]);
+    for (const sideEffectClass of SIDE_EFFECT_CLASSES) {
+      expect(
+        isSemanticCacheable({ sideEffectClass, environment: undefined }),
+      ).toBe(SEMANTIC_CACHEABLE_CLASSES.has(sideEffectClass));
+      expect(
+        isSemanticCacheable({ sideEffectClass, environment: "production" }),
+      ).toBe(false);
+      if (NEVER_CACHED_CLASSES.has(sideEffectClass)) {
+        expect(SEMANTIC_CACHEABLE_CLASSES.has(sideEffectClass)).toBe(false);
+      }
+    }
+    expect(SEMANTIC_CACHEABLE_CLASSES.has("unknown")).toBe(false);
   });
 });

@@ -2,7 +2,7 @@ import { mkdtemp, readFile, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
-import type { SemanticDecisionProvider } from "@reflex/contracts";
+import { createFakeProvider } from "@reflex/semantic-provider";
 import { DecisionLog, decisionEventsOf, riskBucketOf } from "@reflex/telemetry";
 import { afterEach, describe, expect, it } from "vitest";
 
@@ -94,11 +94,62 @@ describe("RFX-023 structured decision telemetry", () => {
     ).toBe(200);
   });
 
+  // RFX-030: which provider and model answered, and how long each stage took.
+  it("names the provider and the model that answered, and the latency of each stage", async () => {
+    running = await harness({
+      policy: SEMANTIC_ONLY,
+      engine: {
+        semantic: {
+          provider: createFakeProvider(),
+          compiler: {
+            compile: (action, budget) => ({
+              action: {
+                tool: action.tool,
+                arguments: action.arguments,
+                sideEffectClass: action.sideEffectClass,
+              },
+              maxInputTokens: budget.maxInputTokens,
+              deadlineMs: budget.deadlineMs,
+            }),
+          },
+          aggregator: {
+            aggregate: () => ({
+              effect: "allow",
+              risk: 5,
+              confidence: 0.9,
+              reasonCodes: [],
+            }),
+          },
+          maxInputTokens: 600,
+        },
+      },
+    });
+    expect(
+      (await running.client.decide(decisionRequest(shell("ls")))).status,
+    ).toBe(200);
+    const [event] = await running.sink.settled();
+    expect(event).toMatchObject({
+      kind: "decision",
+      provider: "fake",
+      model: "fake-1",
+      fallbackUsed: false,
+    });
+    if (event?.kind === "decision") {
+      for (const stage of [
+        "policyMs",
+        "contextMs",
+        "semanticMs",
+        "aggregationMs",
+      ] as const) {
+        expect(Number.isInteger(event.latency[stage]), stage).toBe(true);
+      }
+    }
+  });
+
   it("emits a fallback event of its own when a fallback was used (ADR-003 §5)", async () => {
-    const provider: SemanticDecisionProvider = {
-      providerName: "down",
-      evaluate: () => Promise.reject(new Error(CANARIES.providerText)),
-    };
+    const provider = createFakeProvider({
+      behavior: { kind: "error", error: "unavailable" },
+    });
     running = await harness({
       policy: SEMANTIC_ONLY,
       engine: {
