@@ -50,6 +50,15 @@ importers:
       '@reflex/contracts':
         specifier: workspace:*
         version: link:../../packages/contracts
+      '@reflex/core':
+        specifier: workspace:*
+        version: link:../../packages/core
+      '@reflex/policy-engine':
+        specifier: workspace:*
+        version: link:../../packages/policy-engine
+      '@reflex/telemetry':
+        specifier: workspace:*
+        version: link:../../packages/telemetry
 
   packages/adapter-claude-code:
     dependencies:

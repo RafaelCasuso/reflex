@@ -69,6 +69,10 @@ and a contradiction between `environment` and `isProduction` toward
 - **Released fixtures are frozen.** Add `fixtures/vMAJOR.MINOR/`; never edit an
   existing directory.
 - **Do not put an input value in an issue message.** Inputs carry secrets.
+- **`action.id` is an idempotency key.** A decision gateway decides an id
+  once (RFX-120): the same id with the same content returns the same decision
+  and counts once; the same id with different content is rejected. Retry with
+  the same id; never reuse one for a new call.
 
 ## Latency
 

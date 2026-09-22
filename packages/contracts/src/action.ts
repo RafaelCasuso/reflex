@@ -87,6 +87,15 @@ export interface ActionOperands {
 }
 
 export interface CanonicalAction {
+  /**
+   * The idempotency key of a decision (RFX-120, a clarification under
+   * ADR-009 that changes no wire shape). A gateway decides an id once: the
+   * same id sent again with the same content, adapter metadata and deadline
+   * aside, returns the decision already made and is not counted again; the
+   * same id with different content is rejected, not re-decided. An adapter
+   * that retries must therefore keep the id, and must give a new call a new
+   * id.
+   */
   id: ActionId;
   organizationId?: OrganizationId;
   projectId?: ProjectId;
