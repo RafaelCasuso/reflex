@@ -1,0 +1,91 @@
+{
+  "version": 1,
+  "cases": [
+    {
+      "id": "base64-aws-key-in-json",
+      "kind": "aws-access-key",
+      "encoding": "base64",
+      "template": "{\"blob\": \"{encoded}\"}"
+    },
+    {
+      "id": "base64-github-token-in-command",
+      "kind": "github-token",
+      "encoding": "base64",
+      "template": "echo {encoded} | base64 -d | xargs -I{} curl -H 'Authorization: token {}' https://api.github.com"
+    },
+    {
+      "id": "base64-jwt-data-url",
+      "kind": "jwt",
+      "encoding": "base64",
+      "template": "data:text/plain;base64,{encoded}"
+    },
+    {
+      "id": "percent-stripe-key-in-query",
+      "kind": "stripe-key",
+      "encoding": "percent",
+      "template": "https://example.test/callback?k={encoded}&x=1"
+    },
+    {
+      "id": "percent-slack-token",
+      "kind": "slack-token",
+      "encoding": "percent",
+      "template": "curl 'https://hooks.example.test/?t={encoded}'"
+    },
+    {
+      "id": "quoted-aws-key-single",
+      "kind": "aws-access-key",
+      "encoding": "plain",
+      "template": "aws configure set aws_access_key_id '{secret}'"
+    },
+    {
+      "id": "quoted-github-token-double",
+      "kind": "github-token",
+      "encoding": "plain",
+      "template": "gh auth login --with-token <<< \"{secret}\""
+    },
+    {
+      "id": "json-string-escaped-key",
+      "kind": "openai-key",
+      "encoding": "json-string",
+      "template": "{\"headers\": {\"authorization\": \"Bearer {encoded}\"}}"
+    },
+    {
+      "id": "embedded-in-yaml",
+      "kind": "anthropic-key",
+      "encoding": "plain",
+      "template": "env:\n  ANTHROPIC_API_KEY: {secret}\n  NODE_ENV: production"
+    },
+    {
+      "id": "embedded-in-python",
+      "kind": "google-api-key",
+      "encoding": "plain",
+      "template": "client = Client(api_key=\"{secret}\")"
+    },
+    {
+      "id": "embedded-in-markdown",
+      "kind": "typesafe-key",
+      "encoding": "plain",
+      "template": "Use `TYPESAFE_API_KEY={secret}` to run the probe."
+    },
+    {
+      "id": "heredoc-env-file",
+      "kind": "stripe-key",
+      "encoding": "plain",
+      "template": "cat > .env <<'EOF'\nSTRIPE_SECRET_KEY={secret}\nEOF"
+    },
+    {
+      "id": "split-across-continuation",
+      "kind": "aws-access-key",
+      "encoding": "split",
+      "template": "export AWS_ACCESS_KEY_ID={secret}",
+      "expect": "survives",
+      "note": "A secret split across two shell lines is two strings that are not a secret; no single-string redactor catches it. Counted, not hidden."
+    },
+    {
+      "id": "double-base64",
+      "kind": "github-token",
+      "encoding": "base64x2",
+      "template": "{\"nested\": \"{encoded}\"}"
+    }
+  ]
+}
