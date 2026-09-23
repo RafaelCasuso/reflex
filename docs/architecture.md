@@ -133,12 +133,14 @@ reflex/
 │   │       ├── shell/        # grammar: segments, or "not understood"
 │   │       └── classify.ts   # side-effect class; escalates, never lowers
 │   │
-│   ├── context-compiler/
+│   ├── context-compiler/    # the redaction boundary (ADR-006) and the minimal request
+│   │   ├── corpus/          # golden and adversarial secrets, generated at test time
 │   │   └── src/
-│   │       ├── compile.ts
-│   │       ├── redact.ts
-│   │       ├── history.ts
-│   │       └── token-budget.ts
+│   │       ├── patterns.ts      # the secret shapes (RFX-031)
+│   │       ├── redact.ts        # placeholders, fingerprints, the branded redacted view
+│   │       ├── history.ts       # relevant-history selector, bounded session memory (RFX-032)
+│   │       ├── token-budget.ts  # estimate and cuts, required fields never cut (RFX-034)
+│   │       └── compile.ts       # raw action in, SemanticDecisionRequest out (RFX-033)
 │   │
 │   ├── semantic-provider/   # the interface and its typed result (ADR-005)
 │   │   └── src/

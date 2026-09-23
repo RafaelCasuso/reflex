@@ -750,11 +750,15 @@ This gate depends on G4's RFX-025 and RFX-029 (the interface with a typed result
 
 **Acceptance:** Golden corpus confirms secrets never survive redaction.
 
+**Status:** Done (2026-09-23). `packages/context-compiler/src/redact.ts`: fifteen secret kinds by shape, never by entropy (AWS access and secret keys, GitHub, Slack, Stripe, Google, OpenAI, Anthropic and TypeSafe keys, JWTs, private-key blocks, authorization headers, credentials in URLs, assignments to a name that says password, secret, token or key, and encoded runs); a value becomes `[REDACTED:<kind>:<fingerprint>]` with the frame kept, the fingerprint the first 8 hex digits of an HMAC-SHA-256 under the installation's key (ADR-006 §4), the same secret the same placeholder on the same machine and another elsewhere; base64 and percent-encoded runs are decoded and scanned two levels deep; a placeholder never reads as a secret and a second pass skips the ones it finds; a string too large to scan is replaced whole. `redactAction` returns a branded `RedactedAction` without `id`, `agent`, `cwd`, `sessionId` or `adapterMetadata`, so a stage that reads the raw view is a compile error (ADR-006 enforcement). The key is `<REFLEX_HOME>/redaction.key`, 32 bytes, mode 0600, created by the daemon on first start (`apps/decision-gateway/src/orchestration/redaction-key.ts`); a key of the wrong size is refused rather than replaced, and a key that became readable by others is tightened. **The golden corpus confirms secrets never survive redaction:** 23 cases, at least one per kind, in the frame a developer meets it, three seeds each, zero survivors. No secret-shaped literal exists in the repository: every case names a kind and a template and the secret is generated at test time from the kind's shape, so the Security gate's allowlist did not move. `docs/context-compiler.md` is the page.
+
 ### RFX-032 — Implement relevant-history selector
 
 **Goal:** Select bounded prior actions relevant to current tool/resource.
 
 **Acceptance:** History size remains bounded under long sessions.
+
+**Status:** Done (2026-09-23). `selectRelevantHistory` keeps the most recent items (3) and the ones about the same tool, the same MCP server or the same resource, within thirty minutes and a bound of eight, newest last; what the provider gets is the contract's `PriorActionSummary` and nothing more (no resource, no namespace). **History size remains bounded under long sessions:** held by a test over five thousand entries. `SessionMemory` is the bounded in-memory store the daemon will keep (200 entries per session, 1,000 sessions, six hours; oldest sessions evicted first), and `historyEntryOf` builds an entry from a decided action. **Not wired:** the daemon keeps no memory until RFX-141 (R0); the selector and the store are exercised by tests.
 
 ### RFX-033 — Implement semantic context compiler
 
@@ -762,11 +766,15 @@ This gate depends on G4's RFX-025 and RFX-029 (the interface with a typed result
 
 **Acceptance:** Median test corpus stays under configured token budget, measured with a named tokenizer.
 
+**Status:** Done (2026-09-23). `createContextCompiler({ redactor, history, policyHints })` implements the `ContextCompiler` seam of `packages/core` structurally, without importing it: from the raw action, in the daemon's memory, to the fields `SemanticDecisionRequest` selects by name, redacted, with the relevant history and the policy hints (redacted too: a rule about a specific secret names it), under the budget; the repository's root, a path on this machine, is left out and the branch and remote host kept. `compileWithReport` says what happened on the way: tokens, cuts, redactions, history items. **The median test corpus stays under the configured token budget, measured with a named tokenizer:** over the 79 actions of the seed corpus, the compiled state is 51 tokens at the median, 70 at p95 and 76 at most as `gpt-tokenizer` 4.0.0 (o200k_base, a development dependency) counts, about 74, 102 and 110 as the provider counts (calibrated on the RFX-107 record: TypeSafe reported 1,669 where o200k counts 1,148, a ratio of 1.45); the RFX-107 "typical" state with objective, summary, environment, history and hints is 222 (322) against a budget of 600. Measured in CI by `src/budget-measurement.test.ts`. An adversarial test plants a secret in every field the compiler reads and holds that none reaches the request at any budget.
+
 ### RFX-034 — Token budget enforcement
 
 **Goal:** Hard-truncate/summarize optional context by priority.
 
 **Acceptance:** Required action/resource fields are never truncated.
+
+**Status:** Done (2026-09-23). `enforceBudget` estimates tokens from bytes (divided by four, rounded up; against the named tokenizer never under by more than a tenth nor over by more than half, held by a test) and, only when over budget, cuts optional context in a fixed order and stops as soon as the budget holds: policy hints, prior actions, the task summary and the objective to 200 characters, the tool's description, then argument values to 120 characters each, marked `…[truncated]`. **Required action and resource fields are never truncated:** the tool, the operation, the side-effect class, the resource and the argument keys survive a budget of one token, held by a test.
 
 ### RFX-035 — Redaction adversarial corpus
 
@@ -774,7 +782,10 @@ This gate depends on G4's RFX-025 and RFX-029 (the interface with a typed result
 
 **Acceptance:** Corpus reports zero raw known secrets after compiler.
 
+**Status:** Done (2026-09-23). `corpus/adversarial-v1.json`: 14 cases, the golden secrets encoded, quoted and embedded: base64 and double base64, percent encoding, JSON-string escaping, single and double quoting, YAML, Python, Markdown, a here-document writing `.env`, a data URL, and a secret split across a shell line continuation. **The corpus reports zero raw known secrets after the compiler**, and for the encoded cases the encoded run is gone too, not only the decoded value. The split case is marked `expect: "survives"` and counted, not hidden: no single-string redactor catches a secret that no single string holds. The corpus runs at the first pass only; the second pass at the gateway, where a hit counts as a defect of the first (ADR-006), is G10's work.
 **Gate exit:** all tickets above are green in CI and documented; no known dangerous false-allow regression. **Specifically:** the redaction corpora report zero surviving known secrets; the median compiled context is under the token budget with the named tokenizer; required action and resource fields are never truncated.
+
+**Gate status:** Closed on the branch (2026-09-23), pending CI on `main`. All five tickets are done. **The three specific exits are tests:** the redaction corpora report zero surviving known secrets (`packages/context-compiler/src/corpus.test.ts`, 23 golden and 13 adversarial cases that must hold, three seeds each, plus the one split case counted as surviving by design); the median compiled context is under the token budget with the named tokenizer (`src/budget-measurement.test.ts`: 51 o200k tokens at the median over the seed corpus, 74 as the provider counts, against 600); required action and resource fields are never truncated (`src/token-budget.test.ts`, at a budget of one token). **No known dangerous false allow:** nothing in this gate decides; it narrows what a provider sees. **What this gate does not claim:** no semantic stage runs yet (RFX-141, after G6); the daemon keeps no session memory yet; redaction is best effort and the second pass at the gateway is G10's; the corpus knows fifteen shapes, and a credential of a shape it does not know, in a frame it does not know, passes.
 
 ## G6 — Risk aggregation and evals
 
