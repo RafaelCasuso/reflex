@@ -13,6 +13,7 @@
     "bench": "vitest bench --run"
   },
   "dependencies": {
+    "@reflex/context-compiler": "workspace:*",
     "@reflex/contracts": "workspace:*",
     "@reflex/core": "workspace:*",
     "@reflex/policy-engine": "workspace:*",

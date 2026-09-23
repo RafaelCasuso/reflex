@@ -1,5 +1,10 @@
 import { DecisionLog, defaultDecisionLogDirectory } from "@reflex/telemetry";
 
+import {
+  readOrCreateRedactionKey,
+  redactionKeyPath,
+} from "./orchestration/redaction-key.js";
+
 import { parseArguments } from "./config/arguments.js";
 import {
   buildEngine,
@@ -38,6 +43,19 @@ async function main(argv: readonly string[]): Promise<number> {
     );
   }
 
+  // ADR-006 §4: the installation's redaction key, created on first start.
+  // Nothing uses it until a semantic stage exists (RFX-141); creating it
+  // here is what makes every later fingerprint continuous with the first.
+  const redactionKey = await readOrCreateRedactionKey(
+    redactionKeyPath(config.reflexHome),
+  );
+  if (!redactionKey.ok) {
+    process.stderr.write(
+      `cannot read or create the redaction key: ${redactionKey.reason}\n`,
+    );
+    return 1;
+  }
+
   const engine = buildEngine({
     policies,
     failureMode: config.failureMode,
@@ -62,6 +80,7 @@ async function main(argv: readonly string[]): Promise<number> {
       policyLoadedAt: policies.state().loadedAt ?? null,
       policyProblems: policies.state().lastProblems.length,
       telemetryDropped: telemetry?.dropped ?? 0,
+      redactionKey: redactionKey.created ? "created" : "present",
     }),
   });
 
