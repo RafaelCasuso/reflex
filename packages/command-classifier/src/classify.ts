@@ -474,9 +474,9 @@ function classifyProgram(segment: ShellSegment): {
           ? "local-write"
           : "local-read",
       indirect: false,
-      paths: words
-        .filter((word, index) => index === 0 || looksLikePath(word))
-        .filter(looksLikePath),
+      // The search root is named only when it is written like a path; a
+      // bare name (`find src`) is an argument like any other.
+      paths: words.filter(looksLikePath),
     };
   }
   if (name === "sed") {
