@@ -107,3 +107,56 @@ describe("RFX-034 token budget", () => {
     );
   });
 });
+
+/** What the mutation check found untested (RFX-111): the exact boundaries. */
+describe("RFX-111 boundaries of the budget", () => {
+  it("is not over budget at exactly the budget", () => {
+    const small = request({ arguments: {} });
+    const tokens = estimateTokens(stateOf(small));
+    expect(enforceBudget(small, tokens).truncated).toEqual([]);
+    expect(enforceBudget(small, tokens - 1).truncated.length).toBeGreaterThan(
+      0,
+    );
+  });
+
+  it("cuts a text one character over the short length and leaves one exactly at it", () => {
+    const exact = "a".repeat(200);
+    const kept = enforceBudget(
+      request({ taskSummary: exact, userObjective: exact, arguments: {} }),
+      1,
+    );
+    expect(kept.request.action.taskSummary).toBe(exact);
+    expect(kept.request.action.userObjective).toBe(exact);
+    const cut = enforceBudget(
+      request({
+        taskSummary: `${exact}b`,
+        userObjective: `${exact}b`,
+        arguments: {},
+      }),
+      1,
+    );
+    expect(cut.request.action.taskSummary).toContain(TRUNCATION_MARK);
+    expect(cut.request.action.userObjective).toContain(TRUNCATION_MARK);
+  });
+
+  it("cuts an argument value one character over the floor and leaves one exactly at it", () => {
+    const exact = "v".repeat(120);
+    const report = enforceBudget(
+      request({ arguments: { a: exact, b: `${exact}w` } }),
+      1,
+    );
+    expect(report.request.action.arguments.a).toBe(exact);
+    expect(String(report.request.action.arguments.b)).toContain(
+      TRUNCATION_MARK,
+    );
+  });
+
+  it("walks only objects when cutting: null is left alone", () => {
+    const report = enforceBudget(
+      request({ arguments: { a: null, b: [null, "x".repeat(200)] } }),
+      1,
+    );
+    expect(report.request.action.arguments.a).toBeNull();
+    expect((report.request.action.arguments.b as unknown[])[0]).toBeNull();
+  });
+});

@@ -296,7 +296,11 @@ export function createRedactor(options: RedactorOptions): Redactor {
         return redacted.text;
       }
       if (depth > 64) {
-        return node;
+        // Deeper than the contract allows (ADR-009 limits): not walked, and
+        // not passed through either. The whole subtree becomes one value.
+        const text = JSON.stringify(node);
+        hits.push(...redactText(text).hits);
+        return placeholder("encoded", text);
       }
       if (Array.isArray(node)) {
         return node.map((item) => walk(item, depth + 1));
