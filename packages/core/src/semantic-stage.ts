@@ -50,6 +50,8 @@ export interface AggregationPolicyInput {
 
 export interface AggregationInput {
   readonly action: CanonicalAction;
+  /** What the provider was actually given: redacted, bounded (ADR-006). */
+  readonly request: SemanticDecisionRequest;
   readonly assessment: SemanticAssessment;
   readonly policy: AggregationPolicyInput;
 }

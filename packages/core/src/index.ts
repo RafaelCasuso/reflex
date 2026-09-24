@@ -41,6 +41,19 @@ export {
 } from "./fingerprint.js";
 export { effectiveEffectOf } from "./modes.js";
 export { DETERMINISTIC_RISK, reasonForClass, riskOf } from "./risk.js";
+export {
+  DEFAULT_AGGREGATOR_CONFIG,
+  REASON_BY_DIMENSION,
+  RISK_DIMENSIONS,
+  SAFETY_DIMENSIONS,
+  createRiskAggregator,
+  type AggregatorConfig,
+  type Band,
+  type LowConfidenceRule,
+  type RiskDimension,
+  type SafetyDimension,
+  type ScoredDimension,
+} from "./risk-aggregator.js";
 export type {
   Aggregation,
   AggregationInput,

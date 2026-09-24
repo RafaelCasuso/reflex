@@ -72,6 +72,7 @@ interface EngineOptions {
   readonly cache?: DecisionCache | false;
   readonly deadline?: DecisionEngineOptions["deadline"];
   readonly monotonic?: () => number;
+  readonly key?: Uint8Array;
 }
 
 function engine(options: EngineOptions = {}) {
@@ -93,6 +94,7 @@ function engine(options: EngineOptions = {}) {
     ...(options.monotonic === undefined
       ? {}
       : { monotonic: options.monotonic }),
+    ...(options.key === undefined ? {} : { fingerprintKey: options.key }),
     clock: () => new Date(Date.UTC(2026, 8, 22, 10, 0, 0)),
   });
   return {
@@ -373,6 +375,21 @@ describe("RFX-022 deadline and cancellation", () => {
     expect(harness.provider.calls[0]?.deadlineMs).toBeLessThanOrEqual(500);
   });
 
+  it("does not call the provider when nothing at all is left of the deadline", async () => {
+    let now = 0;
+    const harness = stage();
+    const { decide } = engine({
+      stage: harness.stage,
+      cache: false,
+      // The clock advances by exactly the deadline between the start and
+      // the semantic stage: zero left, and zero is not a budget.
+      monotonic: () => (now += 50),
+    });
+    const decision = await decide(shell("ls"), { deadlineMs: 50 });
+    expect(harness.provider.calls).toHaveLength(0);
+    expect(decision.fallback).toMatchObject({ used: true, reason: "timeout" });
+  });
+
   it("does not call the provider at all when policy alone used the deadline up", async () => {
     let now = 0;
     const harness = stage();
@@ -545,6 +562,14 @@ describe("RFX-106 deterministic cache through the engine", () => {
       (
         await decide({
           ...shell("git status"),
+          projectId: "prj_0000000000000000000000000000000b",
+        })
+      ).cached,
+    ).toBe(false);
+    expect(
+      (
+        await decide({
+          ...shell("git status"),
           resource: { environment: "production" },
         })
       ).cached,
@@ -625,16 +650,29 @@ describe("RFX-106 deterministic cache through the engine", () => {
     it("misses when the provider or the model changes", async () => {
       const set = [local(SEMANTIC_ONLY)];
       const cache = new DecisionCache({ maxEntries: 100, ttlMs: 60_000 });
-      const one = engine({ sources: set, stage: stage().stage, cache });
+      const key = Buffer.alloc(32, 9);
+      const one = engine({ sources: set, stage: stage().stage, cache, key });
       await one.decide(shell("ls"));
+      const same = engine({ sources: set, stage: stage().stage, cache, key });
+      expect((await same.decide(shell("ls"))).cached).toBe(true);
       const otherModel = createFakeProvider();
       (otherModel as { model: string }).model = "fake-2";
       const two = engine({
         sources: set,
         stage: { ...stage().stage, provider: otherModel },
         cache,
+        key,
       });
       expect((await two.decide(shell("ls"))).cached).toBe(false);
+      const otherProvider = createFakeProvider();
+      (otherProvider as { providerName: string }).providerName = "other";
+      const three = engine({
+        sources: set,
+        stage: { ...stage().stage, provider: otherProvider },
+        cache,
+        key,
+      });
+      expect((await three.decide(shell("ls"))).cached).toBe(false);
     });
 
     it("never caches a fallback, whatever the class", async () => {

@@ -13,6 +13,7 @@ import type {
   ReasonCode,
   ReflexDecision,
   SemanticAssessment,
+  SemanticDecisionRequest,
 } from "@reflex/contracts";
 import {
   evaluatePolicy,
@@ -157,6 +158,7 @@ type ProviderOutcome =
   | {
       readonly ok: true;
       readonly assessment: SemanticAssessment;
+      readonly request: SemanticDecisionRequest;
       readonly contextMs: number;
     }
   | {
@@ -200,9 +202,10 @@ export function createDecisionEngine(
       signal === undefined ? timeout : AbortSignal.any([signal, timeout]);
     const compileStarted = monotonic();
     let contextMs = 0;
+    let compiled: SemanticDecisionRequest | undefined;
     let result: ProviderResult;
     try {
-      const compiled = stage.compiler.compile(request.action, {
+      compiled = stage.compiler.compile(request.action, {
         maxInputTokens: stage.maxInputTokens,
         deadlineMs: budgetMs,
       });
@@ -221,8 +224,18 @@ export function createDecisionEngine(
         ),
       };
     }
+    if (result.ok && compiled !== undefined) {
+      return {
+        ok: true,
+        assessment: result.assessment,
+        request: compiled,
+        contextMs,
+      };
+    }
     if (result.ok) {
-      return { ok: true, assessment: result.assessment, contextMs };
+      // Cannot happen: a result needs a compiled request. Treated as the
+      // defect it would be.
+      return { ok: false, reason: "provider-error", contextMs };
     }
     // Nothing the provider says is read beyond the kind of its failure.
     return { ok: false, reason: fallbackReasonOf(result.error), contextMs };
@@ -291,6 +304,7 @@ export function createDecisionEngine(
       const aggregationStarted = monotonic();
       const aggregated = semantic.aggregator.aggregate({
         action: request.action,
+        request: outcome.request,
         assessment: outcome.assessment,
         policy: {
           matches: evaluation.evaluation.matches,

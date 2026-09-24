@@ -56,6 +56,15 @@ describe("RFX-106 decision cache", () => {
     expect(cache.get("a", 1)).toBeUndefined();
   });
 
+  it("keeps exactly one entry when told to", () => {
+    const cache = new DecisionCache({ maxEntries: 1, ttlMs: 1_000 });
+    cache.set("a", value(), 0);
+    cache.set("b", value(), 1);
+    expect(cache.size).toBe(1);
+    expect(cache.get("a", 2)).toBeUndefined();
+    expect(cache.get("b", 2)).toBeDefined();
+  });
+
   it("refuses a size or a TTL that would keep nothing", () => {
     expect(() => new DecisionCache({ maxEntries: 0, ttlMs: 1 })).toThrow(
       RangeError,
