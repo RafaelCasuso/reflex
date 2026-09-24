@@ -124,7 +124,7 @@ numbers are reported and the budget is held on the stricter one.
 The seed corpus is commands and file edits with no objective or summary,
 which is what the adapter sends today; with them, the RFX-107 state is the
 better picture, and it is under the budget by a factor of two. Measured by
-`src/budget-measurement.test.ts`, which runs in CI and prints its numbers.
+`packages/evals/src/budget-measurement.test.ts` (in the harness's package, which depends on the compiler), which runs in CI and prints its numbers.
 
 ## 5. What the compiler leaves out, on purpose
 

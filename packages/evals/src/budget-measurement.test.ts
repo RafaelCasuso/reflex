@@ -1,13 +1,16 @@
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 
-import { SEED_CORPUS_DIRECTORY, readCorpusDirectory } from "@reflex/evals";
+import {
+  createContextCompiler,
+  createRedactor,
+  estimateTokens,
+  stateOf,
+} from "@reflex/context-compiler";
 import { countTokens } from "gpt-tokenizer/encoding/o200k_base";
 import { describe, expect, it } from "vitest";
 
-import { createContextCompiler } from "./compile.js";
-import { createRedactor } from "./redact.js";
-import { estimateTokens, stateOf } from "./token-budget.js";
+import { SEED_CORPUS_DIRECTORY, readCorpusDirectory } from "./corpus-files.js";
 
 /**
  * RFX-033, RFX-034 — the median compiled context stays under the budget,
@@ -18,10 +21,12 @@ import { estimateTokens, stateOf } from "./token-budget.js";
  * input tokens where o200k counts 1,148, a ratio of 1.45. Both numbers are
  * reported, and the budget is held on the stricter one.
  *
- * The corpus is the deterministic seed corpus of `packages/evals`: 79
- * canonical actions, 58 of them dangerous, the actions the engine is held
- * against. Every one goes through the compiler with an empty history and
- * no hints, which is what the daemon has today.
+ * The corpus is the deterministic seed corpus: 79 canonical actions, 58 of
+ * them dangerous, the actions the engine is held against. Every one goes
+ * through the compiler with an empty history and no hints, which is what
+ * the daemon has today. The test lives here, and not in the compiler's
+ * package, because the harness depends on the compiler (RFX-039) and a
+ * package cannot be built against its own dependants.
  */
 const BUDGET = 600;
 const TYPESAFE_PER_O200K = 1.45;

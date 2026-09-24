@@ -23,9 +23,5 @@
   },
   "dependencies": {
     "@reflex/contracts": "workspace:*"
-  },
-  "devDependencies": {
-    "@reflex/evals": "workspace:*",
-    "gpt-tokenizer": "4.0.0"
   }
 }

@@ -26,6 +26,34 @@ export type CorpusProvenance = (typeof CORPUS_PROVENANCE)[number];
 /** The action as written in a corpus file. The loader supplies the rest. */
 export type CorpusAction = Omit<CanonicalAction, "id" | "createdAt">;
 
+/**
+ * RFX-038: what a right assessment says about the case, per dimension. A
+ * scored dimension accepts a set of the four levels a provider can answer
+ * (0, 33, 67, 100, `packages/provider-jev`); the boolean accepts one value.
+ * Absent means the case says nothing about that dimension.
+ */
+export const ASSESSMENT_LEVELS = [0, 33, 67, 100] as const;
+export type AssessmentLevel = (typeof ASSESSMENT_LEVELS)[number];
+
+export const SCORED_ASSESSMENT_DIMENSIONS = [
+  "objectiveAlignment",
+  "destructiveRisk",
+  "reversibility",
+  "privilegeEscalation",
+  "secretAccess",
+  "sensitiveDataExposure",
+  "financialConsequence",
+  "productionMutation",
+  "unusualScope",
+  "untrustedInput",
+] as const;
+export type ScoredAssessmentDimension =
+  (typeof SCORED_ASSESSMENT_DIMENSIONS)[number];
+
+export type ExpectedAssessment = Partial<
+  Readonly<Record<ScoredAssessmentDimension, readonly AssessmentLevel[]>>
+> & { readonly externalSideEffect?: boolean };
+
 export interface CorpusCase {
   /** Stable and unique. The action's ID is derived from it. */
   readonly id: string;
@@ -40,6 +68,8 @@ export interface CorpusCase {
   readonly tags: readonly string[];
   /** Why these effects. A case nobody can argue with is a case nobody reads. */
   readonly why: string;
+  /** RFX-038: present on semantic cases; absent on deterministic ones. */
+  readonly expectedAssessment?: ExpectedAssessment;
 }
 
 export interface CorpusIssue {
@@ -68,6 +98,7 @@ const CASE_KEYS = new Set([
   "provenance",
   "tags",
   "why",
+  "expectedAssessment",
 ]);
 
 /** Fixed, so that a replay is reproducible byte for byte. */
@@ -172,6 +203,15 @@ function readCase(raw: unknown): CaseReadResult {
     );
   }
 
+  let expectedAssessment: ExpectedAssessment | undefined;
+  if (raw.expectedAssessment !== undefined) {
+    const read = readExpectedAssessment(raw.expectedAssessment);
+    if (!read.ok) {
+      return invalid(read.message);
+    }
+    expectedAssessment = read.value;
+  }
+
   return {
     ok: true,
     value: {
@@ -183,8 +223,60 @@ function readCase(raw: unknown): CaseReadResult {
       provenance: provenance as CorpusProvenance,
       tags,
       why: raw.why,
+      ...(expectedAssessment === undefined ? {} : { expectedAssessment }),
     },
   };
+}
+
+type ExpectedReadResult =
+  | { readonly ok: true; readonly value: ExpectedAssessment }
+  | { readonly ok: false; readonly message: string };
+
+/** Strict: a misspelt dimension must not be read as "no expectation". */
+function readExpectedAssessment(raw: unknown): ExpectedReadResult {
+  if (!isRecord(raw) || Object.keys(raw).length === 0) {
+    return {
+      ok: false,
+      message: "expectedAssessment must name at least one dimension",
+    };
+  }
+  const value: Record<string, readonly AssessmentLevel[] | boolean> = {};
+  for (const [dimension, expected] of Object.entries(raw)) {
+    if (dimension === "externalSideEffect") {
+      if (typeof expected !== "boolean") {
+        return {
+          ok: false,
+          message:
+            "expectedAssessment.externalSideEffect must be true or false",
+        };
+      }
+      value[dimension] = expected;
+      continue;
+    }
+    if (
+      !(SCORED_ASSESSMENT_DIMENSIONS as readonly string[]).includes(dimension)
+    ) {
+      return {
+        ok: false,
+        message: `expectedAssessment names an unknown dimension: ${dimension}`,
+      };
+    }
+    if (
+      !Array.isArray(expected) ||
+      expected.length === 0 ||
+      !expected.every((level): level is AssessmentLevel =>
+        (ASSESSMENT_LEVELS as readonly unknown[]).includes(level),
+      ) ||
+      new Set(expected).size !== expected.length
+    ) {
+      return {
+        ok: false,
+        message: `expectedAssessment.${dimension} must be a non-empty list of distinct levels among ${ASSESSMENT_LEVELS.join(", ")}`,
+      };
+    }
+    value[dimension] = expected;
+  }
+  return { ok: true, value };
 }
 
 /**

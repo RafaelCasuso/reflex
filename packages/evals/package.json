@@ -23,8 +23,13 @@
     "test": "vitest run"
   },
   "dependencies": {
+    "@reflex/context-compiler": "workspace:*",
     "@reflex/contracts": "workspace:*",
+    "@reflex/core": "workspace:*",
     "@reflex/policy-engine": "workspace:*",
     "@reflex/semantic-provider": "workspace:*"
+  },
+  "devDependencies": {
+    "gpt-tokenizer": "4.0.0"
   }
 }
