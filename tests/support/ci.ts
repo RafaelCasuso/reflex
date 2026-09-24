@@ -36,6 +36,12 @@ export const SECURITY_REQUIREMENTS: WorkflowRequirements = {
   ],
 };
 
+/** RFX-111. The packages are built, then the decision paths are mutated. */
+export const MUTATION_REQUIREMENTS: WorkflowRequirements = {
+  install: FROZEN_INSTALL,
+  commands: ["pnpm build", "pnpm mutation"],
+};
+
 export function auditWorkflow(
   workflow: string,
   requirements: WorkflowRequirements = CI_REQUIREMENTS,

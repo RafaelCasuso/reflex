@@ -1,0 +1,117 @@
+{
+  "$comment": "RFX-111: every surviving mutant in a decision path is listed here with a reason, or the scheduled check fails. An entry names the package, the file, the line, the operator and why the survivor is acceptable.",
+  "justified": [
+    {
+      "package": "packages/core",
+      "file": "src/fallback.ts",
+      "line": 51,
+      "operator": "gt-to-gte",
+      "reason": "Equivalent mutant: when two modes are equally strict, reassigning `strictest` to the same strictness changes no result; the function returns a mode, not which of two equal modes was seen first, and every mode of equal strictness is the same mode."
+    },
+    {
+      "package": "packages/core",
+      "file": "src/decision-engine.ts",
+      "line": 238,
+      "operator": "false-to-true",
+      "reason": "Unreachable by construction: a provider result exists only after `compiled` was assigned in the same try block, so the branch that guards `result.ok && compiled === undefined` cannot run; it is kept so that the types stay honest rather than asserted."
+    },
+    {
+      "package": "packages/context-compiler",
+      "file": "src/redact.ts",
+      "line": 110,
+      "operator": "or-to-and",
+      "reason": "Equivalent mutant: a capture group of every secret pattern is non-empty by construction (each is bounded below by a quantifier), so `value === \"\"` is never true and the disjunction reduces to `value === undefined` either way."
+    },
+    {
+      "package": "packages/context-compiler",
+      "file": "src/token-budget.ts",
+      "line": 140,
+      "operator": "lte-to-lt",
+      "reason": "Equivalent mutant: cutting a text of exactly the short length returns the text unchanged (`cut` keeps a text at or under its length), so treating the boundary as over or under yields the same request."
+    },
+    {
+      "package": "packages/context-compiler",
+      "file": "src/token-budget.ts",
+      "line": 151,
+      "operator": "lte-to-lt",
+      "reason": "Equivalent mutant: the same boundary as line 140, for the objective; a text of exactly the short length is returned unchanged by `cut`."
+    },
+    {
+      "package": "packages/policy-engine",
+      "file": "src/precedence.ts",
+      "line": 90,
+      "operator": "gt-to-gte",
+      "reason": "Equivalent mutant: when two effects are equally restrictive they are the same effect, and reassigning `strictest` to it changes nothing that is returned."
+    },
+    {
+      "package": "packages/policy-engine",
+      "file": "src/precedence.ts",
+      "line": 112,
+      "operator": "gt-to-gte",
+      "reason": "Equivalent within the contract: the comparator differs only for two matches with the same rule id, whose relative order is not part of what a resolution promises; the deciding match is moved to the front regardless."
+    },
+    {
+      "package": "packages/policy-engine",
+      "file": "src/precedence.ts",
+      "line": 112,
+      "operator": "lt-to-lte",
+      "reason": "Equivalent within the contract: the same comparator, the other bound; only the order of two matches with the same rule id could change, and that order is not promised."
+    },
+    {
+      "package": "packages/policy-engine",
+      "file": "src/evaluator.ts",
+      "line": 106,
+      "operator": "gt-to-gte",
+      "reason": "Equivalent mutant: when a declared default is exactly as strict as the one already kept, they are the same value, and keeping either yields the same compiled set."
+    },
+    {
+      "package": "packages/policy-engine",
+      "file": "src/matcher.ts",
+      "line": 88,
+      "operator": "or-to-and",
+      "reason": "Equivalent within the contract: `path_within` is accepted by the parser on the `path` field only, whose values are always text, and its expected value is always text; the guard against a non-string on either side is defensive and cannot be reached through a compiled policy."
+    },
+    {
+      "package": "packages/policy-engine",
+      "file": "src/matcher.ts",
+      "line": 89,
+      "operator": "false-to-true",
+      "reason": "Equivalent within the contract: the body of the guard at line 88, which cannot be reached through a compiled policy (`path_within` is accepted on the `path` field only, and both sides are always text)."
+    },
+    {
+      "package": "packages/policy-engine",
+      "file": "src/precedence.ts",
+      "line": 165,
+      "operator": "gt-to-gte",
+      "reason": "Equivalent mutant: when the deciding match is already first, removing it and putting it back at the front is the identity; when there is none (-1), neither bound runs the move."
+    },
+    {
+      "package": "packages/policy-engine",
+      "file": "src/evaluator.ts",
+      "line": 91,
+      "operator": "true-to-false",
+      "reason": "Equivalent mutant: trust is computed from the source (`entry.source === \"project\" ? entry.trusted : true`), so the literal on REFLEX's own source is never read; it is kept because the type asks for it and because it says what is true."
+    },
+    {
+      "package": "packages/command-classifier",
+      "file": "src/classify.ts",
+      "line": 192,
+      "operator": "lt-to-lte",
+      "reason": "Equivalent mutant: one past the end reads as `\"\"` through `?? \"\"`, which is not an option, so the loop ends there either way."
+    },
+    {
+      "package": "packages/command-classifier",
+      "file": "src/classify.ts",
+      "line": 349,
+      "operator": "gt-to-gte",
+      "reason": "Differs only for httpie given a method and no URL (`http POST`), which contacts nothing: the original reads it as a read, the mutant as a write, and neither is a decision the corpus takes a position on. Any URL-bearing invocation is covered by tests."
+    },
+    {
+      "package": "packages/policy-engine",
+      "file": "src/matcher.ts",
+      "line": 73,
+      "operator": "or-to-and",
+      "reason": "Equivalent in effect: with the guard weakened, a non-string value reaches the pattern engine, which refuses anything but text and whose failure `CompiledPattern.test` turns into no match (`src/pattern.ts`), and a non-string expected value is refused by the parser; the guard says it in one place instead of relying on the engine."
+    }
+  ]
+}

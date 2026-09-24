@@ -1,7 +1,13 @@
+import { existsSync } from "node:fs";
+
 import { describe, expect, it } from "vitest";
 
-import { auditWorkflow, SECURITY_REQUIREMENTS } from "./support/ci.js";
-import { readText } from "./support/repo.js";
+import {
+  auditWorkflow,
+  MUTATION_REQUIREMENTS,
+  SECURITY_REQUIREMENTS,
+} from "./support/ci.js";
+import { readJson, readText, repoPath } from "./support/repo.js";
 
 /** RFX-003 — PR fails on any quality gate; CI uses lockfile-frozen install. */
 describe("RFX-003 CI quality gates", () => {
@@ -83,6 +89,70 @@ describe("RFX-003 CI quality gates", () => {
     },
   ])("rejects the workflow when $label", ({ tamper, expected }) => {
     expect(auditWorkflow(tamper(workflow))).toContain(expected);
+  });
+});
+
+/** RFX-111 — a surviving mutant in a decision path fails a scheduled check. */
+describe("RFX-111 mutation check", () => {
+  const workflow = readText(".github", "workflows", "mutation.yml");
+  const audit = (text: string) => auditWorkflow(text, MUTATION_REQUIREMENTS);
+
+  it("passes the audit as committed", () => {
+    expect(audit(workflow)).toEqual([]);
+  });
+
+  it("runs on a schedule, on demand, and on a pull request only when the check itself changes", () => {
+    expect(workflow).toMatch(/^ {2}schedule:\n {4}(?:#.*\n {4})?- cron: /m);
+    expect(workflow).toContain("workflow_dispatch:");
+    expect(workflow).toMatch(
+      /^ {2}pull_request:\n {4}paths:\n {6}- "tools\/mutate\.mjs"/m,
+    );
+  });
+
+  it("targets the decision paths, and every target file exists", () => {
+    const targets = readJson("tools", "mutation-targets.json") as {
+      targets: { package: string; files: string[] }[];
+    };
+    const paths = targets.targets.flatMap((target) =>
+      target.files.map((file) => `${target.package}/${file}`),
+    );
+    expect(paths).toEqual(
+      expect.arrayContaining([
+        "packages/policy-engine/src/matcher.ts",
+        "packages/policy-engine/src/precedence.ts",
+        "packages/command-classifier/src/classify.ts",
+        "packages/context-compiler/src/redact.ts",
+        "packages/core/src/risk-aggregator.ts",
+        "packages/core/src/fallback.ts",
+      ]),
+    );
+    for (const path of paths) {
+      expect(existsSync(repoPath(path)), path).toBe(true);
+    }
+  });
+
+  it("justifies every allowed survivor with a reason that names its place", () => {
+    const allowlist = readJson("tools", "mutation-allowlist.json") as {
+      justified: {
+        package: string;
+        file: string;
+        line: number;
+        operator: string;
+        reason: string;
+      }[];
+    };
+    for (const entry of allowlist.justified) {
+      expect(entry.reason.length).toBeGreaterThan(20);
+      expect(Number.isInteger(entry.line) && entry.line > 0).toBe(true);
+      expect(existsSync(repoPath(entry.package, entry.file))).toBe(true);
+    }
+  });
+
+  it("refuses to run on uncommitted target files, so a run can never hide a change", () => {
+    const script = readText("tools", "mutate.mjs");
+    expect(script).toContain("git");
+    expect(script).toContain("--allow-dirty");
+    expect(script).toContain("was not restored");
   });
 });
 

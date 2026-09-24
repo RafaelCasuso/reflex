@@ -1,0 +1,28 @@
+{
+  "$comment": "RFX-111: the decision paths. A surviving mutant here fails the scheduled check unless tools/mutation-allowlist.json justifies it.",
+  "targets": [
+    {
+      "package": "packages/policy-engine",
+      "files": ["src/matcher.ts", "src/precedence.ts", "src/evaluator.ts"]
+    },
+    {
+      "package": "packages/command-classifier",
+      "files": ["src/classify.ts"]
+    },
+    {
+      "package": "packages/context-compiler",
+      "files": ["src/redact.ts", "src/token-budget.ts"]
+    },
+    {
+      "package": "packages/core",
+      "files": [
+        "src/risk-aggregator.ts",
+        "src/fallback.ts",
+        "src/modes.ts",
+        "src/risk.ts",
+        "src/cache.ts",
+        "src/decision-engine.ts"
+      ]
+    }
+  ]
+}

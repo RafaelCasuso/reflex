@@ -1,0 +1,67 @@
+# RFX-111 — mutation testing for the decision paths.
+#
+# Weekly, on demand, and on a pull request that changes the check itself.
+# Not a required check otherwise: the whole run takes tens of minutes, and a
+# pull request is held by the quality gates. A surviving mutant in a
+# decision path fails this check unless tools/mutation-allowlist.json
+# justifies it (tools/mutate.mjs).
+#
+# Rules guarded by tests/ci.test.ts:
+#   - install is lockfile-frozen
+#   - the packages are built and the check runs, and either can fail the job
+#   - no `continue-on-error`, no `|| true`
+#   - third-party actions are pinned to a full commit SHA
+name: Mutation
+
+on:
+  pull_request:
+    paths:
+      - "tools/mutate.mjs"
+      - "tools/mutation-targets.json"
+      - "tools/mutation-allowlist.json"
+      - ".github/workflows/mutation.yml"
+  schedule:
+    # Tuesdays 06:00 UTC: after the weekly dependency updates have landed.
+    - cron: "0 6 * * 2"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: mutation-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  mutation:
+    name: Mutation check
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    env:
+      TURBO_TELEMETRY_DISABLED: "1"
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
+
+      - name: Set up Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+
+      - name: Install (frozen lockfile)
+        id: install
+        run: pnpm install --frozen-lockfile
+
+      - name: Build
+        if: ${{ !cancelled() && steps.install.outcome == 'success' }}
+        run: pnpm build
+
+      - name: Mutation check (decision paths)
+        if: ${{ !cancelled() && steps.install.outcome == 'success' }}
+        run: pnpm mutation

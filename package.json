@@ -18,7 +18,8 @@
     "format:check": "prettier --check .",
     "lint:root": "eslint --max-warnings 0 eslint.config.mjs vitest.config.ts tests",
     "typecheck:root": "tsc -p tsconfig.json",
-    "test:root": "vitest run"
+    "test:root": "vitest run",
+    "mutation": "node tools/mutate.mjs"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
