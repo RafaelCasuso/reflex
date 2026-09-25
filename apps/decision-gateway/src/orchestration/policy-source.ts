@@ -5,6 +5,7 @@ import {
   DecisionCache,
   createDecisionEngine,
   type ReflexDecisionEngine,
+  type SemanticStage,
 } from "@reflex/core";
 import {
   compilePolicySet,
@@ -111,6 +112,8 @@ export interface EngineBuildOptions {
   readonly cache: boolean;
   readonly home: string | undefined;
   readonly deadline?: { readonly defaultMs: number; readonly maxMs: number };
+  /** Absent means no semantic stage: `--semantic-provider none` (RFX-141). */
+  readonly semantic?: SemanticStage;
 }
 
 export const DEFAULT_DEADLINE = { defaultMs: 2_000, maxMs: 10_000 } as const;
@@ -122,5 +125,6 @@ export function buildEngine(options: EngineBuildOptions): ReflexDecisionEngine {
     deadline: options.deadline ?? DEFAULT_DEADLINE,
     ...(options.home === undefined ? {} : { paths: { home: options.home } }),
     ...(options.cache ? { cache: new DecisionCache() } : {}),
+    ...(options.semantic === undefined ? {} : { semantic: options.semantic }),
   });
 }

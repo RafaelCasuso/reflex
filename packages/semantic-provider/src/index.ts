@@ -25,3 +25,15 @@ export {
   type FakeProvider,
   type FakeProviderOptions,
 } from "./fake.js";
+export {
+  PROVIDER_IDS,
+  createProviderRegistry,
+  fakeProviderConstructor,
+  isProviderId,
+  type ConfigurableProviderId,
+  type ProviderConfig,
+  type ProviderConstruction,
+  type ProviderConstructor,
+  type ProviderId,
+  type ProviderRegistry,
+} from "./registry.js";

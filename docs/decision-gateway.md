@@ -55,6 +55,8 @@ closed `code`: `invalid-request`, `payload-too-large`, `rate-limited`,
 node apps/decision-gateway/dist/main.js [--socket <path> | --tcp <host:port>]
   [--policy <file>]... [--failure-mode fail-open|fail-ask|fail-closed]
   [--no-cache] [--no-telemetry] [--home <dir>] [--rate-limit <burst>/<per-second>]
+  [--semantic-provider none|jev|local|reflex|fake] [--semantic-model <id>]
+  [--semantic-endpoint <url>]
 ```
 
 - Default: the socket `<REFLEX_HOME>/run/reflex.sock`, in a directory of mode
@@ -69,6 +71,21 @@ node apps/decision-gateway/dist/main.js [--socket <path> | --tcp <host:port>]
   `SIGTERM` or `SIGINT` closes the connections, removes the socket and exits 0.
 - An unknown flag exits 2. A daemon that starts with a misread flag would run
   with the wrong policy.
+- `--semantic-provider` (RFX-141, ADR-016 §1) chooses what assesses the
+  actions policy leaves open: `none` is the default and today's behavior (an
+  open action asks); `jev` needs `TYPESAFE_API_KEY` in the daemon's
+  environment, never on the command line; `fake` is for development and
+  answers from the action's class; `local` (RFX-144) and `reflex` (G14) are
+  refused until they exist. A provider that was asked for and cannot be built
+  exits 2 with the reason: a daemon never runs without what it was told to
+  run with. `--semantic-model` pins a versioned model (an alias is refused)
+  and `--semantic-endpoint` overrides where the provider is reached. The
+  stage is the compiler with the installation's redaction key (ADR-006), the
+  provider, and the aggregator with its default configuration
+  (`docs/risk-aggregation.md`), on a budget of 600 input tokens.
+  `GET /v1/health` reports `semanticProvider: { id, name, model }`, pinned,
+  and never the key or the endpoint; every decision the provider took part
+  in carries `semanticAssessment.provider` and `.model`.
 
 Decision telemetry goes to `<REFLEX_HOME>/decisions/decisions.jsonl`, rotated
 by size, one event per line: a `decision` event per decision (effect, mode,

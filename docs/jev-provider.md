@@ -159,7 +159,7 @@ meet the 150 ms p50.
 
 ### What RFX-027 implemented (2026-09-22)
 
-`packages/provider-jev` is the provider: `createJevProvider({ apiKey, model })`
+The daemon selects it with `--semantic-provider jev` and reads the key from `TYPESAFE_API_KEY` in its environment (RFX-141, `docs/decision-gateway.md` §3). `packages/provider-jev` is the provider: `createJevProvider({ apiKey, model })`
 returns a `SemanticDecisionProvider` (ADR-005, `packages/semantic-provider`).
 
 - **One request, eleven questions** (RFX-028 as reworded by RFX-107). The

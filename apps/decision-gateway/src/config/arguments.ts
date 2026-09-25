@@ -2,6 +2,7 @@ import { homedir } from "node:os";
 import { join } from "node:path";
 
 import { FAILURE_MODES, type FailureMode } from "@reflex/contracts";
+import { isProviderId, type ProviderId } from "@reflex/semantic-provider";
 
 import type { RateLimitOptions } from "../http/limits.js";
 import type { ListenTarget } from "../server.js";
@@ -19,6 +20,12 @@ export interface GatewayArguments {
   readonly telemetry: boolean;
   /** `--rate-limit <burst>/<per-second>`; the server's default otherwise. */
   readonly rateLimit: RateLimitOptions | undefined;
+  /** ADR-016 §1: `none` is today's behavior and the default. */
+  readonly semanticProvider: ProviderId;
+  /** A versioned model for the provider; the provider's default otherwise. */
+  readonly semanticModel: string | undefined;
+  /** Where the provider is reached; the provider's default otherwise. */
+  readonly semanticEndpoint: string | undefined;
 }
 
 export type ArgumentsResult =
@@ -35,7 +42,7 @@ export function defaultSocketPath(reflexHome: string): string {
   return join(reflexHome, "run", "reflex.sock");
 }
 
-export const USAGE = `usage: reflex-gateway [--socket <path> | --tcp <host:port>] [--policy <file>]... [--failure-mode fail-open|fail-ask|fail-closed] [--no-cache] [--no-telemetry] [--home <dir>] [--rate-limit <burst>/<per-second>]`;
+export const USAGE = `usage: reflex-gateway [--socket <path> | --tcp <host:port>] [--policy <file>]... [--failure-mode fail-open|fail-ask|fail-closed] [--no-cache] [--no-telemetry] [--home <dir>] [--rate-limit <burst>/<per-second>] [--semantic-provider none|jev|local|reflex|fake] [--semantic-model <id>] [--semantic-endpoint <url>]`;
 
 function isFailureMode(value: string): value is FailureMode {
   return (FAILURE_MODES as readonly string[]).includes(value);
@@ -52,6 +59,9 @@ export function parseArguments(
   let telemetry = true;
   let reflexHome = defaultReflexHome(env);
   let rateLimit: RateLimitOptions | undefined;
+  let semanticProvider: ProviderId = "none";
+  let semanticModel: string | undefined;
+  let semanticEndpoint: string | undefined;
 
   const problem = (message: string): ArgumentsResult => ({
     ok: false,
@@ -131,6 +141,32 @@ export function parseArguments(
         rateLimit = { burst, perSecond };
         break;
       }
+      case "--semantic-provider": {
+        const id = takeValue();
+        if (id === undefined || !isProviderId(id)) {
+          return problem(
+            "--semantic-provider needs none, jev, local, reflex or fake",
+          );
+        }
+        semanticProvider = id;
+        break;
+      }
+      case "--semantic-model": {
+        const model = takeValue();
+        if (model === undefined || model === "") {
+          return problem("--semantic-model needs a versioned model id");
+        }
+        semanticModel = model;
+        break;
+      }
+      case "--semantic-endpoint": {
+        const url = takeValue();
+        if (url === undefined || !/^https?:\/\/[^\s/]+/.test(url)) {
+          return problem("--semantic-endpoint needs an http or https URL");
+        }
+        semanticEndpoint = url;
+        break;
+      }
       case "--no-cache":
         cache = false;
         break;
@@ -140,6 +176,15 @@ export function parseArguments(
       default:
         return problem(`unknown argument: ${flag}`);
     }
+  }
+
+  if (
+    semanticProvider === "none" &&
+    (semanticModel !== undefined || semanticEndpoint !== undefined)
+  ) {
+    return problem(
+      "--semantic-model and --semantic-endpoint need a --semantic-provider",
+    );
   }
 
   return {
@@ -152,6 +197,9 @@ export function parseArguments(
       reflexHome,
       telemetry,
       rateLimit,
+      semanticProvider,
+      semanticModel,
+      semanticEndpoint,
     },
   };
 }

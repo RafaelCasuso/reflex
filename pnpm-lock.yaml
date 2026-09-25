@@ -59,6 +59,9 @@ importers:
       '@reflex/policy-engine':
         specifier: workspace:*
         version: link:../../packages/policy-engine
+      '@reflex/provider-jev':
+        specifier: workspace:*
+        version: link:../../packages/provider-jev
       '@reflex/semantic-provider':
         specifier: workspace:*
         version: link:../../packages/semantic-provider

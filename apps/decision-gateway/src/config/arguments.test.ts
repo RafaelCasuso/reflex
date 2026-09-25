@@ -17,6 +17,9 @@ describe("the daemon's command line", () => {
         reflexHome: "/home/dev/.reflex",
         telemetry: true,
         rateLimit: undefined,
+        semanticProvider: "none",
+        semanticModel: undefined,
+        semanticEndpoint: undefined,
       },
     });
     expect(defaultSocketPath("/x")).toBe("/x/run/reflex.sock");
@@ -39,6 +42,12 @@ describe("the daemon's command line", () => {
         "/elsewhere",
         "--rate-limit",
         "50/10.5",
+        "--semantic-provider",
+        "jev",
+        "--semantic-model",
+        "jev-1.13.0",
+        "--semantic-endpoint",
+        "https://api.example.test/v1/systemone",
       ],
       env,
     );
@@ -52,6 +61,9 @@ describe("the daemon's command line", () => {
         reflexHome: "/elsewhere",
         telemetry: false,
         rateLimit: { burst: 50, perSecond: 10.5 },
+        semanticProvider: "jev",
+        semanticModel: "jev-1.13.0",
+        semanticEndpoint: "https://api.example.test/v1/systemone",
       },
     });
   });
@@ -82,5 +94,44 @@ describe("the daemon's command line", () => {
     const parsed = parseArguments(argv, env);
     expect(parsed.ok).toBe(false);
     expect(!parsed.ok && parsed.problem).toContain("usage:");
+  });
+});
+
+describe("RFX-141 the semantic provider flags", () => {
+  it.each(["none", "jev", "local", "reflex", "fake"] as const)(
+    "accepts %s",
+    (id) => {
+      expect(parseArguments(["--semantic-provider", id], env)).toMatchObject({
+        ok: true,
+        arguments: { semanticProvider: id },
+      });
+    },
+  );
+
+  it.each([
+    [["--semantic-provider"], "needs none, jev"],
+    [["--semantic-provider", "openai"], "needs none, jev"],
+    [["--semantic-provider", "JEV"], "needs none, jev"],
+    [["--semantic-model"], "needs a versioned model"],
+    [
+      ["--semantic-provider", "jev", "--semantic-model", ""],
+      "needs a versioned model",
+    ],
+    [["--semantic-endpoint", "api.example.test"], "needs an http or https URL"],
+    [
+      ["--semantic-provider", "jev", "--semantic-endpoint", "ftp://x"],
+      "needs an http or https URL",
+    ],
+    [["--semantic-model", "jev-1.13.0"], "need a --semantic-provider"],
+    [
+      ["--semantic-endpoint", "http://127.0.0.1:1"],
+      "need a --semantic-provider",
+    ],
+  ])("refuses %j", (argv, message) => {
+    const parsed = parseArguments(argv, env);
+    expect(parsed.ok).toBe(false);
+    if (!parsed.ok) {
+      expect(parsed.problem).toContain(message);
+    }
   });
 });

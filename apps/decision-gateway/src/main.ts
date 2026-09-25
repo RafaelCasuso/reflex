@@ -11,6 +11,7 @@ import {
   createPolicyHolder,
   readPolicyFiles,
 } from "./orchestration/policy-source.js";
+import { buildSemanticStage } from "./orchestration/semantic-stage.js";
 import { createGatewayServer } from "./server.js";
 
 /**
@@ -43,9 +44,8 @@ async function main(argv: readonly string[]): Promise<number> {
     );
   }
 
-  // ADR-006 §4: the installation's redaction key, created on first start.
-  // Nothing uses it until a semantic stage exists (RFX-141); creating it
-  // here is what makes every later fingerprint continuous with the first.
+  // ADR-006 §4: the installation's redaction key, created on first start,
+  // so that every fingerprint is continuous with the first.
   const redactionKey = await readOrCreateRedactionKey(
     redactionKeyPath(config.reflexHome),
   );
@@ -56,11 +56,27 @@ async function main(argv: readonly string[]): Promise<number> {
     return 1;
   }
 
+  // RFX-141: the semantic stage, or none. A provider that was asked for and
+  // cannot be built is a misconfiguration, not a daemon that quietly runs
+  // without it (CLAUDE.md principle 5).
+  const semantic = buildSemanticStage({
+    id: config.semanticProvider,
+    model: config.semanticModel,
+    endpoint: config.semanticEndpoint,
+    redactionKey: redactionKey.key,
+    env: process.env,
+  });
+  if (!semantic.ok) {
+    process.stderr.write(`${semantic.reason}\n`);
+    return 2;
+  }
+
   const engine = buildEngine({
     policies,
     failureMode: config.failureMode,
     cache: config.cache,
     home: process.env.HOME,
+    ...(semantic.stage === undefined ? {} : { semantic: semantic.stage }),
   });
   const telemetry = config.telemetry
     ? new DecisionLog({
@@ -81,6 +97,7 @@ async function main(argv: readonly string[]): Promise<number> {
       policyProblems: policies.state().lastProblems.length,
       telemetryDropped: telemetry?.dropped ?? 0,
       redactionKey: redactionKey.created ? "created" : "present",
+      semanticProvider: semantic.provider,
     }),
   });
 

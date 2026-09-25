@@ -1,6 +1,6 @@
 import { spawn, type ChildProcess } from "node:child_process";
 import { existsSync } from "node:fs";
-import { mkdtemp, rm, stat, writeFile } from "node:fs/promises";
+import { mkdtemp, readFile, rm, stat, writeFile } from "node:fs/promises";
 import { request as httpRequest } from "node:http";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -45,13 +45,16 @@ afterEach(async () => {
   await rm(directory, { recursive: true, force: true });
 });
 
-async function start(args: readonly string[]): Promise<Daemon> {
+async function start(
+  args: readonly string[],
+  env: NodeJS.ProcessEnv = {},
+): Promise<Daemon> {
   directory = await mkdtemp(join(tmpdir(), "reflex-daemon-"));
   const socketPath = join(directory, "reflex.sock");
   const child = spawn(
     process.execPath,
     [MAIN, "--socket", socketPath, "--home", directory, ...args],
-    { stdio: ["ignore", "pipe", "pipe"] },
+    { stdio: ["ignore", "pipe", "pipe"], env: { ...process.env, ...env } },
   );
   let stderr = "";
   child.stderr.on("data", (chunk: Buffer) => {
@@ -161,6 +164,35 @@ describe("the decision daemon as a process", () => {
     expect(await running.exited).toBe(0);
   });
 
+  it("exits 2 when the provider it was asked for cannot be built, and says why", async () => {
+    directory = await mkdtemp(join(tmpdir(), "reflex-daemon-provider-"));
+    const child = spawn(
+      process.execPath,
+      [
+        MAIN,
+        "--socket",
+        join(directory, "r.sock"),
+        "--home",
+        directory,
+        "--semantic-provider",
+        "jev",
+      ],
+      {
+        stdio: ["ignore", "pipe", "pipe"],
+        env: { ...process.env, TYPESAFE_API_KEY: "" },
+      },
+    );
+    let stderr = "";
+    child.stderr.on("data", (chunk: Buffer) => {
+      stderr += chunk.toString("utf8");
+    });
+    const code = await new Promise<number | null>((resolve) => {
+      child.once("exit", resolve);
+    });
+    expect(code).toBe(2);
+    expect(stderr).toContain("needs an API key in TYPESAFE_API_KEY");
+  });
+
   it("exits 2 on a command line it does not understand", async () => {
     directory = await mkdtemp(join(tmpdir(), "reflex-daemon-args-"));
     const child = spawn(process.execPath, [MAIN, "--verbose"], {
@@ -175,5 +207,146 @@ describe("the decision daemon as a process", () => {
     });
     expect(code).toBe(2);
     expect(stderr).toContain("unknown argument: --verbose");
+  });
+});
+
+const SEMANTIC_BY_DEFAULT = `
+version: 1
+defaults:
+  unresolved: semantic
+rules:
+  - id: allow-git-status
+    name: Allow git status
+    effect: allow
+    conditions:
+      - { field: command.name, operator: equals, value: git }
+      - { field: command.args, operator: equals, value: status }
+`;
+
+describe("RFX-141 the daemon with a semantic provider", () => {
+  it("names the provider in health and assesses what policy leaves open, with the provider and model recorded", async () => {
+    const home = await mkdtemp(join(tmpdir(), "reflex-daemon-semantic-"));
+    const policyFile = join(home, "policy.yaml");
+    await writeFile(policyFile, SEMANTIC_BY_DEFAULT);
+    try {
+      const running = await start([
+        "--policy",
+        policyFile,
+        "--semantic-provider",
+        "fake",
+      ]);
+      const health = await call(running.socketPath, "GET", "/v1/health");
+      expect(health.json).toMatchObject({
+        status: "ok",
+        semanticProvider: { id: "fake", name: "fake", model: "fake-1" },
+      });
+      // Resolved by a rule: no provider is asked (ADR-002 §1).
+      const resolved = await call(
+        running.socketPath,
+        "POST",
+        "/v1/decisions",
+        JSON.stringify(decisionRequest(shell("git status"))),
+      );
+      expect(resolved.json).toMatchObject({ effect: "allow" });
+      expect(resolved.json).not.toHaveProperty("semanticAssessment");
+      // Left open by policy: the provider assesses, and the decision says
+      // which one, pinned.
+      const assessed = await call(
+        running.socketPath,
+        "POST",
+        "/v1/decisions",
+        JSON.stringify(
+          decisionRequest(
+            shell("cat README.md", "act_00000000000000000000000000000002"),
+          ),
+        ),
+      );
+      expect(assessed.status).toBe(200);
+      expect(assessed.json).toMatchObject({
+        effect: "allow",
+        semanticAssessment: { provider: "fake", model: "fake-1" },
+      });
+      expect(assessed.json).not.toHaveProperty("fallback");
+      running.child.kill("SIGTERM");
+      expect(await running.exited).toBe(0);
+      expect(running.stderr()).toBe("");
+    } finally {
+      await rm(home, { recursive: true, force: true });
+    }
+  });
+
+  it("with no provider, decides as before: health says none and an open action asks", async () => {
+    const home = await mkdtemp(join(tmpdir(), "reflex-daemon-none-"));
+    const policyFile = join(home, "policy.yaml");
+    await writeFile(policyFile, SEMANTIC_BY_DEFAULT);
+    try {
+      const running = await start(["--policy", policyFile]);
+      const health = await call(running.socketPath, "GET", "/v1/health");
+      expect(health.json).toMatchObject({ semanticProvider: { id: "none" } });
+      const decided = await call(
+        running.socketPath,
+        "POST",
+        "/v1/decisions",
+        JSON.stringify(decisionRequest(shell("cat README.md"))),
+      );
+      expect(decided.json).toMatchObject({ effect: "ask" });
+      expect(decided.json).not.toHaveProperty("semanticAssessment");
+      running.child.kill("SIGTERM");
+      expect(await running.exited).toBe(0);
+    } finally {
+      await rm(home, { recursive: true, force: true });
+    }
+  });
+
+  // Adversarial: the key is given to the provider and must come out nowhere:
+  // not in health, not in a decision, not on stderr, not in telemetry.
+  it("never lets the provider's key out, even when the provider is unreachable", async () => {
+    const home = await mkdtemp(join(tmpdir(), "reflex-daemon-key-"));
+    const policyFile = join(home, "policy.yaml");
+    await writeFile(policyFile, SEMANTIC_BY_DEFAULT);
+    // Assembled at run time: no secret-shaped literal in the repository.
+    const secret = ["canary", "jev", "key", "0a1b2c3d4e"].join("-");
+    try {
+      const running = await start(
+        [
+          "--policy",
+          policyFile,
+          "--semantic-provider",
+          "jev",
+          // Nothing listens on port 1: the provider fails fast, and the
+          // decision falls back (ADR-003).
+          "--semantic-endpoint",
+          "http://127.0.0.1:1/v1/systemone",
+        ],
+        { TYPESAFE_API_KEY: secret },
+      );
+      const health = await call(running.socketPath, "GET", "/v1/health");
+      expect(health.json).toMatchObject({
+        semanticProvider: { id: "jev", name: "jev", model: "jev-1.13.0" },
+      });
+      expect(JSON.stringify(health.json)).not.toContain(secret);
+      expect(JSON.stringify(health.json)).not.toContain("127.0.0.1:1");
+      const decided = await call(
+        running.socketPath,
+        "POST",
+        "/v1/decisions",
+        JSON.stringify(decisionRequest(shell("cat README.md"))),
+      );
+      expect(decided.status).toBe(200);
+      expect(decided.json).toMatchObject({
+        effect: "ask",
+        fallback: { used: true },
+      });
+      expect(JSON.stringify(decided.json)).not.toContain(secret);
+      running.child.kill("SIGTERM");
+      expect(await running.exited).toBe(0);
+      expect(running.stderr()).not.toContain(secret);
+      const telemetry = join(directory, "decisions", "decisions.jsonl");
+      if (existsSync(telemetry)) {
+        expect(await readFile(telemetry, "utf8")).not.toContain(secret);
+      }
+    } finally {
+      await rm(home, { recursive: true, force: true });
+    }
   });
 });
