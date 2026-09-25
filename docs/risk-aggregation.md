@@ -49,9 +49,37 @@ and the command cannot. A request whose arguments carried a redacted value
 This is where the semantic stage's autonomy is today: reads, local writes
 and `none` that policy left open are allowed when the model agrees, and
 anything the model calls off task, unusual in scope or fed by untrusted
-input is escalated. A destructive action inside the project that the model
-calls rebuildable is RFX-148's work; until then `rm -rf dist` asks, as it
-did before the stage existed.
+input is escalated. `rm -rf dist` asks, as it did before the stage existed.
+
+### The one way past the destructive floor (RFX-148, designed, not enabled)
+
+The prompt before `rm -rf dist` is the one REFLEX exists to remove, and
+the floor is right for a lying model. The way out needs evidence the model
+cannot fake, and that is what the classifier's paths are. Since 2026-09-25
+the policy evaluation reports what the classifier saw, one entry per
+subject: its class, its paths, absolute and lexically normalized, and
+whether it was understood; and the aggregator's input carries them. The
+exception itself, still to be applied, lifts the `destructive` floor only
+when all of this holds:
+
+- every segment was understood (no variable, glob or substitution, every
+  path made absolute) and is of a class the model may judge (`none`,
+  `local-read`, `local-write`, `destructive`): `rm -rf dist && pnpm test`
+  keeps asking for its `unknown` segment;
+- there is at least one path, and every path is inside the project, is not
+  the project root, and lies under a directory that is built rather than
+  written, from a configured list (`dist`, `build`, `out`, `coverage`,
+  `node_modules`, `target`, `.turbo`, `.cache`, `.next`, `.nuxt`,
+  `.output`, `.parcel-cache`, `__pycache__`, `.pytest_cache`,
+  `.mypy_cache`): `rm -rf .git`, `: > src/date.ts`, `find . -delete` and
+  `rm -rf ../../` keep the floor;
+- the model puts `destructiveRisk` at or below 33 ("rebuildable output")
+  and `reversibility` at or above 67. The model can only veto.
+
+The list is the deterministic part and the adversary provider is held
+against it by the RFX-040 gate: with everything called safe, `rm -rf src`
+still asks. What a build makes, a build can make again; nothing else is
+in the list on purpose.
 
 The floors are configuration like the bands, and they are what held the
 adversary in §3.
@@ -106,8 +134,11 @@ for all.
 Against the oracle the table is exact and says nothing; against a noisy
 provider it finds the dimensions whose confidence stops meaning what it
 says, and a test holds that. **Against the real provider it has not run:**
-that costs about a cent per case and needs the maintainer's permission, and
-until it runs the 0.5 threshold is a guess, labelled as one.
+`packages/evals/live/calibrate-jev.mjs --run` does it (86 requests, one
+per case, from the built packages; `--dry-run` only counts) and writes
+`live/results/calibration-jev.json`; the run was refused by the session's
+transaction guard and waits for the maintainer. Until it runs the 0.5
+threshold is a guess, labelled as one.
 
 ## 5. Mutation testing (RFX-111)
 
@@ -120,7 +151,9 @@ has found a branch nobody is holding. It survives only if
 `tools/mutation-allowlist.json` names it, by package, file, line and
 operator, with a reason; otherwise the check exits 1. The tool edits the
 file in place, runs the tests, puts the file back and verifies that it did,
-and refuses to start on a dirty tree unless told to.
+and refuses to start on a dirty tree unless told to. An entry names a line,
+so an edit above it moves the mutant: the check then reports the survivor
+as unjustified, and the entry moves with the change that moved it.
 
 In-house on purpose. Stryker 10 could not activate a single mutant under
 Vitest 5 in this repository (every mutant survived with every test

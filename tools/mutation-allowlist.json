@@ -60,7 +60,7 @@
     {
       "package": "packages/policy-engine",
       "file": "src/evaluator.ts",
-      "line": 106,
+      "line": 107,
       "operator": "gt-to-gte",
       "reason": "Equivalent mutant: when a declared default is exactly as strict as the one already kept, they are the same value, and keeping either yields the same compiled set."
     },
@@ -88,7 +88,7 @@
     {
       "package": "packages/policy-engine",
       "file": "src/evaluator.ts",
-      "line": 91,
+      "line": 92,
       "operator": "true-to-false",
       "reason": "Equivalent mutant: trust is computed from the source (`entry.source === \"project\" ? entry.trusted : true`), so the literal on REFLEX's own source is never read; it is kept because the type asks for it and because it says what is true."
     },
