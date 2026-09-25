@@ -40,6 +40,20 @@ export {
   type DecisionLogOptions,
 } from "./decision-log.js";
 
+export {
+  DECISION_RECORD_RETENTION_MS,
+  DecisionRecordLog,
+  decisionRecordOf,
+  defaultDecisionRecordDirectory,
+  labelsFromFeedback,
+  labelsFromOutcome,
+  withFeedback,
+  withOutcome,
+  type DecisionRecordInput,
+  type DecisionRecordLogOptions,
+  type EvaluationInput,
+} from "./decision-records.js";
+
 export { RotatingJsonlLog, type RotatingLogOptions } from "./rotating-log.js";
 
 export {

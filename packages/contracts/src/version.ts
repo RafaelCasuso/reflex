@@ -6,6 +6,6 @@
  *   under `fixtures/`, and every frozen set must keep parsing forever within
  *   the same major.
  */
-export const CONTRACT_VERSION = { major: 1, minor: 2 } as const;
+export const CONTRACT_VERSION = { major: 1, minor: 3 } as const;
 
 export type ContractVersion = typeof CONTRACT_VERSION;

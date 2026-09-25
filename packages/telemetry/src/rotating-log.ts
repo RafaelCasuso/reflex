@@ -18,6 +18,14 @@ export interface RotatingLogOptions {
   readonly maxBytes?: number;
   /** Rotated files to keep, besides the active one. */
   readonly keepFiles?: number;
+  /**
+   * Retention: the active file is rotated once it has been written to for
+   * this long, and a rotated file whose last write is older than this is
+   * removed at the next rotation. Absent means size alone decides.
+   */
+  readonly maxAgeMs?: number;
+  /** For tests. */
+  readonly now?: () => number;
 }
 
 export type AppendResult =
@@ -33,6 +41,10 @@ export class RotatingJsonlLog<Record> {
   readonly #baseName: string;
   readonly #maxBytes: number;
   readonly #keepFiles: number;
+  readonly #maxAgeMs: number | undefined;
+  readonly #now: () => number;
+  /** When the active file was first written by this process, or was born. */
+  #activeSince: number | undefined;
   readonly #isRecord: (value: unknown) => value is Record;
 
   constructor(
@@ -43,6 +55,8 @@ export class RotatingJsonlLog<Record> {
     this.#baseName = options.baseName;
     this.#maxBytes = options.maxBytes ?? DEFAULTS.maxBytes;
     this.#keepFiles = options.keepFiles ?? DEFAULTS.keepFiles;
+    this.#maxAgeMs = options.maxAgeMs;
+    this.#now = options.now ?? Date.now;
     this.#isRecord = isRecord;
   }
 
@@ -104,14 +118,26 @@ export class RotatingJsonlLog<Record> {
 
   async #rotateIfNeeded(): Promise<void> {
     let size: number;
+    let born: number;
     try {
-      size = (await stat(this.activeFile)).size;
+      const active = await stat(this.activeFile);
+      size = active.size;
+      // Where the file system knows a birth time it is used; where it does
+      // not (it reads as 0), the first write seen by this process stands in.
+      born = active.birthtimeMs > 0 ? active.birthtimeMs : this.#now();
     } catch {
+      // No active file: this append creates it, and its age starts now.
+      this.#activeSince = this.#now();
       return;
     }
-    if (size < this.#maxBytes) {
+    this.#activeSince ??= born;
+    const now = this.#now();
+    const aged =
+      this.#maxAgeMs !== undefined && now - this.#activeSince >= this.#maxAgeMs;
+    if (size < this.#maxBytes && !aged) {
       return;
     }
+    this.#activeSince = undefined;
 
     // Two processes may rotate at once. Every step is a rename or a forced
     // remove, so the worst case is one record landing in a rotated file.
@@ -122,6 +148,25 @@ export class RotatingJsonlLog<Record> {
       );
     }
     await rename(this.activeFile, this.#rotated(1)).catch(() => undefined);
+    await this.#purgeAged(now);
+  }
+
+  /** Rotated files whose last write is older than the retention are removed. */
+  async #purgeAged(now: number): Promise<void> {
+    if (this.#maxAgeMs === undefined) {
+      return;
+    }
+    for (let index = 1; index <= this.#keepFiles; index += 1) {
+      const file = this.#rotated(index);
+      try {
+        const info = await stat(file);
+        if (now - info.mtimeMs >= this.#maxAgeMs) {
+          await rm(file, { force: true });
+        }
+      } catch {
+        // Not there: nothing to purge.
+      }
+    }
   }
 
   #parseLine(line: string): Record | undefined {

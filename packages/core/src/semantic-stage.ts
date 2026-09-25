@@ -7,6 +7,7 @@ import type {
   DurationMs,
   PolicyMatch,
   ReasonCode,
+  ReflexDecision,
   RiskScore,
   SemanticAssessment,
   SemanticDecisionRequest,
@@ -125,3 +126,29 @@ export interface ShadowObservation {
 }
 
 export type ShadowObserver = (observation: ShadowObservation) => void;
+
+/**
+ * RFX-143 — what a decision was made of, for the record (ADR-016 §4).
+ * Given to the observer off the decision path, after the answer; the
+ * shadows are promises that settle on their own deadlines and never
+ * reject.
+ */
+export interface PrimaryEvaluation {
+  readonly provider: string;
+  readonly model?: string;
+  readonly result: ProviderResult;
+  readonly latencyMs: DurationMs;
+}
+
+export interface DecisionObservation {
+  readonly decision: ReflexDecision;
+  /** The request the primary was given, when one was compiled. */
+  readonly request?: SemanticDecisionRequest;
+  /** The primary's answer or failure, when it was asked. */
+  readonly primary?: PrimaryEvaluation;
+  readonly shadows: readonly Promise<ShadowObservation>[];
+  /** A rule or a policy default decided: the effect is a deterministic label. */
+  readonly resolvedByPolicy: boolean;
+}
+
+export type DecisionObserver = (observation: DecisionObservation) => void;

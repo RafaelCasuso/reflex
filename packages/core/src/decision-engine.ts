@@ -43,7 +43,10 @@ import { decisionCacheKey, fingerprintAction } from "./fingerprint.js";
 import { effectiveEffectOf } from "./modes.js";
 import { reasonForClass, riskOf } from "./risk.js";
 import type {
+  DecisionObserver,
+  PrimaryEvaluation,
   SemanticStage,
+  ShadowObservation,
   ShadowObserver,
   ShadowProvider,
 } from "./semantic-stage.js";
@@ -104,6 +107,12 @@ export interface DecisionEngineOptions {
    * changes nothing.
    */
   readonly onShadow?: ShadowObserver;
+  /**
+   * RFX-143: what every decision was made of, for the record, after the
+   * answer and off the decision path. An observer that throws changes
+   * nothing.
+   */
+  readonly onDecision?: DecisionObserver;
 }
 
 /** What a caller of the engine sees (moved here from the contracts, ADR-005). */
@@ -155,6 +164,11 @@ interface Verdict {
   readonly contextMs?: number;
   readonly semanticMs?: number;
   readonly aggregationMs?: number;
+  /** RFX-143: for the record. */
+  readonly request?: SemanticDecisionRequest;
+  readonly primary?: PrimaryEvaluation;
+  readonly shadows?: readonly Promise<ShadowObservation>[];
+  readonly resolvedByPolicy?: boolean;
   /**
    * What the cache may keep: a pure function of the action and the policy
    * set (RFX-106), or a semantic decision of a repeatable class under the
@@ -165,18 +179,25 @@ interface Verdict {
   readonly cacheable: boolean;
 }
 
+interface ProviderOutcomeBase {
+  readonly contextMs: number;
+  /** Absent when the compiler itself failed. */
+  readonly request?: SemanticDecisionRequest;
+  readonly primary?: PrimaryEvaluation;
+  readonly shadows: readonly Promise<ShadowObservation>[];
+}
+
 type ProviderOutcome =
-  | {
+  | (ProviderOutcomeBase & {
       readonly ok: true;
       readonly assessment: SemanticAssessment;
       readonly request: SemanticDecisionRequest;
-      readonly contextMs: number;
-    }
-  | {
+      readonly primary: PrimaryEvaluation;
+    })
+  | (ProviderOutcomeBase & {
       readonly ok: false;
       readonly reason: FallbackReason;
-      readonly contextMs: number;
-    };
+    });
 
 export function createDecisionEngine(
   options: DecisionEngineOptions,
@@ -222,14 +243,18 @@ export function createDecisionEngine(
     decisionId: DecisionId,
     actionId: ActionId,
     sampledOn: "unresolved" | "resolved",
-  ): void {
+  ): Promise<ShadowObservation>[] {
     const observe = options.onShadow;
+    const started: Promise<ShadowObservation>[] = [];
     for (const shadow of stage.shadow ?? []) {
       if (sampledOn === "resolved" && shadow.sample !== "all") {
         continue;
       }
-      startShadow(shadow, compiled, decisionId, actionId, sampledOn, observe);
+      started.push(
+        startShadow(shadow, compiled, decisionId, actionId, sampledOn, observe),
+      );
     }
+    return started;
   }
 
   function startShadow(
@@ -239,7 +264,7 @@ export function createDecisionEngine(
     actionId: ActionId,
     sampledOn: "unresolved" | "resolved",
     observe: ShadowObserver | undefined,
-  ): void {
+  ): Promise<ShadowObservation> {
     const startedAt = monotonic();
     const timeout = AbortSignal.timeout(shadow.deadlineMs);
     const failed = (): ProviderResult => ({
@@ -256,28 +281,55 @@ export function createDecisionEngine(
     } catch {
       settled = Promise.resolve(failed());
     }
-    void settled.catch(failed).then((result) => {
-      if (observe === undefined) {
-        return;
+    return settled.catch(failed).then((result) => {
+      const observation: ShadowObservation = {
+        decisionId,
+        actionId,
+        role: "shadow",
+        provider: shadow.provider.providerName,
+        ...(shadow.provider.model === undefined
+          ? {}
+          : { model: shadow.provider.model }),
+        sampledOn,
+        request: compiled,
+        result,
+        latencyMs: Math.max(0, Math.round(monotonic() - startedAt)),
+      };
+      if (observe !== undefined) {
+        try {
+          observe(observation);
+        } catch {
+          // An observer that throws is its own problem, never a decision's.
+        }
       }
-      try {
-        observe({
-          decisionId,
-          actionId,
-          role: "shadow",
-          provider: shadow.provider.providerName,
-          ...(shadow.provider.model === undefined
-            ? {}
-            : { model: shadow.provider.model }),
-          sampledOn,
-          request: compiled,
-          result,
-          latencyMs: Math.max(0, Math.round(monotonic() - startedAt)),
-        });
-      } catch {
-        // An observer that throws is its own problem, never a decision's.
-      }
+      return observation;
     });
+  }
+
+  /** RFX-143: the record's observer, after the answer, never on the path. */
+  function observeDecision(
+    decision: ReflexDecision,
+    verdict: Pick<
+      Verdict,
+      "request" | "primary" | "shadows" | "resolvedByPolicy"
+    >,
+    more: readonly Promise<ShadowObservation>[] = [],
+  ): void {
+    const observe = options.onDecision;
+    if (observe === undefined) {
+      return;
+    }
+    try {
+      observe({
+        decision,
+        ...(verdict.request === undefined ? {} : { request: verdict.request }),
+        ...(verdict.primary === undefined ? {} : { primary: verdict.primary }),
+        shadows: [...(verdict.shadows ?? []), ...more],
+        resolvedByPolicy: verdict.resolvedByPolicy === true,
+      });
+    } catch {
+      // An observer that throws is its own problem, never a decision's.
+    }
   }
 
   async function assess(
@@ -290,7 +342,7 @@ export function createDecisionEngine(
     // Whole milliseconds, rounded down: a deadline is never extended.
     const budgetMs = Math.floor(remainingMs);
     if (budgetMs <= 0) {
-      return { ok: false, reason: "timeout", contextMs: 0 };
+      return { ok: false, reason: "timeout", contextMs: 0, shadows: [] };
     }
     const timeout = AbortSignal.timeout(budgetMs);
     const combined =
@@ -298,6 +350,8 @@ export function createDecisionEngine(
     const compileStarted = monotonic();
     let contextMs = 0;
     let compiled: SemanticDecisionRequest | undefined;
+    let shadows: Promise<ShadowObservation>[] = [];
+    let providerStarted = compileStarted;
     let result: ProviderResult;
     try {
       compiled = stage.compiler.compile(request.action, {
@@ -308,7 +362,14 @@ export function createDecisionEngine(
       // RFX-142: the shadows get what the primary gets, now, and are not
       // waited for. The caller's signal is the primary's; a shadow has its
       // own deadline and nothing else.
-      runShadows(stage, compiled, decisionId, request.action.id, "unresolved");
+      shadows = runShadows(
+        stage,
+        compiled,
+        decisionId,
+        request.action.id,
+        "unresolved",
+      );
+      providerStarted = monotonic();
       result = await stage.provider.evaluate(compiled, combined);
     } catch {
       // ADR-005 §2: a provider or a compiler that throws is a bug, handled
@@ -323,21 +384,45 @@ export function createDecisionEngine(
         ),
       };
     }
+    const primary: PrimaryEvaluation = {
+      provider: stage.provider.providerName,
+      ...(stage.provider.model === undefined
+        ? {}
+        : { model: stage.provider.model }),
+      result,
+      latencyMs: Math.max(0, Math.round(monotonic() - providerStarted)),
+    };
+    const seen = compiled === undefined ? {} : { request: compiled };
     if (result.ok && compiled !== undefined) {
       return {
         ok: true,
         assessment: result.assessment,
         request: compiled,
         contextMs,
+        primary,
+        shadows,
       };
     }
     if (result.ok) {
       // Cannot happen: a result needs a compiled request. Treated as the
       // defect it would be.
-      return { ok: false, reason: "provider-error", contextMs };
+      return {
+        ok: false,
+        reason: "provider-error",
+        contextMs,
+        primary,
+        shadows,
+      };
     }
     // Nothing the provider says is read beyond the kind of its failure.
-    return { ok: false, reason: fallbackReasonOf(result.error), contextMs };
+    return {
+      ok: false,
+      reason: fallbackReasonOf(result.error),
+      contextMs,
+      ...seen,
+      primary,
+      shadows,
+    };
   }
 
   async function verdictOf(
@@ -361,6 +446,7 @@ export function createDecisionEngine(
         risk,
         confidence: 1,
         reasonCodes: withClassReason([`explicit_${effect}`], sideEffectClass),
+        resolvedByPolicy: true,
         cacheable: true,
       };
     }
@@ -372,6 +458,7 @@ export function createDecisionEngine(
         risk,
         confidence: 1,
         reasonCodes: withClassReason(["unknown_risk"], sideEffectClass),
+        resolvedByPolicy: true,
         cacheable: true,
       };
     }
@@ -422,6 +509,9 @@ export function createDecisionEngine(
         contextMs: outcome.contextMs,
         semanticMs,
         aggregationMs: monotonic() - aggregationStarted,
+        request: outcome.request,
+        primary: outcome.primary,
+        shadows: outcome.shadows,
         // RFX-109: kept only for the classes whose assessment is repeatable.
         cacheable: isSemanticCacheable({
           sideEffectClass,
@@ -447,6 +537,9 @@ export function createDecisionEngine(
       fallback: { used: true, reason: outcome.reason, configuredMode },
       contextMs: outcome.contextMs,
       semanticMs,
+      ...(outcome.request === undefined ? {} : { request: outcome.request }),
+      ...(outcome.primary === undefined ? {} : { primary: outcome.primary }),
+      shadows: outcome.shadows,
       cacheable: false,
     };
   }
@@ -511,7 +604,17 @@ export function createDecisionEngine(
         const hit = cache.get(cacheKey, startedAt);
         if (hit !== undefined) {
           // Served from the cache, nothing ran: no shadow runs either.
-          return fromCache(request, hit, cacheKey, startedAt, decisionId);
+          const served = fromCache(
+            request,
+            hit,
+            cacheKey,
+            startedAt,
+            decisionId,
+          );
+          setImmediate(() => {
+            observeDecision(served, { shadows: [] });
+          });
+          return served;
         }
       }
 
@@ -532,28 +635,12 @@ export function createDecisionEngine(
       // RFX-142: a shadow sampled on everything sees the actions policy
       // resolved too, off the decision path (the primary did not run when
       // there is no semantic timing). The compile happens after the answer.
-      if (
+      const sampleResolved =
         semantic !== undefined &&
         verdict.semanticMs === undefined &&
         (semantic.shadow ?? []).some((shadow) => shadow.sample === "all")
-      ) {
-        const stage = semantic;
-        setImmediate(() => {
-          try {
-            const compiled = stage.compiler.compile(action, {
-              maxInputTokens: stage.maxInputTokens,
-              deadlineMs: Math.max(
-                ...(stage.shadow ?? [])
-                  .filter((shadow) => shadow.sample === "all")
-                  .map((shadow) => shadow.deadlineMs),
-              ),
-            });
-            runShadows(stage, compiled, decisionId, action.id, "resolved");
-          } catch {
-            // A compiler that throws off the path changes nothing.
-          }
-        });
-      }
+          ? semantic
+          : undefined;
 
       const latency: DecisionLatency = {
         totalMs: Math.round(finishedAt - startedAt),
@@ -594,6 +681,34 @@ export function createDecisionEngine(
         latency,
         decidedAt: clock().toISOString(),
       };
+
+      // After the answer: the shadows sampled on a resolved action, then the
+      // record's observer with everything the decision was made of.
+      setImmediate(() => {
+        let more: Promise<ShadowObservation>[] = [];
+        if (sampleResolved !== undefined) {
+          try {
+            const compiled = sampleResolved.compiler.compile(action, {
+              maxInputTokens: sampleResolved.maxInputTokens,
+              deadlineMs: Math.max(
+                ...(sampleResolved.shadow ?? [])
+                  .filter((shadow) => shadow.sample === "all")
+                  .map((shadow) => shadow.deadlineMs),
+              ),
+            });
+            more = runShadows(
+              sampleResolved,
+              compiled,
+              decisionId,
+              action.id,
+              "resolved",
+            );
+          } catch {
+            // A compiler that throws off the path changes nothing.
+          }
+        }
+        observeDecision(decision, verdict, more);
+      });
 
       if (
         cache !== undefined &&

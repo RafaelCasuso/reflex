@@ -37,4 +37,9 @@ export const CONTRACT_LIMITS = {
   commandLength: 1_048_576,
   /** Entries of an operand list: argument vector, paths, network hosts (v1.2). */
   operandItems: 1_024,
+
+  /** A decision record's evaluations, labels and feedback entries (v1.3). */
+  recordEvaluations: 16,
+  recordLabels: 256,
+  recordFeedback: 64,
 } as const;

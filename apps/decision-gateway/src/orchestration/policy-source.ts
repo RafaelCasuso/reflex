@@ -4,6 +4,7 @@ import type { CanonicalAction, FailureMode } from "@reflex/contracts";
 import {
   DecisionCache,
   createDecisionEngine,
+  type DecisionObserver,
   type ReflexDecisionEngine,
   type SemanticStage,
   type ShadowObserver,
@@ -117,6 +118,8 @@ export interface EngineBuildOptions {
   readonly semantic?: SemanticStage;
   /** RFX-142: where a settled shadow evaluation goes. Never on the path. */
   readonly onShadow?: ShadowObserver;
+  /** RFX-143: what every decision was made of, for the record. */
+  readonly onDecision?: DecisionObserver;
 }
 
 export const DEFAULT_DEADLINE = { defaultMs: 2_000, maxMs: 10_000 } as const;
@@ -130,5 +133,8 @@ export function buildEngine(options: EngineBuildOptions): ReflexDecisionEngine {
     ...(options.cache ? { cache: new DecisionCache() } : {}),
     ...(options.semantic === undefined ? {} : { semantic: options.semantic }),
     ...(options.onShadow === undefined ? {} : { onShadow: options.onShadow }),
+    ...(options.onDecision === undefined
+      ? {}
+      : { onDecision: options.onDecision }),
   });
 }

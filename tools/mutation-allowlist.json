@@ -11,7 +11,7 @@
     {
       "package": "packages/core",
       "file": "src/decision-engine.ts",
-      "line": 337,
+      "line": 410,
       "operator": "false-to-true",
       "reason": "Unreachable by construction: a provider result exists only after `compiled` was assigned in the same try block, so the branch that guards `result.ok && compiled === undefined` cannot run; it is kept so that the types stay honest rather than asserted."
     },

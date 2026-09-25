@@ -1,8 +1,10 @@
-import type {
-  DurationMs,
-  FallbackReason,
-  SemanticAssessment,
-  SemanticDecisionRequest,
+import {
+  PROVIDER_ERROR_KINDS,
+  type DurationMs,
+  type FallbackReason,
+  type ProviderErrorKind,
+  type SemanticAssessment,
+  type SemanticDecisionRequest,
 } from "@reflex/contracts";
 
 /**
@@ -18,20 +20,14 @@ import type {
  * rate-limited or wrong is an expected outcome. A thrown exception is a bug
  * in the provider; core treats it as `unavailable` and reports it.
  */
-export const PROVIDER_ERROR_KINDS = [
-  /** The provider's own deadline passed. */
-  "timeout",
-  /** The caller's signal fired. */
-  "aborted",
-  /** Down, unreachable, overloaded, or a bug that threw. */
-  "unavailable",
-  "rate-limited",
-  /** The provider refused the request: authentication, validation. */
-  "rejected-request",
-  /** The answer could not be read strictly: partial, malformed, wrong model. */
-  "invalid-response",
-] as const;
-export type ProviderErrorKind = (typeof PROVIDER_ERROR_KINDS)[number];
+/**
+ * The kinds, from the contracts (v1.3, where a decision record names them):
+ * `timeout` (the provider's own deadline passed), `aborted` (the caller's
+ * signal fired), `unavailable` (down, unreachable, overloaded, or a bug
+ * that threw), `rate-limited`, `rejected-request` (authentication,
+ * validation), `invalid-response` (partial, malformed, wrong model).
+ */
+export { PROVIDER_ERROR_KINDS, type ProviderErrorKind };
 
 export interface ProviderError {
   readonly kind: ProviderErrorKind;

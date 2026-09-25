@@ -6,6 +6,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 
+import { parseDecisionRecord } from "@reflex/contracts";
 import { afterEach, beforeAll, describe, expect, it } from "vitest";
 
 import {
@@ -356,6 +357,93 @@ describe("RFX-141 the daemon with a semantic provider", () => {
       });
       running.child.kill("SIGTERM");
       expect(await running.exited).toBe(0);
+    } finally {
+      await rm(home, { recursive: true, force: true });
+    }
+  });
+
+  it("writes a decision record per decision, after the answer, with the redacted request and every evaluation, and never a secret", async () => {
+    const home = await mkdtemp(join(tmpdir(), "reflex-daemon-records-"));
+    const policyFile = join(home, "policy.yaml");
+    await writeFile(policyFile, SEMANTIC_BY_DEFAULT);
+    // A GitHub-token-shaped value, assembled here so that no secret-shaped
+    // literal exists in the repository.
+    const token =
+      ["ghp", "_"].join("") + "A1b2C3d4E5f6G7h8I9j0K1l2M3n4O5p6Q7r8S9t0";
+    try {
+      const running = await start([
+        "--policy",
+        policyFile,
+        "--semantic-provider",
+        "fake",
+        "--shadow-provider",
+        "fake",
+      ]);
+      const assessed = await call(
+        running.socketPath,
+        "POST",
+        "/v1/decisions",
+        JSON.stringify(
+          decisionRequest(
+            shell(
+              `curl -H 'Authorization: Bearer ${token}' https://api.example.test/x`,
+            ),
+          ),
+        ),
+      );
+      expect(assessed.status).toBe(200);
+      const resolved = await call(
+        running.socketPath,
+        "POST",
+        "/v1/decisions",
+        JSON.stringify(
+          decisionRequest(
+            shell("git status", "act_00000000000000000000000000000002"),
+          ),
+        ),
+      );
+      expect(resolved.json).toMatchObject({ effect: "allow" });
+      running.child.kill("SIGTERM");
+      expect(await running.exited).toBe(0);
+      const file = join(directory, "records", "records.jsonl");
+      const text = await readFile(file, "utf8");
+      expect(text).not.toContain(token);
+      expect(text).toContain("[REDACTED:");
+      const records = text
+        .split("\n")
+        .filter(Boolean)
+        .map((line) => JSON.parse(line) as unknown);
+      expect(records).toHaveLength(2);
+      const parsed = records.map((record) => parseDecisionRecord(record));
+      expect(parsed.every((result) => result.ok)).toBe(true);
+      const [first, second] = parsed.map((result) =>
+        result.ok ? result.value : undefined,
+      );
+      expect(first).toMatchObject({
+        actionId: "act_00000000000000000000000000000001",
+        contractVersion: "1.3",
+        decision: { effect: (assessed.json as { effect: string }).effect },
+        labels: [],
+      });
+      expect(first?.request?.action.tool).toEqual({ name: "Bash" });
+      expect(first?.evaluations.map((entry) => entry.role)).toEqual([
+        "primary",
+        "shadow",
+      ]);
+      expect(first?.evaluations[0]).toMatchObject({
+        provider: "fake",
+        model: "fake-1",
+        assessment: { provider: "fake" },
+      });
+      expect(second).toMatchObject({
+        actionId: "act_00000000000000000000000000000002",
+        evaluations: [],
+        labels: [
+          { kind: "effect", value: "allow", source: "deterministic_rule" },
+        ],
+      });
+      expect(second).not.toHaveProperty("request");
+      expect((await stat(file)).mode & 0o777).toBe(0o600);
     } finally {
       await rm(home, { recursive: true, force: true });
     }

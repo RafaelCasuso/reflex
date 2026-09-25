@@ -24,26 +24,26 @@ const agentIdentitySchema = z.strictObject({
   model: nameSchema.exactOptional(),
 });
 
-const actionToolSchema = z.strictObject({
+export const actionToolSchema = z.strictObject({
   name: nameSchema,
   namespace: nameSchema.exactOptional(),
   description: textSchema.exactOptional(),
 });
 
-const actionResourceSchema = z.strictObject({
+export const actionResourceSchema = z.strictObject({
   type: nameSchema.exactOptional(),
   identifier: pathSchema.exactOptional(),
   environment: z.enum(ENVIRONMENT_KINDS),
   isProduction: z.boolean().exactOptional(),
 });
 
-const actionRepositorySchema = z.strictObject({
+export const actionRepositorySchema = z.strictObject({
   root: pathSchema.exactOptional(),
   branch: nameSchema.exactOptional(),
   remoteHost: nameSchema.exactOptional(),
 });
 
-const priorActionSummarySchema = z.strictObject({
+export const priorActionSummarySchema = z.strictObject({
   actionId: opaqueIdSchema("act").exactOptional(),
   toolName: nameSchema,
   operation: nameSchema.exactOptional(),

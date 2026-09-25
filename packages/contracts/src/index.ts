@@ -48,6 +48,7 @@ export {
   parseActionOutcome,
   parseCanonicalAction,
   parseDecisionFeedback,
+  parseDecisionRecord,
   parseDecisionRequest,
   parseReflexDecision,
   parseSemanticAssessment,
@@ -122,3 +123,23 @@ export {
   type HumanResponse,
   type ObservationState,
 } from "./outcome.js";
+
+export {
+  ASSESSMENT_DIMENSIONS,
+  EVALUATION_ROLES,
+  LABEL_SOURCES,
+  PROVIDER_ERROR_KINDS,
+  type AssessedEvaluation,
+  type AssessmentDimension,
+  type DecisionLabel,
+  type DecisionRecord,
+  type DimensionLabel,
+  type EffectLabel,
+  type EvaluationRole,
+  type FailedEvaluation,
+  type LabelSource,
+  type ProviderErrorKind,
+  type RecordedDecision,
+  type RecordedEvaluation,
+  type RecordedEvaluationBase,
+} from "./record.js";

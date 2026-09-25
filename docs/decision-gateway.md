@@ -101,6 +101,21 @@ node apps/decision-gateway/dist/main.js [--socket <path> | --tcp <host:port>]
   shadow evaluation is a `shadow` telemetry event of its own (provider,
   model, whether it assessed or how it failed, latency; no content), never
   a fallback. A decision served from the cache runs no shadow.
+- Decision records (RFX-143, ADR-016 §4) go to
+  `<REFLEX_HOME>/records/records.jsonl`, one per decision, written after the
+  answer once every shadow of the decision has settled: the redacted request
+  the primary was given (ADR-006; absent when no provider saw one), every
+  provider's answer or failure with its role and latency, what REFLEX decided
+  (effect, mode, risk, confidence, reason codes, matches, policy set hash,
+  fallback; never the cache key or the clock), and a `deterministic_rule`
+  label when a rule or a policy default decided. Outcomes and feedback are
+  joined later by id (`@reflex/telemetry`'s `withOutcome` and `withFeedback`),
+  and each adds a `human` or `production_outcome` label; a record refuses an
+  outcome of another action or feedback on another decision. The log rotates
+  by size and by age, and keeps seven days (ADR-008 §4, the retention of
+  redacted semantic context); a record that fails to write is counted in
+  health (`recordsDropped`) and never fails a decision. Off with
+  `--no-telemetry`.
 
 Decision telemetry goes to `<REFLEX_HOME>/decisions/decisions.jsonl`, rotated
 by size, one event per line: a `decision` event per decision (effect, mode,

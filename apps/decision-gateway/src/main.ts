@@ -1,6 +1,10 @@
+import type { DecisionObservation } from "@reflex/core";
 import {
   DecisionLog,
+  DecisionRecordLog,
+  decisionRecordOf,
   defaultDecisionLogDirectory,
+  defaultDecisionRecordDirectory,
   shadowEventOf,
 } from "@reflex/telemetry";
 
@@ -83,6 +87,13 @@ async function main(argv: readonly string[]): Promise<number> {
         directory: defaultDecisionLogDirectory(config.reflexHome),
       })
     : undefined;
+  // RFX-143: the decision records, written after the answer, once every
+  // shadow of the decision has settled (each on its own deadline).
+  const records = config.telemetry
+    ? new DecisionRecordLog({
+        directory: defaultDecisionRecordDirectory(config.reflexHome),
+      })
+    : undefined;
   const engine = buildEngine({
     policies,
     failureMode: config.failureMode,
@@ -102,6 +113,39 @@ async function main(argv: readonly string[]): Promise<number> {
             );
           },
         }),
+    ...(records === undefined
+      ? {}
+      : {
+          onDecision: (observation: DecisionObservation) => {
+            void Promise.all(observation.shadows).then((shadows) => {
+              records.write(
+                decisionRecordOf({
+                  decision: observation.decision,
+                  ...(observation.request === undefined
+                    ? {}
+                    : { request: observation.request }),
+                  evaluations: [
+                    ...(observation.primary === undefined
+                      ? []
+                      : [{ ...observation.primary, role: "primary" as const }]),
+                    ...shadows.map((shadow) => ({
+                      provider: shadow.provider,
+                      ...(shadow.model === undefined
+                        ? {}
+                        : { model: shadow.model }),
+                      role: "shadow" as const,
+                      sampledOn: shadow.sampledOn,
+                      result: shadow.result,
+                      latencyMs: shadow.latencyMs,
+                    })),
+                  ],
+                  resolvedByPolicy: observation.resolvedByPolicy,
+                  recordedAt: new Date().toISOString(),
+                }),
+              );
+            });
+          },
+        }),
   });
 
   const server = createGatewayServer({
@@ -116,6 +160,7 @@ async function main(argv: readonly string[]): Promise<number> {
       policyLoadedAt: policies.state().loadedAt ?? null,
       policyProblems: policies.state().lastProblems.length,
       telemetryDropped: telemetry?.dropped ?? 0,
+      recordsDropped: records?.dropped ?? 0,
       redactionKey: redactionKey.created ? "created" : "present",
       semanticProvider: semantic.provider,
       shadowProviders: semantic.shadows,
@@ -140,6 +185,7 @@ async function main(argv: readonly string[]): Promise<number> {
   });
   await server.close();
   await telemetry?.flush();
+  await records?.flush();
   return 0;
 }
 
