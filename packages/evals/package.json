@@ -30,6 +30,7 @@
     "@reflex/semantic-provider": "workspace:*"
   },
   "devDependencies": {
+    "@reflex/provider-jev": "workspace:*",
     "gpt-tokenizer": "4.0.0"
   }
 }
