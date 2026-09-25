@@ -8,6 +8,7 @@ import type {
   PolicyUnresolvedDefault,
   SideEffectClass,
 } from "@reflex/contracts";
+import { SIDE_EFFECT_CLASSES } from "@reflex/contracts";
 
 import { canonicalizePolicySet } from "./canonical.js";
 import { ruleMatches, type MatchContext } from "./matcher.js";
@@ -193,8 +194,28 @@ export interface PolicyEvaluationResult {
   readonly sideEffectClass: SideEffectClass;
   /** False when no allow rule could have matched, whatever the policy says. */
   readonly understood: boolean;
+  /**
+   * RFX-148: what the classifier saw, one entry per subject (a tool call,
+   * or each segment of a shell command), for a stage that decides after
+   * policy and must not re-parse the command to know where it points.
+   */
+  readonly subjects: readonly SubjectSummary[];
+  /** What `${project}` stood for: the context's root, else the action's. */
+  readonly projectRoot?: string;
   /** The contract's `latencyMs` is whole milliseconds, which reads as 0 here. */
   readonly elapsedMs: number;
+}
+
+export interface SubjectSummary {
+  readonly sideEffectClass: SideEffectClass;
+  /** Absolute and lexically normalized where they could be; as written where not. */
+  readonly paths: readonly string[];
+  /**
+   * False when the segment was not fully understood, a path could not be
+   * made absolute, or its lists are open (an argument that could not be
+   * read may point anywhere).
+   */
+  readonly understood: boolean;
 }
 
 export function evaluatePolicy(
@@ -226,6 +247,17 @@ export function evaluatePolicy(
     ),
   );
 
+  const seen: SubjectSummary[] = subjects.map((subject) => {
+    const [own] = subject.fields.get("sideEffectClass") ?? [];
+    return {
+      sideEffectClass: isSideEffectClass(own) ? own : sideEffectClass,
+      paths: (subject.fields.get("path") ?? []).filter(
+        (value): value is string => typeof value === "string",
+      ),
+      understood: subject.understood && !subject.openLists,
+    };
+  });
+
   const elapsedMs = performance.now() - started;
   return {
     evaluation: {
@@ -238,6 +270,14 @@ export function evaluatePolicy(
     ...(floor === undefined ? {} : { floor }),
     sideEffectClass,
     understood,
+    subjects: seen,
+    ...(matchContext.projectRoot === undefined
+      ? {}
+      : { projectRoot: matchContext.projectRoot }),
     elapsedMs,
   };
 }
+
+const isSideEffectClass = (value: unknown): value is SideEffectClass =>
+  typeof value === "string" &&
+  (SIDE_EFFECT_CLASSES as readonly string[]).includes(value);

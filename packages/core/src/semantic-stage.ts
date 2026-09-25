@@ -10,6 +10,7 @@ import type {
   SemanticDecisionRequest,
   SideEffectClass,
 } from "@reflex/contracts";
+import type { SubjectSummary } from "@reflex/policy-engine";
 import type { SemanticDecisionProvider } from "@reflex/semantic-provider";
 
 /**
@@ -46,6 +47,13 @@ export interface AggregationPolicyInput {
   /** ADR-012: an untrusted `ask` that left the action unresolved. */
   readonly floor: DecisionEffect | undefined;
   readonly sideEffectClass: SideEffectClass;
+  /**
+   * RFX-148: what the classifier saw, one entry per subject, and what the
+   * project root was, straight from the policy evaluation. Absent when the
+   * caller has no evaluation; the aggregator then keeps every floor.
+   */
+  readonly subjects?: readonly SubjectSummary[];
+  readonly projectRoot?: string;
 }
 
 export interface AggregationInput {

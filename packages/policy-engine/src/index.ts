@@ -38,6 +38,7 @@ export {
   type CompiledPolicySet,
   type PolicyEvaluationResult,
   type PolicySourceDocument,
+  type SubjectSummary,
 } from "./evaluator.js";
 export { ruleMatches, type MatchContext, type RuleKind } from "./matcher.js";
 export {
