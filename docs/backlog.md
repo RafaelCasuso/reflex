@@ -1021,7 +1021,21 @@ RFX-052, RFX-053, RFX-056, RFX-057 and RFX-058 moved to G1.5. This gate complete
 
 **Depends on:** RFX-102, RFX-016.
 
-**Gate exit:** all tickets above are green in CI and documented; no known dangerous false-allow regression. **Specifically:** a partial install failure rolls back completely; every `rfx doctor` failure names a remediation; an existing policy file is never overwritten without an explicit user action.
+### RFX-149 — Split the repositories: public `reflex`, private `reflex-cloud`
+
+**Goal:** Open the source that ADR-015 declares open in a public repository of its own, keep the private side in a private one, and make published packages the only boundary between them.
+
+**Acceptance:** The public repository `reflex` holds every open package listed in `docs/open-core.md`, the docs, the root tooling and the CLI, and no commit in its whole history touches `apps/api`, `apps/dashboard`, `packages/auth` or `rdm/`: a script in the repository names those paths, and a check that `git log --all -- <paths>` returns nothing runs in the public repository's CI on every push, and a pull request that adds a file under one of them fails there. The private repository `reflex-cloud` depends on the open packages by published version (`@reflex/*` from npm, via RFX-127), never by path, submodule or subtree, and its lockfile names the versions. The boundary test of ADR-015 keeps running in the public repository, and a new package that is in neither table of `docs/open-core.md` still fails it. The security gate is green over the public history before the repository is made public, and it is made public only once `rfx init` gives first value (RFX-050 to RFX-054).
+
+**Depends on:** RFX-127 (publishing from CI with provenance; the private side consumes what CI publishes), RFX-050 to RFX-054 (there is something to install before there is something to open).
+
+**Out of scope:** publishing RDM in any form; a `rdm/` directory in the public repository; changing which packages are open, which is ADR-015's decision and not this ticket's.
+
+**Why:** ADR-015 enforces the open/private boundary in place "until the repositories are split" and named the split as a later ticket without writing it. The three private packages are stubs today, so filtering their paths out of the public history is trivial now and stops being so once the control plane exists. And an open license is worth nothing while the only repository is private.
+
+**Test layers:** contract (the boundary test and the history check in the public repository), CI (the private-path check on pull requests).
+
+**Gate exit:** all tickets above are green in CI and documented; no known dangerous false-allow regression. **Specifically:** a partial install failure rolls back completely; every `rfx doctor` failure names a remediation; an existing policy file is never overwritten without an explicit user action; the public repository's history holds no private path.
 
 ## G10 — Persistence and Observe product
 

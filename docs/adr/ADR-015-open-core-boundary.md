@@ -123,8 +123,8 @@ dashboard, and hosted context that a laptop cannot keep.
 
 - RFX-139: decide, add `LICENSE` and `license` fields, `docs/open-core.md`,
   the boundary test.
-- The repository split, when the public repository is opened; a ticket in
-  G14 next to publishing packages (RFX-076, RFX-077).
+- The repository split, when the public repository is opened: RFX-149 in
+  G9, after signed publishing (RFX-127) and first value from `rfx init`.
 - `docs/product.md`: say which plan features come from the private side.
 
 ## Alternatives considered

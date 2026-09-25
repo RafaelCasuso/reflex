@@ -8,7 +8,7 @@ the model itself, is private.**
 This page is the list. `tests/boundaries.test.ts` reads it: every workspace
 package must appear here, its manifest must declare the licence written
 here, and **no open package may depend on a private one**. Until the
-repositories are split, the boundary is enforced here rather than by
+repositories are split (RFX-149), the boundary is enforced here rather than by
 distance.
 
 ## Open (Apache-2.0)
@@ -59,6 +59,7 @@ question is asked when the package is created, not after it ships.
   the product is the canonical one: a `SemanticDecisionRequest` in, a
   `SemanticAssessment` out, over `packages/provider-local` (RFX-144).
 - `rdm/` is not a workspace package (`pnpm-workspace.yaml`), so no
-  workspace-wide publish reaches it; when packages are published (RFX-076)
-  the publish step lists open packages by name.
+  workspace-wide publish reaches it; when packages are published (RFX-127)
+  the publish step lists open packages by name, and the public repository
+  (RFX-149) never holds it.
 - A user's own provider key in the open daemon is allowed (ADR-015 §4).
