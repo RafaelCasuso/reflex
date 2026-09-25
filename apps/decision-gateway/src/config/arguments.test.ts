@@ -20,6 +20,9 @@ describe("the daemon's command line", () => {
         semanticProvider: "none",
         semanticModel: undefined,
         semanticEndpoint: undefined,
+        shadowProviders: [],
+        shadowDeadlineMs: 5_000,
+        shadowSample: "unresolved",
       },
     });
     expect(defaultSocketPath("/x")).toBe("/x/run/reflex.sock");
@@ -48,6 +51,12 @@ describe("the daemon's command line", () => {
         "jev-1.13.0",
         "--semantic-endpoint",
         "https://api.example.test/v1/systemone",
+        "--shadow-provider",
+        "fake",
+        "--shadow-provider",
+        "local",
+        "--shadow-deadline",
+        "250",
       ],
       env,
     );
@@ -64,6 +73,9 @@ describe("the daemon's command line", () => {
         semanticProvider: "jev",
         semanticModel: "jev-1.13.0",
         semanticEndpoint: "https://api.example.test/v1/systemone",
+        shadowProviders: ["fake", "local"],
+        shadowDeadlineMs: 250,
+        shadowSample: "unresolved",
       },
     });
   });
@@ -126,6 +138,82 @@ describe("RFX-141 the semantic provider flags", () => {
     [
       ["--semantic-endpoint", "http://127.0.0.1:1"],
       "need a --semantic-provider",
+    ],
+  ])("refuses %j", (argv, message) => {
+    const parsed = parseArguments(argv, env);
+    expect(parsed.ok).toBe(false);
+    if (!parsed.ok) {
+      expect(parsed.problem).toContain(message);
+    }
+  });
+});
+
+describe("RFX-142 the shadow flags", () => {
+  it("reads shadows behind a primary, with their sample", () => {
+    expect(
+      parseArguments(
+        [
+          "--semantic-provider",
+          "jev",
+          "--shadow-provider",
+          "local",
+          "--shadow-sample",
+          "all",
+        ],
+        env,
+      ),
+    ).toMatchObject({
+      ok: true,
+      arguments: { shadowProviders: ["local"], shadowSample: "all" },
+    });
+  });
+
+  it.each([
+    [["--shadow-provider", "fake"], "needs a --semantic-provider"],
+    [
+      ["--semantic-provider", "fake", "--shadow-provider", "none"],
+      "needs jev, local",
+    ],
+    [["--semantic-provider", "fake", "--shadow-provider"], "needs jev, local"],
+    [
+      [
+        "--semantic-provider",
+        "fake",
+        "--shadow-provider",
+        "fake",
+        "--shadow-sample",
+        "all",
+      ],
+      "local shadows only",
+    ],
+    [
+      [
+        "--semantic-provider",
+        "fake",
+        "--shadow-provider",
+        "local",
+        "--shadow-provider",
+        "jev",
+        "--shadow-sample",
+        "all",
+      ],
+      "local shadows only",
+    ],
+    [
+      ["--semantic-provider", "fake", "--shadow-sample", "sometimes"],
+      "needs unresolved or all",
+    ],
+    [
+      ["--semantic-provider", "fake", "--shadow-deadline", "0"],
+      "whole milliseconds",
+    ],
+    [
+      ["--semantic-provider", "fake", "--shadow-deadline", "1.5"],
+      "whole milliseconds",
+    ],
+    [
+      ["--semantic-provider", "fake", "--shadow-deadline"],
+      "whole milliseconds",
     ],
   ])("refuses %j", (argv, message) => {
     const parsed = parseArguments(argv, env);

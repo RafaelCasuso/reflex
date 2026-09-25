@@ -1,7 +1,9 @@
 import type {
+  ActionId,
   CanonicalAction,
   Confidence,
   DecisionEffect,
+  DecisionId,
   DurationMs,
   PolicyMatch,
   ReasonCode,
@@ -11,7 +13,10 @@ import type {
   SideEffectClass,
 } from "@reflex/contracts";
 import type { SubjectSummary } from "@reflex/policy-engine";
-import type { SemanticDecisionProvider } from "@reflex/semantic-provider";
+import type {
+  ProviderResult,
+  SemanticDecisionProvider,
+} from "@reflex/semantic-provider";
 
 /**
  * The seams of the semantic stage (`docs/architecture.md` §3). The engine
@@ -81,4 +86,42 @@ export interface SemanticStage {
   readonly aggregator: RiskAggregator;
   /** CLAUDE.md principle 9: the median target is under 600 tokens. */
   readonly maxInputTokens: number;
+  /** RFX-142: evaluated alongside the primary, recorded, never used. */
+  readonly shadow?: readonly ShadowProvider[];
 }
+
+/**
+ * RFX-142 — shadow evaluation (ADR-016 §3).
+ *
+ * A shadow receives the same request as the primary, concurrently, under
+ * its own deadline; the decision returns when the primary is done, and
+ * nothing a shadow returns or fails to return changes any field of it.
+ * `unresolved` runs it where the primary runs; `all` runs it on the
+ * actions policy resolved as well, which hands a model free labels and is
+ * allowed only for a provider that runs on this machine (ADR-010).
+ */
+export type ShadowSample = "unresolved" | "all";
+
+export interface ShadowProvider {
+  readonly provider: SemanticDecisionProvider;
+  /** Its own deadline, whole milliseconds. The decision never waits for it. */
+  readonly deadlineMs: DurationMs;
+  readonly sample: ShadowSample;
+}
+
+/** What a shadow evaluation came to, given to the observer when it settles. */
+export interface ShadowObservation {
+  readonly decisionId: DecisionId;
+  readonly actionId: ActionId;
+  readonly role: "shadow";
+  readonly provider: string;
+  readonly model?: string;
+  /** Which kind of action it was sampled on. */
+  readonly sampledOn: "unresolved" | "resolved";
+  /** What it was given: the same redacted request as the primary. */
+  readonly request: SemanticDecisionRequest;
+  readonly result: ProviderResult;
+  readonly latencyMs: DurationMs;
+}
+
+export type ShadowObserver = (observation: ShadowObservation) => void;

@@ -203,6 +203,7 @@ export function createFakeProvider(
   return {
     providerName: FAKE_PROVIDER_NAME,
     model: FAKE_MODEL,
+    onMachine: true,
     calls,
     signals,
     evaluate(request, signal) {

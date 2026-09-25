@@ -2,6 +2,7 @@ import { homedir } from "node:os";
 import { join } from "node:path";
 
 import { FAILURE_MODES, type FailureMode } from "@reflex/contracts";
+import type { ShadowSample } from "@reflex/core";
 import { isProviderId, type ProviderId } from "@reflex/semantic-provider";
 
 import type { RateLimitOptions } from "../http/limits.js";
@@ -26,6 +27,12 @@ export interface GatewayArguments {
   readonly semanticModel: string | undefined;
   /** Where the provider is reached; the provider's default otherwise. */
   readonly semanticEndpoint: string | undefined;
+  /** RFX-142: `--shadow-provider <id>`, repeatable; evaluated, recorded, never used. */
+  readonly shadowProviders: readonly Exclude<ProviderId, "none">[];
+  /** `--shadow-deadline <ms>`: each shadow's own deadline. */
+  readonly shadowDeadlineMs: number;
+  /** `--shadow-sample unresolved|all`; `all` only for `local` (ADR-016 §3). */
+  readonly shadowSample: ShadowSample;
 }
 
 export type ArgumentsResult =
@@ -42,7 +49,10 @@ export function defaultSocketPath(reflexHome: string): string {
   return join(reflexHome, "run", "reflex.sock");
 }
 
-export const USAGE = `usage: reflex-gateway [--socket <path> | --tcp <host:port>] [--policy <file>]... [--failure-mode fail-open|fail-ask|fail-closed] [--no-cache] [--no-telemetry] [--home <dir>] [--rate-limit <burst>/<per-second>] [--semantic-provider none|jev|local|reflex|fake] [--semantic-model <id>] [--semantic-endpoint <url>]`;
+export const USAGE = `usage: reflex-gateway [--socket <path> | --tcp <host:port>] [--policy <file>]... [--failure-mode fail-open|fail-ask|fail-closed] [--no-cache] [--no-telemetry] [--home <dir>] [--rate-limit <burst>/<per-second>] [--semantic-provider none|jev|local|reflex|fake] [--semantic-model <id>] [--semantic-endpoint <url>] [--shadow-provider <id>]... [--shadow-deadline <ms>] [--shadow-sample unresolved|all]`;
+
+/** A shadow answers off the path; a generous deadline costs the decision nothing. */
+export const DEFAULT_SHADOW_DEADLINE_MS = 5_000;
 
 function isFailureMode(value: string): value is FailureMode {
   return (FAILURE_MODES as readonly string[]).includes(value);
@@ -62,6 +72,9 @@ export function parseArguments(
   let semanticProvider: ProviderId = "none";
   let semanticModel: string | undefined;
   let semanticEndpoint: string | undefined;
+  const shadowProviders: Exclude<ProviderId, "none">[] = [];
+  let shadowDeadlineMs = DEFAULT_SHADOW_DEADLINE_MS;
+  let shadowSample: ShadowSample = "unresolved";
 
   const problem = (message: string): ArgumentsResult => ({
     ok: false,
@@ -167,6 +180,32 @@ export function parseArguments(
         semanticEndpoint = url;
         break;
       }
+      case "--shadow-provider": {
+        const id = takeValue();
+        if (id === undefined || !isProviderId(id) || id === "none") {
+          return problem("--shadow-provider needs jev, local, reflex or fake");
+        }
+        shadowProviders.push(id);
+        break;
+      }
+      case "--shadow-deadline": {
+        const ms = Number(takeValue());
+        if (!Number.isInteger(ms) || ms < 1) {
+          return problem(
+            "--shadow-deadline needs whole milliseconds, at least 1",
+          );
+        }
+        shadowDeadlineMs = ms;
+        break;
+      }
+      case "--shadow-sample": {
+        const sample = takeValue();
+        if (sample !== "unresolved" && sample !== "all") {
+          return problem("--shadow-sample needs unresolved or all");
+        }
+        shadowSample = sample;
+        break;
+      }
       case "--no-cache":
         cache = false;
         break;
@@ -187,6 +226,16 @@ export function parseArguments(
     );
   }
 
+  if (shadowProviders.length > 0 && semanticProvider === "none") {
+    // ADR-016 §3: shadows run where the primary runs.
+    return problem("--shadow-provider needs a --semantic-provider");
+  }
+  if (shadowSample === "all" && shadowProviders.some((id) => id !== "local")) {
+    // ADR-016 §3, ADR-010: the arguments of a resolved action never leave
+    // the machine, so only a local provider may be shown them.
+    return problem("--shadow-sample all is allowed for local shadows only");
+  }
+
   return {
     ok: true,
     arguments: {
@@ -200,6 +249,9 @@ export function parseArguments(
       semanticProvider,
       semanticModel,
       semanticEndpoint,
+      shadowProviders,
+      shadowDeadlineMs,
+      shadowSample,
     },
   };
 }

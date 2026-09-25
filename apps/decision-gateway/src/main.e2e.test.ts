@@ -298,6 +298,99 @@ describe("RFX-141 the daemon with a semantic provider", () => {
     }
   });
 
+  it("runs a shadow behind the primary: health names it, the decision does not change, telemetry records it", async () => {
+    const home = await mkdtemp(join(tmpdir(), "reflex-daemon-shadow-"));
+    const policyFile = join(home, "policy.yaml");
+    await writeFile(policyFile, SEMANTIC_BY_DEFAULT);
+    try {
+      const running = await start([
+        "--policy",
+        policyFile,
+        "--semantic-provider",
+        "fake",
+        "--shadow-provider",
+        "fake",
+        "--shadow-deadline",
+        "500",
+      ]);
+      const health = await call(running.socketPath, "GET", "/v1/health");
+      expect(health.json).toMatchObject({
+        semanticProvider: { id: "fake" },
+        shadowProviders: [
+          { id: "fake", name: "fake", model: "fake-1", sample: "unresolved" },
+        ],
+      });
+      const decided = await call(
+        running.socketPath,
+        "POST",
+        "/v1/decisions",
+        JSON.stringify(decisionRequest(shell("cat README.md"))),
+      );
+      expect(decided.json).toMatchObject({
+        effect: "allow",
+        semanticAssessment: { provider: "fake" },
+      });
+      // The decision carries nothing of the shadow (ADR-016 §3).
+      expect(JSON.stringify(decided.json)).not.toContain("shadow");
+      const telemetry = join(directory, "decisions", "decisions.jsonl");
+      let lines: string[] = [];
+      for (
+        let attempt = 0;
+        attempt < 50 && !lines.some((line) => line.includes('"shadow"'));
+        attempt += 1
+      ) {
+        await new Promise((resolve) => setTimeout(resolve, 20));
+        lines = existsSync(telemetry)
+          ? (await readFile(telemetry, "utf8")).split("\n").filter(Boolean)
+          : [];
+      }
+      const shadowEvent = lines
+        .map((line) => JSON.parse(line) as { kind: string })
+        .find((event) => event.kind === "shadow");
+      expect(shadowEvent).toMatchObject({
+        kind: "shadow",
+        provider: "fake",
+        model: "fake-1",
+        sampledOn: "unresolved",
+        outcome: "assessed",
+      });
+      running.child.kill("SIGTERM");
+      expect(await running.exited).toBe(0);
+    } finally {
+      await rm(home, { recursive: true, force: true });
+    }
+  });
+
+  it("exits 2 when asked to sample everything with a shadow that is not local", async () => {
+    directory = await mkdtemp(join(tmpdir(), "reflex-daemon-shadow-all-"));
+    const child = spawn(
+      process.execPath,
+      [
+        MAIN,
+        "--socket",
+        join(directory, "r.sock"),
+        "--home",
+        directory,
+        "--semantic-provider",
+        "fake",
+        "--shadow-provider",
+        "fake",
+        "--shadow-sample",
+        "all",
+      ],
+      { stdio: ["ignore", "pipe", "pipe"] },
+    );
+    let stderr = "";
+    child.stderr.on("data", (chunk: Buffer) => {
+      stderr += chunk.toString("utf8");
+    });
+    const code = await new Promise<number | null>((resolve) => {
+      child.once("exit", resolve);
+    });
+    expect(code).toBe(2);
+    expect(stderr).toContain("local shadows only");
+  });
+
   // Adversarial: the key is given to the provider and must come out nowhere:
   // not in health, not in a decision, not on stderr, not in telemetry.
   it("never lets the provider's key out, even when the provider is unreachable", async () => {

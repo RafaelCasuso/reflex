@@ -56,7 +56,8 @@ node apps/decision-gateway/dist/main.js [--socket <path> | --tcp <host:port>]
   [--policy <file>]... [--failure-mode fail-open|fail-ask|fail-closed]
   [--no-cache] [--no-telemetry] [--home <dir>] [--rate-limit <burst>/<per-second>]
   [--semantic-provider none|jev|local|reflex|fake] [--semantic-model <id>]
-  [--semantic-endpoint <url>]
+  [--semantic-endpoint <url>] [--shadow-provider <id>]...
+  [--shadow-deadline <ms>] [--shadow-sample unresolved|all]
 ```
 
 - Default: the socket `<REFLEX_HOME>/run/reflex.sock`, in a directory of mode
@@ -86,6 +87,20 @@ node apps/decision-gateway/dist/main.js [--socket <path> | --tcp <host:port>]
   `GET /v1/health` reports `semanticProvider: { id, name, model }`, pinned,
   and never the key or the endpoint; every decision the provider took part
   in carries `semanticAssessment.provider` and `.model`.
+- `--shadow-provider` (RFX-142, ADR-016 §3), repeatable, names providers
+  that are evaluated alongside the primary and whose answers are recorded
+  and never used. A shadow gets the same redacted request as the primary,
+  at the same moment, under its own `--shadow-deadline` (5,000 ms by
+  default); the decision returns when the primary is done and no field of
+  it, nor its latency, depends on a shadow. `--shadow-sample unresolved`
+  (the default) runs shadows where the primary runs; `all` runs them on the
+  actions policy resolved too, off the decision path, and is accepted for
+  `local` shadows only, because ADR-010 promises that the arguments of a
+  resolved action never leave the machine. A shadow needs a primary. Health
+  lists `shadowProviders: [{ id, name, model, sample }]`. Each settled
+  shadow evaluation is a `shadow` telemetry event of its own (provider,
+  model, whether it assessed or how it failed, latency; no content), never
+  a fallback. A decision served from the cache runs no shadow.
 
 Decision telemetry goes to `<REFLEX_HOME>/decisions/decisions.jsonl`, rotated
 by size, one event per line: a `decision` event per decision (effect, mode,

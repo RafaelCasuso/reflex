@@ -102,8 +102,57 @@ export interface RejectedRequestEvent {
   readonly requestId?: string;
 }
 
+/**
+ * RFX-142: a shadow evaluation, when it settled (ADR-016 §3). Its own event,
+ * never a fallback: how it did says nothing about the decision. No content:
+ * whether it answered, how it failed, and how long it took.
+ */
+export interface ShadowEvent {
+  readonly kind: "shadow";
+  readonly eventVersion: typeof DECISION_EVENT_VERSION;
+  readonly at: IsoTimestamp;
+  readonly decisionId: DecisionId;
+  readonly actionId: ActionId;
+  readonly provider: string;
+  readonly model?: string;
+  readonly sampledOn: "unresolved" | "resolved";
+  readonly outcome: "assessed" | "failed";
+  readonly errorKind?: string;
+  readonly latencyMs: number;
+}
+
+export interface ShadowEventInput {
+  readonly decisionId: DecisionId;
+  readonly actionId: ActionId;
+  readonly provider: string;
+  readonly model?: string;
+  readonly sampledOn: "unresolved" | "resolved";
+  readonly result:
+    | { readonly ok: true }
+    | { readonly ok: false; readonly error: { readonly kind: string } };
+  readonly latencyMs: number;
+  readonly at: IsoTimestamp;
+}
+
+/** Pure. Reads the outcome and nothing of the assessment. */
+export function shadowEventOf(input: ShadowEventInput): ShadowEvent {
+  return {
+    kind: "shadow",
+    eventVersion: DECISION_EVENT_VERSION,
+    at: input.at,
+    decisionId: input.decisionId,
+    actionId: input.actionId,
+    provider: input.provider,
+    ...(input.model === undefined ? {} : { model: input.model }),
+    sampledOn: input.sampledOn,
+    outcome: input.result.ok ? "assessed" : "failed",
+    ...(input.result.ok ? {} : { errorKind: input.result.error.kind }),
+    latencyMs: Math.max(0, Math.round(input.latencyMs)),
+  };
+}
+
 export type TelemetryEvent =
-  DecisionEvent | FallbackEvent | RejectedRequestEvent;
+  DecisionEvent | FallbackEvent | RejectedRequestEvent | ShadowEvent;
 
 export interface TelemetrySink {
   /** Never on the decision path: called after the answer has been written. */

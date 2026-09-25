@@ -1,4 +1,8 @@
-import { DecisionLog, defaultDecisionLogDirectory } from "@reflex/telemetry";
+import {
+  DecisionLog,
+  defaultDecisionLogDirectory,
+  shadowEventOf,
+} from "@reflex/telemetry";
 
 import {
   readOrCreateRedactionKey,
@@ -65,24 +69,40 @@ async function main(argv: readonly string[]): Promise<number> {
     endpoint: config.semanticEndpoint,
     redactionKey: redactionKey.key,
     env: process.env,
+    shadows: config.shadowProviders.map((id) => ({ id })),
+    shadowDeadlineMs: config.shadowDeadlineMs,
+    shadowSample: config.shadowSample,
   });
   if (!semantic.ok) {
     process.stderr.write(`${semantic.reason}\n`);
     return 2;
   }
 
+  const telemetry = config.telemetry
+    ? new DecisionLog({
+        directory: defaultDecisionLogDirectory(config.reflexHome),
+      })
+    : undefined;
   const engine = buildEngine({
     policies,
     failureMode: config.failureMode,
     cache: config.cache,
     home: process.env.HOME,
     ...(semantic.stage === undefined ? {} : { semantic: semantic.stage }),
+    // RFX-142: a shadow's outcome is telemetry of its own (ADR-016 §3).
+    ...(telemetry === undefined
+      ? {}
+      : {
+          onShadow: (observation) => {
+            telemetry.emit(
+              shadowEventOf({
+                ...observation,
+                at: new Date().toISOString(),
+              }),
+            );
+          },
+        }),
   });
-  const telemetry = config.telemetry
-    ? new DecisionLog({
-        directory: defaultDecisionLogDirectory(config.reflexHome),
-      })
-    : undefined;
 
   const server = createGatewayServer({
     engine,
@@ -98,6 +118,7 @@ async function main(argv: readonly string[]): Promise<number> {
       telemetryDropped: telemetry?.dropped ?? 0,
       redactionKey: redactionKey.created ? "created" : "present",
       semanticProvider: semantic.provider,
+      shadowProviders: semantic.shadows,
     }),
   });
 

@@ -62,4 +62,8 @@ export type {
   ContextCompiler,
   RiskAggregator,
   SemanticStage,
+  ShadowObservation,
+  ShadowObserver,
+  ShadowProvider,
+  ShadowSample,
 } from "./semantic-stage.js";

@@ -49,6 +49,12 @@ export interface SemanticDecisionProvider {
   readonly providerName: string;
   /** The versioned model this provider asks, pinned, never an alias. */
   readonly model?: string;
+  /**
+   * True when the provider runs on this machine and nothing it is given
+   * leaves it (ADR-010). ADR-016 §3 lets only such a provider see, as a
+   * shadow, the actions policy resolved. Absent reads as false.
+   */
+  readonly onMachine?: boolean;
 
   evaluate(
     request: SemanticDecisionRequest,

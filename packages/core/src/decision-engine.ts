@@ -1,6 +1,7 @@
 import { randomBytes } from "node:crypto";
 
 import type {
+  ActionId,
   CanonicalAction,
   DecisionEffect,
   DecisionId,
@@ -41,7 +42,11 @@ import {
 import { decisionCacheKey, fingerprintAction } from "./fingerprint.js";
 import { effectiveEffectOf } from "./modes.js";
 import { reasonForClass, riskOf } from "./risk.js";
-import type { SemanticStage } from "./semantic-stage.js";
+import type {
+  SemanticStage,
+  ShadowObserver,
+  ShadowProvider,
+} from "./semantic-stage.js";
 
 /**
  * RFX-019 — the decision engine (ADR-002 §1).
@@ -93,6 +98,12 @@ export interface DecisionEngineOptions {
   /** The fingerprint key (ADR-006). Random per engine when absent. */
   readonly fingerprintKey?: Uint8Array;
   readonly newDecisionId?: () => DecisionId;
+  /**
+   * RFX-142: every shadow evaluation as it settles, possibly after the
+   * decision returned. Never on the decision path; an observer that throws
+   * changes nothing.
+   */
+  readonly onShadow?: ShadowObserver;
 }
 
 /** What a caller of the engine sees (moved here from the contracts, ADR-005). */
@@ -176,6 +187,20 @@ export function createDecisionEngine(
   const nextId = options.newDecisionId ?? newDecisionId;
   const semantic = options.semantic;
   const cache = options.cache;
+  for (const shadow of semantic?.shadow ?? []) {
+    if (!Number.isInteger(shadow.deadlineMs) || shadow.deadlineMs < 1) {
+      throw new RangeError(
+        "a shadow provider needs a whole, positive deadline in milliseconds",
+      );
+    }
+    if (shadow.sample === "all" && shadow.provider.onMachine !== true) {
+      // ADR-016 §3, ADR-010: the arguments of a resolved action never leave
+      // the machine, so only a provider on it may see them.
+      throw new RangeError(
+        `the shadow provider "${shadow.provider.providerName}" may not be sampled on resolved actions: only a provider that runs on this machine may`,
+      );
+    }
+  }
 
   const fingerprint = (action: CanonicalAction): string =>
     fingerprintAction(action, key);
@@ -186,11 +211,81 @@ export function createDecisionEngine(
       options.deadline.maxMs,
     );
 
+  /**
+   * RFX-142: starts every applicable shadow on the compiled request and
+   * returns at once. Each settles on its own deadline and is handed to the
+   * observer; nothing here is awaited by a decision.
+   */
+  function runShadows(
+    stage: SemanticStage,
+    compiled: SemanticDecisionRequest,
+    decisionId: DecisionId,
+    actionId: ActionId,
+    sampledOn: "unresolved" | "resolved",
+  ): void {
+    const observe = options.onShadow;
+    for (const shadow of stage.shadow ?? []) {
+      if (sampledOn === "resolved" && shadow.sample !== "all") {
+        continue;
+      }
+      startShadow(shadow, compiled, decisionId, actionId, sampledOn, observe);
+    }
+  }
+
+  function startShadow(
+    shadow: ShadowProvider,
+    compiled: SemanticDecisionRequest,
+    decisionId: DecisionId,
+    actionId: ActionId,
+    sampledOn: "unresolved" | "resolved",
+    observe: ShadowObserver | undefined,
+  ): void {
+    const startedAt = monotonic();
+    const timeout = AbortSignal.timeout(shadow.deadlineMs);
+    const failed = (): ProviderResult => ({
+      ok: false,
+      error: providerError(
+        timeout.aborted ? "timeout" : "unavailable",
+        shadow.provider.providerName,
+        monotonic() - startedAt,
+      ),
+    });
+    let settled: Promise<ProviderResult>;
+    try {
+      settled = shadow.provider.evaluate(compiled, timeout);
+    } catch {
+      settled = Promise.resolve(failed());
+    }
+    void settled.catch(failed).then((result) => {
+      if (observe === undefined) {
+        return;
+      }
+      try {
+        observe({
+          decisionId,
+          actionId,
+          role: "shadow",
+          provider: shadow.provider.providerName,
+          ...(shadow.provider.model === undefined
+            ? {}
+            : { model: shadow.provider.model }),
+          sampledOn,
+          request: compiled,
+          result,
+          latencyMs: Math.max(0, Math.round(monotonic() - startedAt)),
+        });
+      } catch {
+        // An observer that throws is its own problem, never a decision's.
+      }
+    });
+  }
+
   async function assess(
     request: DecisionRequest,
     remainingMs: number,
     signal: AbortSignal | undefined,
     stage: SemanticStage,
+    decisionId: DecisionId,
   ): Promise<ProviderOutcome> {
     // Whole milliseconds, rounded down: a deadline is never extended.
     const budgetMs = Math.floor(remainingMs);
@@ -210,6 +305,10 @@ export function createDecisionEngine(
         deadlineMs: budgetMs,
       });
       contextMs = monotonic() - compileStarted;
+      // RFX-142: the shadows get what the primary gets, now, and are not
+      // waited for. The caller's signal is the primary's; a shadow has its
+      // own deadline and nothing else.
+      runShadows(stage, compiled, decisionId, request.action.id, "unresolved");
       result = await stage.provider.evaluate(compiled, combined);
     } catch {
       // ADR-005 §2: a provider or a compiler that throws is a bug, handled
@@ -246,6 +345,7 @@ export function createDecisionEngine(
     evaluation: PolicyEvaluationResult,
     startedAt: number,
     signal: AbortSignal | undefined,
+    decisionId: DecisionId,
   ): Promise<Verdict> {
     const { sideEffectClass, floor } = evaluation;
     const risk = riskOf(sideEffectClass);
@@ -297,6 +397,7 @@ export function createDecisionEngine(
       deadlineMs - (semanticStarted - startedAt),
       signal,
       semantic,
+      decisionId,
     );
     const semanticMs = monotonic() - semanticStarted;
 
@@ -355,9 +456,10 @@ export function createDecisionEngine(
     cached: CachedDecision,
     cacheKey: string,
     startedAt: number,
+    decisionId: DecisionId,
   ): ReflexDecision {
     return {
-      id: nextId(),
+      id: decisionId,
       actionId: request.action.id,
       effect: cached.effect,
       effectiveEffect: effectiveEffectOf(request.mode, cached.effect),
@@ -382,6 +484,7 @@ export function createDecisionEngine(
 
     async decide(request, signal): Promise<ReflexDecision> {
       const startedAt = monotonic();
+      const decisionId = nextId();
       const set = options.policy(request.action);
       const action = request.action;
 
@@ -407,7 +510,8 @@ export function createDecisionEngine(
         });
         const hit = cache.get(cacheKey, startedAt);
         if (hit !== undefined) {
-          return fromCache(request, hit, cacheKey, startedAt);
+          // Served from the cache, nothing ran: no shadow runs either.
+          return fromCache(request, hit, cacheKey, startedAt, decisionId);
         }
       }
 
@@ -416,8 +520,40 @@ export function createDecisionEngine(
           ? {}
           : { home: options.paths.home }),
       });
-      const verdict = await verdictOf(request, evaluation, startedAt, signal);
+      const verdict = await verdictOf(
+        request,
+        evaluation,
+        startedAt,
+        signal,
+        decisionId,
+      );
       const finishedAt = monotonic();
+
+      // RFX-142: a shadow sampled on everything sees the actions policy
+      // resolved too, off the decision path (the primary did not run when
+      // there is no semantic timing). The compile happens after the answer.
+      if (
+        semantic !== undefined &&
+        verdict.semanticMs === undefined &&
+        (semantic.shadow ?? []).some((shadow) => shadow.sample === "all")
+      ) {
+        const stage = semantic;
+        setImmediate(() => {
+          try {
+            const compiled = stage.compiler.compile(action, {
+              maxInputTokens: stage.maxInputTokens,
+              deadlineMs: Math.max(
+                ...(stage.shadow ?? [])
+                  .filter((shadow) => shadow.sample === "all")
+                  .map((shadow) => shadow.deadlineMs),
+              ),
+            });
+            runShadows(stage, compiled, decisionId, action.id, "resolved");
+          } catch {
+            // A compiler that throws off the path changes nothing.
+          }
+        });
+      }
 
       const latency: DecisionLatency = {
         totalMs: Math.round(finishedAt - startedAt),
@@ -434,7 +570,7 @@ export function createDecisionEngine(
       };
 
       const decision: ReflexDecision = {
-        id: nextId(),
+        id: decisionId,
         actionId: action.id,
         effect: verdict.effect,
         effectiveEffect: effectiveEffectOf(request.mode, verdict.effect),

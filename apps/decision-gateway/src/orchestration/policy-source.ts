@@ -6,6 +6,7 @@ import {
   createDecisionEngine,
   type ReflexDecisionEngine,
   type SemanticStage,
+  type ShadowObserver,
 } from "@reflex/core";
 import {
   compilePolicySet,
@@ -114,6 +115,8 @@ export interface EngineBuildOptions {
   readonly deadline?: { readonly defaultMs: number; readonly maxMs: number };
   /** Absent means no semantic stage: `--semantic-provider none` (RFX-141). */
   readonly semantic?: SemanticStage;
+  /** RFX-142: where a settled shadow evaluation goes. Never on the path. */
+  readonly onShadow?: ShadowObserver;
 }
 
 export const DEFAULT_DEADLINE = { defaultMs: 2_000, maxMs: 10_000 } as const;
@@ -126,5 +129,6 @@ export function buildEngine(options: EngineBuildOptions): ReflexDecisionEngine {
     ...(options.home === undefined ? {} : { paths: { home: options.home } }),
     ...(options.cache ? { cache: new DecisionCache() } : {}),
     ...(options.semantic === undefined ? {} : { semantic: options.semantic }),
+    ...(options.onShadow === undefined ? {} : { onShadow: options.onShadow }),
   });
 }

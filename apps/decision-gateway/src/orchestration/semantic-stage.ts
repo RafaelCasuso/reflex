@@ -2,7 +2,12 @@ import {
   createContextCompiler,
   createRedactor,
 } from "@reflex/context-compiler";
-import { createRiskAggregator, type SemanticStage } from "@reflex/core";
+import {
+  createRiskAggregator,
+  type SemanticStage,
+  type ShadowProvider,
+  type ShadowSample,
+} from "@reflex/core";
 import { JEV_DEFAULT_MODEL, createJevProvider } from "@reflex/provider-jev";
 import {
   createProviderRegistry,
@@ -69,6 +74,13 @@ export type SemanticProviderDescription =
       readonly model: string | undefined;
     };
 
+/** RFX-142: a shadow, by id. It gets the same model and endpoint rules. */
+export interface ShadowConfiguration {
+  readonly id: Exclude<ProviderId, "none">;
+  readonly model?: string;
+  readonly endpoint?: string;
+}
+
 export interface SemanticStageBuildOptions {
   readonly id: ProviderId;
   readonly model: string | undefined;
@@ -78,13 +90,24 @@ export interface SemanticStageBuildOptions {
   readonly env: NodeJS.ProcessEnv;
   readonly registry?: ProviderRegistry;
   readonly clock?: () => Date;
+  /** RFX-142. Empty or absent means none. */
+  readonly shadows?: readonly ShadowConfiguration[];
+  readonly shadowDeadlineMs?: number;
+  readonly shadowSample?: ShadowSample;
 }
+
+export type ShadowDescription = Exclude<
+  SemanticProviderDescription,
+  { readonly id: "none" }
+> & { readonly sample: ShadowSample };
 
 export type SemanticStageBuild =
   | {
       readonly ok: true;
       readonly stage: SemanticStage | undefined;
       readonly provider: SemanticProviderDescription;
+      /** What `GET /v1/health` says about the shadows: ids, names, models. */
+      readonly shadows: readonly ShadowDescription[];
     }
   | { readonly ok: false; readonly reason: string };
 
@@ -92,19 +115,67 @@ export function buildSemanticStage(
   options: SemanticStageBuildOptions,
 ): SemanticStageBuild {
   if (options.id === "none") {
-    return { ok: true, stage: undefined, provider: { id: "none" } };
+    if ((options.shadows ?? []).length > 0) {
+      // ADR-016 §3: shadows run where the primary runs.
+      return { ok: false, reason: "a shadow provider needs a primary one" };
+    }
+    return {
+      ok: true,
+      stage: undefined,
+      provider: { id: "none" },
+      shadows: [],
+    };
   }
   const registry = options.registry ?? gatewayProviderRegistry();
-  const built = registry.create({
+  const construct = (
+    configuration: ShadowConfiguration,
+  ): ReturnType<ProviderRegistry["create"]> =>
+    registry.create({
+      id: configuration.id,
+      ...(configuration.model === undefined
+        ? {}
+        : { model: configuration.model }),
+      ...(configuration.endpoint === undefined
+        ? {}
+        : { endpoint: configuration.endpoint }),
+      ...(configuration.id === "jev" &&
+      options.env[JEV_API_KEY_VARIABLE] !== undefined
+        ? { apiKey: options.env[JEV_API_KEY_VARIABLE] }
+        : {}),
+    });
+  const built = construct({
     id: options.id,
     ...(options.model === undefined ? {} : { model: options.model }),
     ...(options.endpoint === undefined ? {} : { endpoint: options.endpoint }),
-    ...(options.id === "jev" && options.env[JEV_API_KEY_VARIABLE] !== undefined
-      ? { apiKey: options.env[JEV_API_KEY_VARIABLE] }
-      : {}),
   });
   if (!built.ok) {
     return built;
+  }
+  const sample = options.shadowSample ?? "unresolved";
+  const deadlineMs = options.shadowDeadlineMs ?? 5_000;
+  const shadow: ShadowProvider[] = [];
+  const shadows: ShadowDescription[] = [];
+  for (const configuration of options.shadows ?? []) {
+    if (sample === "all" && configuration.id !== "local") {
+      return {
+        ok: false,
+        reason: `the shadow "${configuration.id}" may not be sampled on resolved actions: only local may (ADR-016 §3)`,
+      };
+    }
+    const constructed = construct(configuration);
+    if (!constructed.ok) {
+      return {
+        ok: false,
+        reason: `shadow ${constructed.reason}`,
+      };
+    }
+    shadow.push({ provider: constructed.provider, deadlineMs, sample });
+    shadows.push({
+      id: configuration.id,
+      name: constructed.provider.providerName,
+      model: constructed.provider.model,
+      sample,
+    });
   }
   const compiler = createContextCompiler({
     redactor: createRedactor({ key: options.redactionKey }),
@@ -117,11 +188,13 @@ export function buildSemanticStage(
       compiler,
       aggregator: createRiskAggregator(),
       maxInputTokens: SEMANTIC_MAX_INPUT_TOKENS,
+      ...(shadow.length === 0 ? {} : { shadow }),
     },
     provider: {
       id: options.id,
       name: built.provider.providerName,
       model: built.provider.model,
     },
+    shadows,
   };
 }

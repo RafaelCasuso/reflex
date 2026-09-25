@@ -39,6 +39,7 @@ describe("RFX-141 the daemon's semantic stage", () => {
       ok: true,
       stage: undefined,
       provider: { id: "none" },
+      shadows: [],
     });
   });
 
@@ -148,6 +149,69 @@ describe("RFX-141 the daemon's semantic stage", () => {
         { maxInputTokens: 600, deadlineMs: 500 },
       );
       expect(JSON.stringify(request)).not.toContain(SECRET);
+    }
+  });
+});
+
+describe("RFX-142 the daemon's shadows", () => {
+  const shadowed = (
+    overrides: Partial<Parameters<typeof buildSemanticStage>[0]> = {},
+  ) =>
+    buildSemanticStage({
+      id: "fake",
+      model: undefined,
+      endpoint: undefined,
+      redactionKey: KEY,
+      env: {},
+      shadows: [{ id: "fake" }],
+      shadowDeadlineMs: 250,
+      ...overrides,
+    });
+
+  it("builds a shadow behind the primary, with its own deadline, and describes it", () => {
+    const built = shadowed();
+    expect(built.ok).toBe(true);
+    if (built.ok) {
+      expect(built.stage?.shadow).toHaveLength(1);
+      expect(built.stage?.shadow?.[0]).toMatchObject({
+        deadlineMs: 250,
+        sample: "unresolved",
+      });
+      expect(built.shadows).toEqual([
+        { id: "fake", name: "fake", model: "fake-1", sample: "unresolved" },
+      ]);
+      expect(built.stage?.shadow?.[0]?.provider).not.toBe(
+        built.stage?.provider,
+      );
+    }
+  });
+
+  it("refuses a shadow without a primary", () => {
+    const built = shadowed({ id: "none" });
+    expect(built).toEqual({
+      ok: false,
+      reason: "a shadow provider needs a primary one",
+    });
+  });
+
+  it("refuses to sample everything with a shadow that is not local, before building anything", () => {
+    const built = shadowed({ shadowSample: "all" });
+    expect(built.ok).toBe(false);
+    if (!built.ok) {
+      expect(built.reason).toContain("only local may");
+    }
+  });
+
+  it("refuses a shadow that cannot be built, and says which", () => {
+    const built = shadowed({ shadows: [{ id: "jev" }], env: {} });
+    expect(built.ok).toBe(false);
+    if (!built.ok) {
+      expect(built.reason).toMatch(/^shadow the jev provider needs an API key/);
+    }
+    const absent = shadowed({ shadows: [{ id: "local" }] });
+    expect(absent.ok).toBe(false);
+    if (!absent.ok) {
+      expect(absent.reason).toContain('"local" is not available');
     }
   });
 });
