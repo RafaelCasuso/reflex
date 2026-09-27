@@ -48,6 +48,14 @@ const FILE_MODE = 0o600;
 const STALE_LOCK_MS = 15_000;
 const POLL_MS = 20;
 const PROBE_TIMEOUT_MS = 250;
+/**
+ * `rfx uninstall`, `rfx provider` and `rfx status` are run by a human, off
+ * the hot path, and must not mistake a slow daemon for a stopped one: a
+ * probe that gives up in 250 ms on a loaded machine would report "not
+ * running", and `stopDaemon` would then remove the socket of a live daemon
+ * (seen once on a CI runner). They wait longer.
+ */
+const HUMAN_PROBE_TIMEOUT_MS = 2_000;
 const DEFAULT_START_DEADLINE_MS = 2_500;
 const DEFAULT_STOP_GRACE_MS = 3_000;
 
@@ -413,7 +421,7 @@ export async function stopDaemon(
 ): Promise<StopDaemonResult> {
   const paths = daemonPaths(home);
   const graceMs = options.graceMs ?? DEFAULT_STOP_GRACE_MS;
-  const probe = await probeDaemon(paths);
+  const probe = await probeDaemon(paths, HUMAN_PROBE_TIMEOUT_MS);
   const remembered = readDaemonState(paths);
   const cleanup = async (): Promise<void> => {
     await unlink(paths.socketPath).catch(() => undefined);
@@ -463,7 +471,7 @@ export interface DaemonStatus {
 /** What `rfx status` shows. Reads the socket, then the advisory state. */
 export async function daemonStatus(home: string): Promise<DaemonStatus> {
   const paths = daemonPaths(home);
-  const probe = await probeDaemon(paths);
+  const probe = await probeDaemon(paths, HUMAN_PROBE_TIMEOUT_MS);
   if (probe.state === "down") {
     return { running: false, socketPath: paths.socketPath };
   }
