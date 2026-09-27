@@ -13,6 +13,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 
+import { consentDigest, consentRecord } from "@reflex/semantic-provider";
 import { afterEach, beforeAll, beforeEach, describe, expect, it } from "vitest";
 
 /**
@@ -478,6 +479,13 @@ describe("the hook with a decision (RFX-043)", () => {
       join(decisionHome, "config.json"),
       JSON.stringify({ version: 1, semanticProvider: "jev" }),
     );
+    // RFX-123: with consent, jev is passed to the daemon, which then cannot
+    // build it without a key. Without consent see "keeps deciding with
+    // policy alone" below: the daemon starts, with no provider.
+    await writeFile(
+      join(decisionHome, "consent.json"),
+      JSON.stringify(consentRecord("jev", new Date())),
+    );
     const started = Date.now();
     const run = await rfx(["hook", "claude-code"], {
       stdin: fixture("pre-tool-use.bash"),
@@ -508,6 +516,109 @@ describe("the hook with a decision (RFX-043)", () => {
       ).hookSpecificOutput.permissionDecision,
     ).toBe("deny");
   }, 20_000);
+
+  // RFX-123, adversarial: config.json names jev and nobody agreed (edited by
+  // hand, or by the agent). The daemon starts with policy alone, decides,
+  // and the request never carries a provider flag: nothing leaves.
+  it("keeps deciding with policy alone when a remote provider is configured without consent", async () => {
+    await installedIn(decisionHome, "assist");
+    await writeFile(
+      join(decisionHome, "config.json"),
+      JSON.stringify({ version: 1, semanticProvider: "jev" }),
+    );
+    const run = await rfx(["hook", "claude-code"], {
+      stdin: fixture("pre-tool-use.bash"),
+      env: { REFLEX_HOME: decisionHome, TYPESAFE_API_KEY: "" },
+    });
+    expect(run.code).toBe(0);
+    expect(answerOf(run)).toEqual({
+      hookSpecificOutput: {
+        hookEventName: "PreToolUse",
+        permissionDecision: "allow",
+        permissionDecisionReason: "REFLEX: allowed by rule allow-touch",
+      },
+    });
+    const { daemonPaths, probeDaemon } = await import("./daemon/lifecycle.js");
+    const probe = await probeDaemon(daemonPaths(decisionHome));
+    expect(probe.state).toBe("running");
+    if (probe.state === "running") {
+      expect(probe.health.raw).toMatchObject({
+        semanticProvider: { id: "none" },
+      });
+    }
+    const shown = await rfx(["provider"], {
+      env: { REFLEX_HOME: decisionHome },
+    });
+    expect(shown.stdout).toContain("jev configured without consent");
+  }, 20_000);
+});
+
+describe("rfx provider (RFX-123)", () => {
+  let home: string;
+
+  beforeEach(() => {
+    home = join(root, "provider-home");
+  });
+
+  it("shows none by default and refuses an unknown provider", async () => {
+    const shown = await rfx(["provider"], { env: { REFLEX_HOME: home } });
+    expect(shown.code).toBe(0);
+    expect(shown.stdout).toContain("provider: none");
+    expect(shown.stdout).toContain("nothing leaves this machine");
+    const unknown = await rfx(["provider", "reflex"], {
+      env: { REFLEX_HOME: home },
+    });
+    expect(unknown.code).toBe(2);
+    expect(unknown.stdout).toContain("Unknown provider");
+  });
+
+  it("shows the statement and writes nothing without a yes", async () => {
+    const run = await rfx(["provider", "jev"], { env: { REFLEX_HOME: home } });
+    expect(run.code).toBe(0);
+    expect(run.stdout).toContain("What is sent, per action:");
+    expect(run.stdout).toContain("What is redacted first, on this machine:");
+    expect(run.stdout).toContain("api.typesafe.ai");
+    expect(run.stdout).toContain('Re-run with "--consent"');
+    expect(existsSync(join(home, "config.json"))).toBe(false);
+    expect(existsSync(join(home, "consent.json"))).toBe(false);
+  });
+
+  it("records the consent with --consent, and withdraws it with none", async () => {
+    const agreed = await rfx(["provider", "jev", "--consent"], {
+      env: { REFLEX_HOME: home },
+    });
+    expect(agreed.code).toBe(0);
+    expect(agreed.stdout).toContain("provider: jev, consent given");
+    const consent = JSON.parse(
+      await readFile(join(home, "consent.json"), "utf8"),
+    ) as { provider: string; statementDigest: string };
+    expect(consent.provider).toBe("jev");
+    expect(consent.statementDigest).toBe(consentDigest("jev"));
+    expect(
+      JSON.parse(await readFile(join(home, "config.json"), "utf8")),
+    ).toEqual({ version: 1, semanticProvider: "jev" });
+
+    const withdrawn = await rfx(["provider", "none"], {
+      env: { REFLEX_HOME: home },
+    });
+    expect(withdrawn.code).toBe(0);
+    expect(withdrawn.stdout).toContain("provider: none");
+    expect(existsSync(join(home, "consent.json"))).toBe(false);
+  });
+
+  it("pins the local provider to its checkpoint", async () => {
+    const unpinned = await rfx(["provider", "local"], {
+      env: { REFLEX_HOME: home },
+    });
+    expect(unpinned.code).toBe(2);
+    expect(unpinned.stdout).toContain("--model");
+    const pinned = await rfx(["provider", "local", "--model", "rdm-0.1.0"], {
+      env: { REFLEX_HOME: home },
+    });
+    expect(pinned.code).toBe(0);
+    expect(pinned.stdout).toContain("provider: local, model rdm-0.1.0");
+    expect(existsSync(join(home, "consent.json"))).toBe(false);
+  });
 });
 
 describe("rfx mode", () => {

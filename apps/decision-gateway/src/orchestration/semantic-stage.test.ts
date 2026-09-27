@@ -1,4 +1,8 @@
-import { createProviderRegistry } from "@reflex/semantic-provider";
+import {
+  consentRecord,
+  createProviderRegistry,
+  type ConsentRecord,
+} from "@reflex/semantic-provider";
 import { describe, expect, it } from "vitest";
 
 import {
@@ -17,21 +21,36 @@ const KEY = new Uint8Array(32).fill(3);
 // Assembled at run time so that no secret-shaped literal exists in the repository.
 const SECRET = ["canary", "jev", "key", "4d5e6f70"].join("-");
 
+// RFX-123: a remote provider is built only under a consent that covers it.
+// The helper gives one unless a test says otherwise.
+const CONSENT_AT = new Date("2026-09-27T10:00:00.000Z");
+const NO_CONSENT = Symbol("no consent");
+
 const build = (
   id: "none" | "jev" | "local" | "reflex" | "fake",
   overrides: {
     model?: string;
     endpoint?: string;
     env?: NodeJS.ProcessEnv;
+    consent?: ConsentRecord | typeof NO_CONSENT;
   } = {},
-) =>
-  buildSemanticStage({
+) => {
+  const consent =
+    overrides.consent === NO_CONSENT
+      ? undefined
+      : (overrides.consent ??
+        (id === "jev" || id === "reflex"
+          ? consentRecord(id, CONSENT_AT)
+          : undefined));
+  return buildSemanticStage({
     id,
     model: overrides.model,
     endpoint: overrides.endpoint,
     redactionKey: KEY,
     env: overrides.env ?? {},
+    ...(consent === undefined ? {} : { consent }),
   });
+};
 
 describe("RFX-141 the daemon's semantic stage", () => {
   it("builds no stage for none, which is the default and today's behavior", () => {
@@ -114,6 +133,42 @@ describe("RFX-141 the daemon's semantic stage", () => {
         { id: "local", name: "local", model: "rdm-0.1.0", sample: "all" },
       ]);
     }
+  });
+
+  // RFX-123, adversarial: a key in the environment and a provider asked for,
+  // but nobody agreed. Refused before the key is even looked at, and the
+  // reason says what to run; a consent to another provider or to an
+  // earlier statement does not count.
+  it("refuses jev without a consent that covers it, before reading the key", () => {
+    const refused = build("jev", {
+      env: { [JEV_API_KEY_VARIABLE]: SECRET },
+      consent: NO_CONSENT,
+    });
+    expect(refused).toEqual({
+      ok: false,
+      reason:
+        'the jev provider sends action content off this machine and needs your consent first: run "rfx provider jev"',
+    });
+    expect(
+      build("jev", {
+        env: { [JEV_API_KEY_VARIABLE]: SECRET },
+        consent: consentRecord("reflex", CONSENT_AT),
+      }).ok,
+    ).toBe(false);
+    expect(
+      build("jev", {
+        env: { [JEV_API_KEY_VARIABLE]: SECRET },
+        consent: {
+          ...consentRecord("jev", CONSENT_AT),
+          statementDigest: `sha256:${"0".repeat(64)}`,
+        },
+      }).ok,
+    ).toBe(false);
+    // With no key at all and no consent, the consent is what is missing.
+    const neither = build("jev", { env: {}, consent: NO_CONSENT });
+    expect(!neither.ok && neither.reason).toContain("consent");
+    // What runs on this machine needs none.
+    expect(build("fake", { consent: NO_CONSENT }).ok).toBe(true);
   });
 
   it("refuses jev without a key, naming the variable and never a value", () => {
@@ -250,8 +305,25 @@ describe("RFX-142 the daemon's shadows", () => {
     }
   });
 
+  // RFX-123: a remote shadow sends the same content as a remote primary.
+  it("refuses a remote shadow without a consent that covers it", () => {
+    const built = shadowed({
+      shadows: [{ id: "jev" }],
+      env: { [JEV_API_KEY_VARIABLE]: SECRET },
+    });
+    expect(built).toEqual({
+      ok: false,
+      reason:
+        'the jev provider sends action content off this machine and needs your consent first: run "rfx provider jev"',
+    });
+  });
+
   it("refuses a shadow that cannot be built, and says which", () => {
-    const built = shadowed({ shadows: [{ id: "jev" }], env: {} });
+    const built = shadowed({
+      shadows: [{ id: "jev" }],
+      env: {},
+      consent: consentRecord("jev", CONSENT_AT),
+    });
     expect(built.ok).toBe(false);
     if (!built.ok) {
       expect(built.reason).toMatch(/^shadow the jev provider needs an API key/);
@@ -261,7 +333,10 @@ describe("RFX-142 the daemon's shadows", () => {
     if (!unpinned.ok) {
       expect(unpinned.reason).toMatch(/^shadow the local provider needs/);
     }
-    const absent = shadowed({ shadows: [{ id: "reflex" }] });
+    const absent = shadowed({
+      shadows: [{ id: "reflex" }],
+      consent: consentRecord("reflex", CONSENT_AT),
+    });
     expect(absent.ok).toBe(false);
     if (!absent.ok) {
       expect(absent.reason).toContain('"reflex" is not available');

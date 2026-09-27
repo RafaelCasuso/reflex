@@ -33,6 +33,8 @@ export interface GatewayArguments {
   readonly shadowDeadlineMs: number;
   /** `--shadow-sample unresolved|all`; `all` only for `local` (ADR-016 §3). */
   readonly shadowSample: ShadowSample;
+  /** RFX-123: the consent record a remote provider needs before it is built. */
+  readonly remoteConsentFile: string | undefined;
 }
 
 export type ArgumentsResult =
@@ -49,7 +51,7 @@ export function defaultSocketPath(reflexHome: string): string {
   return join(reflexHome, "run", "reflex.sock");
 }
 
-export const USAGE = `usage: reflex-gateway [--socket <path> | --tcp <host:port>] [--policy <file>]... [--failure-mode fail-open|fail-ask|fail-closed] [--no-cache] [--no-telemetry] [--home <dir>] [--rate-limit <burst>/<per-second>] [--semantic-provider none|jev|local|reflex|fake] [--semantic-model <id>] [--semantic-endpoint <url>] [--shadow-provider <id>]... [--shadow-deadline <ms>] [--shadow-sample unresolved|all]`;
+export const USAGE = `usage: reflex-gateway [--socket <path> | --tcp <host:port>] [--policy <file>]... [--failure-mode fail-open|fail-ask|fail-closed] [--no-cache] [--no-telemetry] [--home <dir>] [--rate-limit <burst>/<per-second>] [--semantic-provider none|jev|local|reflex|fake] [--semantic-model <id>] [--semantic-endpoint <url>] [--shadow-provider <id>]... [--shadow-deadline <ms>] [--shadow-sample unresolved|all] [--remote-consent <file>]`;
 
 /** A shadow answers off the path; a generous deadline costs the decision nothing. */
 export const DEFAULT_SHADOW_DEADLINE_MS = 5_000;
@@ -75,6 +77,7 @@ export function parseArguments(
   const shadowProviders: Exclude<ProviderId, "none">[] = [];
   let shadowDeadlineMs = DEFAULT_SHADOW_DEADLINE_MS;
   let shadowSample: ShadowSample = "unresolved";
+  let remoteConsentFile: string | undefined;
 
   const problem = (message: string): ArgumentsResult => ({
     ok: false,
@@ -206,6 +209,14 @@ export function parseArguments(
         shadowSample = sample;
         break;
       }
+      case "--remote-consent": {
+        const file = takeValue();
+        if (file === undefined || file === "") {
+          return problem("--remote-consent needs a file");
+        }
+        remoteConsentFile = file;
+        break;
+      }
       case "--no-cache":
         cache = false;
         break;
@@ -252,6 +263,7 @@ export function parseArguments(
       shadowProviders,
       shadowDeadlineMs,
       shadowSample,
+      remoteConsentFile,
     },
   };
 }

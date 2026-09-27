@@ -12,7 +12,15 @@ import { chmod, mkdir, unlink } from "node:fs/promises";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { configPath, daemonArguments, parseConfig } from "../config.js";
+import { parseConsentRecord } from "@reflex/semantic-provider";
+
+import {
+  configPath,
+  consentPath,
+  daemonArguments,
+  parseConfig,
+  withConsent,
+} from "../config.js";
 import { requestOverSocket } from "./client.js";
 
 /**
@@ -233,6 +241,14 @@ function takeLock(paths: DaemonPaths, now: number): Lock {
   }
 }
 
+function readIfExists(file: string): string | undefined {
+  try {
+    return readFileSync(file, "utf8");
+  } catch {
+    return undefined;
+  }
+}
+
 function startProcess(
   options: EnsureDaemonOptions,
   paths: DaemonPaths,
@@ -247,13 +263,19 @@ function startProcess(
   if (existsSync(paths.policyFile)) {
     args.push("--policy", paths.policyFile);
   }
-  let configText: string | undefined;
-  try {
-    configText = readFileSync(configPath(paths.home), "utf8");
-  } catch {
-    configText = undefined;
-  }
-  args.push(...daemonArguments(parseConfig(configText)));
+  // RFX-123: a remote provider is passed only with the consent that covers
+  // it, and the consent file goes along so that the daemon checks it too.
+  const consent = parseConsentRecord(readIfExists(consentPath(paths.home)));
+  const { config } = withConsent(
+    parseConfig(readIfExists(configPath(paths.home))),
+    consent,
+  );
+  args.push(
+    ...daemonArguments(
+      config,
+      consent === undefined ? undefined : consentPath(paths.home),
+    ),
+  );
   args.push(...(options.extraArguments ?? []));
 
   const log = openSync(paths.logFile, "a", FILE_MODE);

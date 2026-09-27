@@ -195,7 +195,7 @@ rules:
   // POLICY_SET_FORMAT if it was the form.
   it("is frozen for a known policy", () => {
     expect(hashOf("version: 1\nrules: []\n")).toBe(
-      "sha256:42fa447a8e16130fad228c09cce15326be28a319d4d3fdfb3a95c06703127c47",
+      "sha256:4eaff6bec60fbb9066fdc17d39bb82c9b936d4ccb19f96d61ee85eb3317bc8eb",
     );
   });
 });

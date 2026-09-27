@@ -29,6 +29,7 @@
     "@reflex/adapter-claude-code": "workspace:*",
     "@reflex/contracts": "workspace:*",
     "@reflex/decision-gateway": "workspace:*",
+    "@reflex/semantic-provider": "workspace:*",
     "@reflex/telemetry": "workspace:*"
   }
 }

@@ -113,6 +113,9 @@ importers:
       '@reflex/decision-gateway':
         specifier: workspace:*
         version: link:../../apps/decision-gateway
+      '@reflex/semantic-provider':
+        specifier: workspace:*
+        version: link:../semantic-provider
       '@reflex/telemetry':
         specifier: workspace:*
         version: link:../telemetry

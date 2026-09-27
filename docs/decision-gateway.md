@@ -58,6 +58,7 @@ node apps/decision-gateway/dist/main.js [--socket <path> | --tcp <host:port>]
   [--semantic-provider none|jev|local|reflex|fake] [--semantic-model <id>]
   [--semantic-endpoint <url>] [--shadow-provider <id>]...
   [--shadow-deadline <ms>] [--shadow-sample unresolved|all]
+  [--remote-consent <file>]
 ```
 
 - Default: the socket `<REFLEX_HOME>/run/reflex.sock`, in a directory of mode
@@ -103,6 +104,14 @@ node apps/decision-gateway/dist/main.js [--socket <path> | --tcp <host:port>]
   shadow evaluation is a `shadow` telemetry event of its own (provider,
   model, whether it assessed or how it failed, latency; no content), never
   a fallback. A decision served from the cache runs no shadow.
+- `--remote-consent` (RFX-123) names the consent record `rfx provider`
+  wrote (`<REFLEX_HOME>/consent.json`: the provider, when, and the digest of
+  the statement that was shown). A remote provider (`jev`, `reflex`), as
+  the primary or as a shadow, is built only when the record covers it: same
+  provider, same statement. Without one, the daemon exits 2 with the
+  command to run, before it reads any key. A file that is missing or
+  unreadable, or a consent to another provider or to an earlier statement,
+  is no consent. What runs on this machine (`local`, `fake`) needs none.
 - Decision records (RFX-143, ADR-016 §4) go to
   `<REFLEX_HOME>/records/records.jsonl`, one per decision, written after the
   answer once every shadow of the decision has settled: the redacted request
@@ -162,9 +171,16 @@ status` shows whether it runs, its version, pid and uptime.
 
 The daemon's configuration is the user's, `<REFLEX_HOME>/config.json`
 (`semanticProvider`, `semanticModel`, `semanticEndpoint`, `shadowProviders`,
-`shadowSample`, `shadowDeadlineMs`); absent or unreadable, it runs with no
-provider. The user's policy is `<REFLEX_HOME>/policy.yaml` when it exists;
-a project's `.reflex/policy.yaml` is G9's.
+`shadowSample`, `shadowDeadlineMs`), written by `rfx provider`; absent or
+unreadable, it runs with no provider. **Nothing is uploaded before consent
+(RFX-123):** a remote provider the configuration names is passed to the
+daemon only with the consent record that covers it (`consent.json`, and
+`--remote-consent` so that the daemon checks it too); without one the
+primary is withheld and the daemon runs with policy alone, a remote shadow
+is left out, and `rfx status` and `rfx provider` say which provider was
+withheld and what to run. So a `config.json` edited by hand, or by the
+agent, sends nothing. The user's policy is `<REFLEX_HOME>/policy.yaml`
+when it exists; a project's `.reflex/policy.yaml` is G9's.
 
 ## 4. What it costs (RFX-024)
 

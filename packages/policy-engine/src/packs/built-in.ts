@@ -54,7 +54,7 @@ rules:
     mandatory: true
     conditions:
       - { field: command.name, operator: equals, value: rfx }
-      - { field: command.args, operator: in, value: [uninstall, init, pause, resume, trust, login, logout, config, mode, override] }
+      - { field: command.args, operator: in, value: [uninstall, init, pause, resume, trust, login, logout, config, mode, provider, override] }
 `;
 
 let cached: PolicyDocument | undefined;

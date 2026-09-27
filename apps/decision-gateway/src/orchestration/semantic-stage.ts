@@ -15,8 +15,11 @@ import {
   isLoopbackEndpoint,
 } from "@reflex/provider-local";
 import {
+  consentCovers,
   createProviderRegistry,
   fakeProviderConstructor,
+  isRemoteProvider,
+  type ConsentRecord,
   type ProviderId,
   type ProviderRegistry,
 } from "@reflex/semantic-provider";
@@ -126,6 +129,12 @@ export interface SemanticStageBuildOptions {
   readonly shadows?: readonly ShadowConfiguration[];
   readonly shadowDeadlineMs?: number;
   readonly shadowSample?: ShadowSample;
+  /**
+   * RFX-123: the consent the user gave, read by the daemon's caller. A
+   * remote provider, primary or shadow, is built only when a consent
+   * covers it; nothing is uploaded before.
+   */
+  readonly consent?: ConsentRecord;
 }
 
 export type ShadowDescription = Exclude<
@@ -159,6 +168,18 @@ export function buildSemanticStage(
     };
   }
   const registry = options.registry ?? gatewayProviderRegistry();
+  // RFX-123: nothing is uploaded before consent. The check comes before any
+  // constructor runs, so no key is even read for a provider nobody agreed to.
+  const withoutConsent = [
+    options.id,
+    ...(options.shadows ?? []).map((shadow) => shadow.id),
+  ].find((id) => isRemoteProvider(id) && !consentCovers(options.consent, id));
+  if (withoutConsent !== undefined) {
+    return {
+      ok: false,
+      reason: `the ${withoutConsent} provider sends action content off this machine and needs your consent first: run "rfx provider ${withoutConsent}"`,
+    };
+  }
   const construct = (
     configuration: ShadowConfiguration,
   ): ReturnType<ProviderRegistry["create"]> =>

@@ -37,3 +37,14 @@ export {
   type ProviderId,
   type ProviderRegistry,
 } from "./registry.js";
+export {
+  CONSENT_RECORD_VERSION,
+  REMOTE_PROVIDERS,
+  consentCovers,
+  consentDigest,
+  consentRecord,
+  consentStatement,
+  isRemoteProvider,
+  parseConsentRecord,
+  type ConsentRecord,
+} from "./consent.js";

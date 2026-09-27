@@ -104,6 +104,43 @@ denied fixture; Assist `allow` for `touch marker.txt` under a rule,
 Autopilot `deny` for the same `rm`; and the client's own `deny` under
 `fail-closed` when the daemon cannot start, in time.
 
+## 2c. Consent before action content leaves the machine (RFX-123)
+
+With no provider, nothing the hook sees leaves the machine: the daemon
+decides by policy and an open action asks. Choosing a remote provider is
+the first time a redacted command or path is sent anywhere, and it is done
+by the human, once, in a terminal:
+
+```
+rfx provider jev            shows the statement, asks "Do you agree to this?"
+rfx provider jev --consent  the same, for a script or a non-interactive shell
+rfx provider none           back to policy alone; the consent is withdrawn
+rfx provider local --model <checkpoint>   an inference server on this machine; no consent needed
+```
+
+The statement (`packages/semantic-provider/src/consent.ts`) says what is
+sent per action (tool, operation, class, arguments after redaction, the
+objective and task summary after redaction, environment, branch and remote
+host, summaries of prior actions, matching rule names; never identity,
+project id, working directory, tool output, transcripts or host metadata),
+what is redacted first on the machine (fifteen shapes of secret, inside
+encodings too, replaced by fingerprints; what the redactor does not
+recognize is sent as it is), where it goes and for how long (the provider
+named; the redacted request kept locally for seven days), and that
+declining keeps REFLEX working with policy alone. A yes is recorded in
+`<REFLEX_HOME>/consent.json` with the provider and the digest of the
+statement shown, user-only. A changed statement has another digest, and
+the question is asked again.
+
+Two checks hold it, so that a `config.json` written by hand or through the
+agent uploads nothing: the CLI passes a remote provider to the daemon only
+under a consent that covers it and otherwise starts the daemon with policy
+alone (`rfx status` says `jev configured without consent`); the daemon,
+given a remote provider, refuses to start without the covering record
+(`--remote-consent`), before it reads any key. `rfx provider` is one of the
+commands REFLEX's own rule asks a human about (RFX-103), so the agent cannot
+give consent for you. Held end to end in `bin.e2e.test.ts`.
+
 ## 3. What the host does when the hook fails (RFX-087)
 
 **Status: verified against a live host.** Claude Code 2.1.276, headless

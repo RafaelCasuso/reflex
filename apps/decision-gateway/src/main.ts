@@ -1,4 +1,10 @@
+import { readFile } from "node:fs/promises";
+
 import type { DecisionObservation } from "@reflex/core";
+import {
+  parseConsentRecord,
+  type ConsentRecord,
+} from "@reflex/semantic-provider";
 import {
   DecisionLog,
   DecisionRecordLog,
@@ -67,6 +73,14 @@ async function main(argv: readonly string[]): Promise<number> {
   // RFX-141: the semantic stage, or none. A provider that was asked for and
   // cannot be built is a misconfiguration, not a daemon that quietly runs
   // without it (CLAUDE.md principle 5).
+  // RFX-123: the consent record, when the caller passed one. Unreadable is
+  // no consent, and a remote provider is then refused below.
+  let consent: ConsentRecord | undefined;
+  if (config.remoteConsentFile !== undefined) {
+    consent = parseConsentRecord(
+      await readFile(config.remoteConsentFile, "utf8").catch(() => undefined),
+    );
+  }
   const semantic = buildSemanticStage({
     id: config.semanticProvider,
     model: config.semanticModel,
@@ -76,6 +90,7 @@ async function main(argv: readonly string[]): Promise<number> {
     shadows: config.shadowProviders.map((id) => ({ id })),
     shadowDeadlineMs: config.shadowDeadlineMs,
     shadowSample: config.shadowSample,
+    ...(consent === undefined ? {} : { consent }),
   });
   if (!semantic.ok) {
     process.stderr.write(`${semantic.reason}\n`);

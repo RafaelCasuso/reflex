@@ -57,6 +57,8 @@ describe("the daemon's command line", () => {
         "local",
         "--shadow-deadline",
         "250",
+        "--remote-consent",
+        "/elsewhere/consent.json",
       ],
       env,
     );
@@ -76,8 +78,14 @@ describe("the daemon's command line", () => {
         shadowProviders: ["fake", "local"],
         shadowDeadlineMs: 250,
         shadowSample: "unresolved",
+        remoteConsentFile: "/elsewhere/consent.json",
       },
     });
+  });
+
+  it("refuses --remote-consent without a file (RFX-123)", () => {
+    expect(parseArguments(["--remote-consent"], env).ok).toBe(false);
+    expect(parseArguments(["--remote-consent", ""], env).ok).toBe(false);
   });
 
   it("reads a TCP target, IPv6 included", () => {

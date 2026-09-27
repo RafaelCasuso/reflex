@@ -8,6 +8,7 @@ import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { CONTRACT_VERSION, parseDecisionRecord } from "@reflex/contracts";
+import { consentRecord } from "@reflex/semantic-provider";
 import { afterEach, beforeAll, describe, expect, it } from "vitest";
 
 import {
@@ -84,6 +85,19 @@ async function start(
   });
   daemon = { child, socketPath, stderr: () => stderr, exited };
   return daemon;
+}
+
+/** RFX-123: the consent a remote provider needs, as `rfx provider` writes it. */
+async function consentFor(
+  home: string,
+  provider: "jev" | "reflex" = "jev",
+): Promise<string> {
+  const file = join(home, "consent.json");
+  await writeFile(
+    file,
+    JSON.stringify(consentRecord(provider, new Date("2026-09-27T10:00:00Z"))),
+  );
+  return file;
 }
 
 function call(
@@ -179,8 +193,10 @@ describe("the decision daemon as a process", () => {
     expect(await running.exited).toBe(0);
   });
 
-  it("exits 2 when the provider it was asked for cannot be built, and says why", async () => {
-    directory = await mkdtemp(join(tmpdir(), "reflex-daemon-provider-"));
+  async function exitOf(
+    args: readonly string[],
+    env: NodeJS.ProcessEnv,
+  ): Promise<{ code: number | null; stderr: string }> {
     const child = spawn(
       process.execPath,
       [
@@ -189,13 +205,9 @@ describe("the decision daemon as a process", () => {
         join(directory, "r.sock"),
         "--home",
         directory,
-        "--semantic-provider",
-        "jev",
+        ...args,
       ],
-      {
-        stdio: ["ignore", "pipe", "pipe"],
-        env: { ...process.env, TYPESAFE_API_KEY: "" },
-      },
+      { stdio: ["ignore", "pipe", "pipe"], env: { ...process.env, ...env } },
     );
     let stderr = "";
     child.stderr.on("data", (chunk: Buffer) => {
@@ -204,8 +216,58 @@ describe("the decision daemon as a process", () => {
     const code = await new Promise<number | null>((resolve) => {
       child.once("exit", resolve);
     });
+    return { code, stderr };
+  }
+
+  it("exits 2 when the provider it was asked for cannot be built, and says why", async () => {
+    directory = await mkdtemp(join(tmpdir(), "reflex-daemon-provider-"));
+    const consent = await consentFor(directory);
+    const { code, stderr } = await exitOf(
+      ["--semantic-provider", "jev", "--remote-consent", consent],
+      { TYPESAFE_API_KEY: "" },
+    );
     expect(code).toBe(2);
     expect(stderr).toContain("needs an API key in TYPESAFE_API_KEY");
+  });
+
+  // RFX-123, adversarial: a key and a remote provider, and no consent: the
+  // daemon refuses to start, says what to run, and the key appears nowhere.
+  // A consent file that is missing, unreadable or for another provider is
+  // no consent.
+  it("exits 2 for a remote provider without consent, before reading the key", async () => {
+    directory = await mkdtemp(join(tmpdir(), "reflex-daemon-consent-"));
+    // Assembled at run time: no secret-shaped literal in the repository.
+    const secret = ["canary", "jev", "key", "5f6e7d8c"].join("-");
+    const env = { TYPESAFE_API_KEY: secret };
+    const none = await exitOf(["--semantic-provider", "jev"], env);
+    expect(none.code).toBe(2);
+    expect(none.stderr).toContain(
+      'needs your consent first: run "rfx provider jev"',
+    );
+    expect(none.stderr).not.toContain(secret);
+    const missing = await exitOf(
+      [
+        "--semantic-provider",
+        "jev",
+        "--remote-consent",
+        join(directory, "nope.json"),
+      ],
+      env,
+    );
+    expect(missing.code).toBe(2);
+    expect(missing.stderr).toContain("consent");
+    const other = await exitOf(
+      [
+        "--semantic-provider",
+        "jev",
+        "--remote-consent",
+        await consentFor(directory, "reflex"),
+      ],
+      env,
+    );
+    expect(other.code).toBe(2);
+    expect(other.stderr).toContain("consent");
+    expect(other.stderr).not.toContain(secret);
   });
 
   it("exits 2 on a command line it does not understand", async () => {
@@ -580,6 +642,8 @@ describe("RFX-141 the daemon with a semantic provider", () => {
           policyFile,
           "--semantic-provider",
           "jev",
+          "--remote-consent",
+          await consentFor(home),
           // Nothing listens on port 1: the provider fails fast, and the
           // decision falls back (ADR-003).
           "--semantic-endpoint",

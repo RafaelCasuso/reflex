@@ -1,5 +1,11 @@
 import { join } from "node:path";
 
+import {
+  consentCovers,
+  isRemoteProvider,
+  type ConsentRecord,
+} from "@reflex/semantic-provider";
+
 /**
  * RFX-138 — the user's daemon configuration, `<REFLEX_HOME>/config.json`.
  *
@@ -28,6 +34,11 @@ export const DEFAULT_CONFIG: UserConfig = {
 
 export function configPath(home: string): string {
   return join(home, "config.json");
+}
+
+/** RFX-123: the consent the user gave, `<REFLEX_HOME>/consent.json`. */
+export function consentPath(home: string): string {
+  return join(home, "consent.json");
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -85,8 +96,77 @@ export function parseConfig(text: string | undefined): UserConfig {
   }
 }
 
-/** The daemon's command line for this configuration (RFX-141, RFX-142). */
-export function daemonArguments(config: UserConfig): string[] {
+export interface ConsentedConfig {
+  /** What the daemon is started with. */
+  readonly config: UserConfig;
+  /** RFX-123: the remote providers the configuration asks for without consent. */
+  readonly withheld: readonly ConfiguredProvider[];
+}
+
+/**
+ * RFX-123 — nothing is uploaded before consent.
+ *
+ * A remote provider the configuration names is withheld unless a consent
+ * record covers it: the primary becomes `none` (policy alone, an open
+ * action asks, and with no primary no shadow runs either), a shadow is
+ * left out. `rfx provider` never writes such a configuration; this is for a
+ * `config.json` edited by hand or by something else, so that even then no
+ * action content leaves the machine. The daemon checks again on its side.
+ */
+export function withConsent(
+  config: UserConfig,
+  consent: ConsentRecord | undefined,
+): ConsentedConfig {
+  const covered = (id: ConfiguredProvider): boolean =>
+    !isRemoteProvider(id) || consentCovers(consent, id);
+  const withheld: ConfiguredProvider[] = [];
+  if (!covered(config.semanticProvider)) {
+    withheld.push(config.semanticProvider);
+    for (const shadow of config.shadowProviders ?? []) {
+      if (!covered(shadow)) {
+        withheld.push(shadow);
+      }
+    }
+    return { config: DEFAULT_CONFIG, withheld };
+  }
+  const shadows = (config.shadowProviders ?? []).filter((shadow) => {
+    if (covered(shadow)) {
+      return true;
+    }
+    withheld.push(shadow);
+    return false;
+  });
+  const rest: UserConfig = {
+    version: 1,
+    semanticProvider: config.semanticProvider,
+    ...(config.semanticModel === undefined
+      ? {}
+      : { semanticModel: config.semanticModel }),
+    ...(config.semanticEndpoint === undefined
+      ? {}
+      : { semanticEndpoint: config.semanticEndpoint }),
+    ...(config.shadowSample === undefined
+      ? {}
+      : { shadowSample: config.shadowSample }),
+    ...(config.shadowDeadlineMs === undefined
+      ? {}
+      : { shadowDeadlineMs: config.shadowDeadlineMs }),
+  };
+  return {
+    config: shadows.length === 0 ? rest : { ...rest, shadowProviders: shadows },
+    withheld,
+  };
+}
+
+/**
+ * The daemon's command line for this configuration (RFX-141, RFX-142), with
+ * the consent file when one was read (RFX-123), so that the daemon can
+ * verify the consent itself before it builds a remote provider.
+ */
+export function daemonArguments(
+  config: UserConfig,
+  consentFile?: string,
+): string[] {
   const args: string[] = [];
   if (config.semanticProvider !== "none") {
     args.push("--semantic-provider", config.semanticProvider);
@@ -104,6 +184,9 @@ export function daemonArguments(config: UserConfig): string[] {
     }
     if (config.shadowDeadlineMs !== undefined) {
       args.push("--shadow-deadline", String(config.shadowDeadlineMs));
+    }
+    if (consentFile !== undefined) {
+      args.push("--remote-consent", consentFile);
     }
   }
   return args;

@@ -19,6 +19,9 @@ const USAGE = `rfx — REFLEX, the autonomy control layer for AI agents
       Show the plan, then install the hook for Claude Code. Observe by default.
   rfx mode [observe|assist|autopilot] [--failure-mode fail-open|fail-ask|fail-closed]
       Show or change what the hook does with a decision in this project.
+  rfx provider [none|jev|local] [--model <id>] [--endpoint <url>] [--consent]
+      Show or choose what assesses the actions policy leaves open. A remote
+      provider shows what leaves this machine and asks for your consent first.
   rfx status
       What REFLEX has observed and decided in this project. Local, offline.
   rfx uninstall [--yes] [--purge]
@@ -181,6 +184,9 @@ async function main(): Promise<number> {
       scope: { type: "string", default: "local" },
       mode: { type: "string" },
       "failure-mode": { type: "string" },
+      model: { type: "string" },
+      endpoint: { type: "string" },
+      consent: { type: "boolean", default: false },
       yes: { type: "boolean", default: false },
       "dry-run": { type: "boolean", default: false },
       purge: { type: "boolean", default: false },
@@ -285,6 +291,77 @@ async function main(): Promise<number> {
       write(
         `mode: ${changed.after.mode}  failure mode: ${changed.after.failureMode}${changed.after.mode === "observe" ? "  (records only, never interferes)" : ""}\n`,
       );
+      return 0;
+    }
+
+    case "provider": {
+      const provider = await import("./commands/provider.js");
+      const wanted = provider.CHOOSABLE_PROVIDERS.find(
+        (known) => known === argument,
+      );
+      if (argument === undefined) {
+        const current = await provider.readProvider(env, nodeFileSystem);
+        write(`provider: ${provider.describeProvider(current)}\n`);
+        return 0;
+      }
+      if (wanted === undefined) {
+        write(
+          `Unknown provider. Use one of: ${provider.CHOOSABLE_PROVIDERS.join(", ")}.\n`,
+        );
+        return 2;
+      }
+      // RFX-123: a remote provider shows the statement and needs a yes to it,
+      // typed here or given with --consent. Nothing is written before.
+      let consented = false;
+      const { isRemoteProvider } = await import("@reflex/semantic-provider");
+      if (isRemoteProvider(wanted)) {
+        write(`${provider.consentStatement(wanted)}\n\n`);
+        consented = values.consent
+          ? true
+          : await confirm("Do you agree to this?", false);
+        if (!consented) {
+          write(
+            process.stdin.isTTY || values.consent
+              ? "Declined. REFLEX keeps deciding with policy alone; nothing leaves this machine.\n"
+              : 'Re-run with "--consent" to agree to the statement above.\n',
+          );
+          return 0;
+        }
+      }
+      const changed = await provider.changeProvider(env, nodeFileSystem, {
+        provider: wanted,
+        ...(values.model === undefined ? {} : { model: values.model }),
+        ...(values.endpoint === undefined ? {} : { endpoint: values.endpoint }),
+        consented,
+      });
+      if (!changed.ok) {
+        switch (changed.reason) {
+          case "model-required":
+            write(
+              'The local provider needs the checkpoint it serves: "rfx provider local --model <id>".\n',
+            );
+            return 2;
+          case "consent-required":
+            write("Nothing was changed: this provider needs your consent.\n");
+            return 2;
+          case "write-failed":
+            write("Could not write the configuration.\n");
+            return 1;
+        }
+      }
+      write(`provider: ${provider.describeProvider(changed.after)}\n`);
+      if (changed.changed) {
+        // The daemon runs with what it was started with; the next decision
+        // starts one with the new configuration.
+        const { reflexHome } = await import("./state.js");
+        const { stopDaemon } = await import("./daemon/lifecycle.js");
+        const stopped = await stopDaemon(reflexHome(env));
+        if (stopped.wasRunning) {
+          write(
+            "Daemon stopped; it starts again with this provider on the next decision.\n",
+          );
+        }
+      }
       return 0;
     }
 

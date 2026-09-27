@@ -12,6 +12,7 @@ import {
 
 import type { FileSystemPort } from "../backups/file-system.js";
 import { daemonStatus, type DaemonStatus } from "../daemon/lifecycle.js";
+import { readProvider, type ProviderReport } from "./provider.js";
 import {
   parseIdentity,
   parseRegistry,
@@ -69,6 +70,8 @@ export interface StatusReport {
   readonly identity: LocalIdentity | undefined;
   /** RFX-138: whether the local decision daemon answers, and what it says. */
   readonly daemon: DaemonStatus;
+  /** RFX-123: the configured provider and whether consent covers it. */
+  readonly provider: ProviderReport;
   readonly adapters: readonly AdapterStatus[];
   readonly lastAction: ObservedActionRecord | undefined;
   readonly summary: OutcomeSummary;
@@ -108,6 +111,7 @@ export async function collectStatus(
 ): Promise<StatusReport> {
   const paths = statePaths(reflexHome(environment));
   const daemon = await probe(reflexHome(environment));
+  const provider = await readProvider(environment, fileSystem);
   const registry = parseRegistry(
     (await fileSystem.read(paths.installs))?.content.toString("utf8"),
   );
@@ -168,6 +172,7 @@ export async function collectStatus(
     mode: "observe",
     identity,
     daemon,
+    provider,
     adapters,
     lastAction: actions.at(-1),
     summary: summarize(assembleOutcomes(records)),

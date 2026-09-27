@@ -1,5 +1,6 @@
 import type { TransactionFailure } from "../backups/transaction.js";
 import type { InitPlan, InitWarning } from "../commands/init.js";
+import { describeProvider } from "../commands/provider.js";
 import type { StatusReport } from "../commands/status.js";
 import type { UninstallCommandPlan } from "../commands/uninstall.js";
 
@@ -230,6 +231,7 @@ export function renderStatus(report: StatusReport, now: Date): string {
     report.daemon.running
       ? `Daemon       running, v${report.daemon.version ?? "?"}${report.daemon.pid === undefined ? "" : `, pid ${String(report.daemon.pid)}`}, up ${duration(report.daemon.uptimeMs ?? 0)}`
       : "Daemon       not running (starts on the first decision it is asked for)",
+    `Provider     ${describeProvider(report.provider)}`,
     `Identity     ${report.identity?.agentId ?? "none"}  (local, anonymous)`,
     `Log          ${safe(report.logFile)}`,
     "",
