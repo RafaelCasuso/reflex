@@ -57,14 +57,62 @@ describe("RFX-141 the daemon's semantic stage", () => {
     }
   });
 
-  it("registers jev and fake in this build, and nothing else yet", () => {
-    expect(gatewayProviderRegistry().available).toEqual(["jev", "fake"]);
-    for (const id of ["local", "reflex"] as const) {
-      const built = build(id);
-      expect(built.ok).toBe(false);
-      if (!built.ok) {
-        expect(built.reason).toContain(`"${id}" is not available`);
-      }
+  it("registers jev, local and fake in this build, and not reflex yet", () => {
+    expect(gatewayProviderRegistry().available).toEqual([
+      "jev",
+      "local",
+      "fake",
+    ]);
+    const built = build("reflex");
+    expect(built.ok).toBe(false);
+    if (!built.ok) {
+      expect(built.reason).toContain('"reflex" is not available');
+    }
+  });
+
+  it("builds local on the loopback with a pinned checkpoint, and refuses it without one or elsewhere", () => {
+    const built = build("local", { model: "laya-1.0.0" });
+    expect(built.ok).toBe(true);
+    if (built.ok) {
+      expect(built.provider).toEqual({
+        id: "local",
+        name: "local",
+        model: "laya-1.0.0",
+      });
+      expect(built.stage?.provider.onMachine).toBe(true);
+    }
+    const unpinned = build("local");
+    expect(unpinned.ok).toBe(false);
+    if (!unpinned.ok) {
+      expect(unpinned.reason).toContain("needs --semantic-model");
+    }
+    const alias = build("local", { model: "rdm-latest" });
+    expect(alias.ok).toBe(false);
+    const elsewhere = build("local", {
+      model: "laya-1.0.0",
+      endpoint: "http://10.0.0.5:8765/v1/assess",
+    });
+    expect(elsewhere.ok).toBe(false);
+    if (!elsewhere.ok) {
+      expect(elsewhere.reason).toContain("this machine only");
+    }
+  });
+
+  it("lets a local shadow be sampled on everything, and only it", () => {
+    const local = buildSemanticStage({
+      id: "fake",
+      model: undefined,
+      endpoint: undefined,
+      redactionKey: KEY,
+      env: {},
+      shadows: [{ id: "local", model: "rdm-0.1.0" }],
+      shadowSample: "all",
+    });
+    expect(local.ok).toBe(true);
+    if (local.ok) {
+      expect(local.shadows).toEqual([
+        { id: "local", name: "local", model: "rdm-0.1.0", sample: "all" },
+      ]);
     }
   });
 
@@ -208,10 +256,15 @@ describe("RFX-142 the daemon's shadows", () => {
     if (!built.ok) {
       expect(built.reason).toMatch(/^shadow the jev provider needs an API key/);
     }
-    const absent = shadowed({ shadows: [{ id: "local" }] });
+    const unpinned = shadowed({ shadows: [{ id: "local" }] });
+    expect(unpinned.ok).toBe(false);
+    if (!unpinned.ok) {
+      expect(unpinned.reason).toMatch(/^shadow the local provider needs/);
+    }
+    const absent = shadowed({ shadows: [{ id: "reflex" }] });
     expect(absent.ok).toBe(false);
     if (!absent.ok) {
-      expect(absent.reason).toContain('"local" is not available');
+      expect(absent.reason).toContain('"reflex" is not available');
     }
   });
 });

@@ -10,6 +10,11 @@ import {
 } from "@reflex/core";
 import { JEV_DEFAULT_MODEL, createJevProvider } from "@reflex/provider-jev";
 import {
+  LOCAL_DEFAULT_ENDPOINT,
+  createLocalProvider,
+  isLoopbackEndpoint,
+} from "@reflex/provider-local";
+import {
   createProviderRegistry,
   fakeProviderConstructor,
   type ProviderId,
@@ -32,9 +37,36 @@ export const SEMANTIC_MAX_INPUT_TOKENS = 600;
 
 const ALIAS = /latest|preview/;
 
-/** What this build can construct. `local` is RFX-144; `reflex` is G14. */
+/** What this build can construct. `reflex` is G14. */
 export function gatewayProviderRegistry(): ProviderRegistry {
   return createProviderRegistry({
+    local: (config) => {
+      if (config.model === undefined || config.model === "") {
+        return {
+          ok: false,
+          reason:
+            "the local provider needs --semantic-model, pinned to the checkpoint the server serves",
+        };
+      }
+      if (ALIAS.test(config.model)) {
+        return {
+          ok: false,
+          reason: `pin the local checkpoint to a version, never an alias: "${config.model}"`,
+        };
+      }
+      const endpoint = config.endpoint ?? LOCAL_DEFAULT_ENDPOINT;
+      if (!isLoopbackEndpoint(endpoint)) {
+        return {
+          ok: false,
+          reason:
+            "the local provider talks to this machine only: --semantic-endpoint must be on 127.0.0.1, ::1 or localhost",
+        };
+      }
+      return {
+        ok: true,
+        provider: createLocalProvider({ model: config.model, endpoint }),
+      };
+    },
     jev: (config) => {
       if (config.apiKey === undefined || config.apiKey === "") {
         return {

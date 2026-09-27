@@ -21,9 +21,9 @@ const FORBIDDEN_DEPENDENCIES = [
   },
   {
     files: ["packages/core/**"],
-    forbidden: ["@reflex/adapter-*", "@reflex/provider-jev"],
+    forbidden: ["@reflex/adapter-*", "@reflex/provider-*"],
     reason:
-      "core -> adapter-* is forbidden, and core must depend on the SemanticDecisionProvider interface, never on Jev.",
+      "core -> adapter-* is forbidden, and core must depend on the SemanticDecisionProvider interface, never on a provider.",
   },
   {
     files: ["packages/policy-engine/**"],
@@ -33,13 +33,14 @@ const FORBIDDEN_DEPENDENCIES = [
   },
   {
     files: ["packages/adapter-*/**"],
-    forbidden: ["@reflex/provider-jev"],
-    reason: "adapter -> provider-jev is forbidden.",
+    forbidden: ["@reflex/provider-*"],
+    reason: "adapter -> provider-* is forbidden.",
   },
   {
-    files: ["packages/provider-jev/**"],
+    files: ["packages/provider-*/**"],
     forbidden: ["@reflex/core"],
-    reason: "provider-jev -> core is forbidden.",
+    reason:
+      "provider-* -> core is forbidden: a provider assesses, it never decides.",
   },
   {
     files: ["packages/command-classifier/**"],

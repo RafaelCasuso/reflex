@@ -18,8 +18,8 @@ export const FORBIDDEN_EDGES: readonly ForbiddenEdge[] = [
   { from: "core", to: "adapter-*", rule: "core -> adapter-*" },
   {
     from: "core",
-    to: "provider-jev",
-    rule: "Jev is a provider, not the architecture",
+    to: "provider-*",
+    rule: "a provider is not the architecture: core depends on the interface",
   },
   {
     from: "policy-engine",
@@ -27,8 +27,8 @@ export const FORBIDDEN_EDGES: readonly ForbiddenEdge[] = [
     rule: "policy-engine -> provider-*",
   },
   { from: "contracts", to: "*", rule: "contracts -> anything" },
-  { from: "adapter-*", to: "provider-jev", rule: "adapter -> provider-jev" },
-  { from: "provider-jev", to: "core", rule: "provider-jev -> core" },
+  { from: "adapter-*", to: "provider-*", rule: "adapter -> provider-*" },
+  { from: "provider-*", to: "core", rule: "provider-* -> core" },
   // ADR-011: the classifier is shared by adapters and by the engine, so it may
   // depend on neither. It knows commands, not hosts, policies or providers.
   ...[

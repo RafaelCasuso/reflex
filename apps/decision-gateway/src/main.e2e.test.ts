@@ -1,7 +1,8 @@
 import { spawn, type ChildProcess } from "node:child_process";
 import { existsSync } from "node:fs";
 import { mkdtemp, readFile, rm, stat, writeFile } from "node:fs/promises";
-import { request as httpRequest } from "node:http";
+import { createServer, request as httpRequest } from "node:http";
+import type { AddressInfo } from "node:net";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -445,6 +446,78 @@ describe("RFX-141 the daemon with a semantic provider", () => {
       expect(second).not.toHaveProperty("request");
       expect((await stat(file)).mode & 0o777).toBe(0o600);
     } finally {
+      await rm(home, { recursive: true, force: true });
+    }
+  });
+
+  it("assesses with a local inference server on the loopback, named and pinned", async () => {
+    const home = await mkdtemp(join(tmpdir(), "reflex-daemon-local-"));
+    const policyFile = join(home, "policy.yaml");
+    await writeFile(policyFile, SEMANTIC_BY_DEFAULT);
+    const signal = (value: number) => ({ value, confidence: 0.7 });
+    const server = createServer((request, response) => {
+      const chunks: Buffer[] = [];
+      request.on("data", (chunk: Buffer) => chunks.push(chunk));
+      request.on("end", () => {
+        response.setHeader("content-type", "application/json");
+        response.end(
+          JSON.stringify({
+            objectiveAlignment: signal(67),
+            destructiveRisk: signal(0),
+            reversibility: signal(100),
+            externalSideEffect: { value: false, confidence: 0.7 },
+            privilegeEscalation: signal(0),
+            secretAccess: signal(0),
+            sensitiveDataExposure: signal(0),
+            financialConsequence: signal(0),
+            productionMutation: signal(0),
+            unusualScope: signal(0),
+            untrustedInput: signal(0),
+            provider: "fake-inference-server",
+            model: "laya-1.0.0",
+            latencyMs: 2,
+          }),
+        );
+      });
+    });
+    await new Promise<void>((resolve) => {
+      server.listen(0, "127.0.0.1", resolve);
+    });
+    const { port } = server.address() as AddressInfo;
+    try {
+      const running = await start([
+        "--policy",
+        policyFile,
+        "--semantic-provider",
+        "local",
+        "--semantic-model",
+        "laya-1.0.0",
+        "--semantic-endpoint",
+        `http://127.0.0.1:${String(port)}/v1/assess`,
+      ]);
+      const health = await call(running.socketPath, "GET", "/v1/health");
+      expect(health.json).toMatchObject({
+        semanticProvider: { id: "local", name: "local", model: "laya-1.0.0" },
+      });
+      const decided = await call(
+        running.socketPath,
+        "POST",
+        "/v1/decisions",
+        JSON.stringify(decisionRequest(shell("cat README.md"))),
+      );
+      expect(decided.json).toMatchObject({
+        effect: "allow",
+        semanticAssessment: { provider: "local", model: "laya-1.0.0" },
+      });
+      running.child.kill("SIGTERM");
+      expect(await running.exited).toBe(0);
+    } finally {
+      server.closeAllConnections();
+      await new Promise<void>((resolve) => {
+        server.close(() => {
+          resolve();
+        });
+      });
       await rm(home, { recursive: true, force: true });
     }
   });

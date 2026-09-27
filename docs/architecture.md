@@ -155,6 +155,10 @@ reflex/
 │   │       ├── state.ts     # the request as structured data
 │   │       └── response.ts  # strict parse into the contract
 │   │
+│   ├── provider-local/      # a local inference server on the canonical contract; RDM and Laya behind it (RFX-144)
+│   │   └── src/
+│   │       └── client.ts    # POST /v1/assess on the loopback, strict parse, model held to the pin
+│   │
 │   ├── adapter-claude-code/
 │   │   └── src/
 │   │       ├── detect.ts

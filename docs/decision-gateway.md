@@ -75,9 +75,11 @@ node apps/decision-gateway/dist/main.js [--socket <path> | --tcp <host:port>]
 - `--semantic-provider` (RFX-141, ADR-016 §1) chooses what assesses the
   actions policy leaves open: `none` is the default and today's behavior (an
   open action asks); `jev` needs `TYPESAFE_API_KEY` in the daemon's
-  environment, never on the command line; `fake` is for development and
-  answers from the action's class; `local` (RFX-144) and `reflex` (G14) are
-  refused until they exist. A provider that was asked for and cannot be built
+  environment, never on the command line; `local` (RFX-144,
+  `docs/local-provider.md`) is an inference server on this machine, needs
+  `--semantic-model` pinned to the checkpoint it serves and an endpoint on
+  the loopback; `fake` is for development and answers from the action's
+  class; `reflex` (G14) is refused until it exists. A provider that was asked for and cannot be built
   exits 2 with the reason: a daemon never runs without what it was told to
   run with. `--semantic-model` pins a versioned model (an alias is refused)
   and `--semantic-endpoint` overrides where the provider is reached. The

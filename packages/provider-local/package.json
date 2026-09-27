@@ -1,0 +1,28 @@
+{
+  "name": "@reflex/provider-local",
+  "version": "0.0.0",
+  "private": true,
+  "description": "A semantic provider that calls a local inference server speaking the canonical contract. RDM and Laya are checkpoints behind it; REFLEX does not know which.",
+  "license": "Apache-2.0",
+  "type": "module",
+  "sideEffects": false,
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "typecheck": "tsc -p tsconfig.json",
+    "lint": "eslint --max-warnings 0 .",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@reflex/contracts": "workspace:*",
+    "@reflex/semantic-provider": "workspace:*"
+  }
+}

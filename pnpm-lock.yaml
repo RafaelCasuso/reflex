@@ -62,6 +62,9 @@ importers:
       '@reflex/provider-jev':
         specifier: workspace:*
         version: link:../../packages/provider-jev
+      '@reflex/provider-local':
+        specifier: workspace:*
+        version: link:../../packages/provider-local
       '@reflex/semantic-provider':
         specifier: workspace:*
         version: link:../../packages/semantic-provider
@@ -182,6 +185,15 @@ importers:
         version: 2.9.1
 
   packages/provider-jev:
+    dependencies:
+      '@reflex/contracts':
+        specifier: workspace:*
+        version: link:../contracts
+      '@reflex/semantic-provider':
+        specifier: workspace:*
+        version: link:../semantic-provider
+
+  packages/provider-local:
     dependencies:
       '@reflex/contracts':
         specifier: workspace:*

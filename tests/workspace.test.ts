@@ -32,6 +32,7 @@ const EXPECTED_WORKSPACES: Readonly<Record<string, readonly string[]>> = {
     "evals",
     "policy-engine",
     "provider-jev",
+    "provider-local",
     "sdk-typescript",
     "semantic-provider",
     "telemetry",
@@ -127,10 +128,15 @@ describe("architectural dependency direction (CLAUDE.md)", () => {
       fabricate("@reflex/contracts", "@reflex/core"),
       fabricate("@reflex/adapter-mcp", "@reflex/provider-jev"),
       fabricate("@reflex/provider-jev", "@reflex/core"),
+      fabricate("@reflex/core", "@reflex/provider-local"),
+      fabricate("@reflex/adapter-codex", "@reflex/provider-local"),
+      fabricate("@reflex/provider-local", "@reflex/core"),
       // Allowed edges must stay allowed: no false positives.
       fabricate("@reflex/core", "@reflex/policy-engine"),
       fabricate("@reflex/provider-jev", "@reflex/semantic-provider"),
+      fabricate("@reflex/provider-local", "@reflex/semantic-provider"),
       fabricate("@reflex/decision-gateway", "@reflex/provider-jev"),
+      fabricate("@reflex/decision-gateway", "@reflex/provider-local"),
     ]);
 
     expect(violations.map(({ from, to }) => `${from} -> ${to}`)).toEqual([
@@ -140,6 +146,9 @@ describe("architectural dependency direction (CLAUDE.md)", () => {
       "contracts -> core",
       "adapter-mcp -> provider-jev",
       "provider-jev -> core",
+      "core -> provider-local",
+      "adapter-codex -> provider-local",
+      "provider-local -> core",
     ]);
   });
 

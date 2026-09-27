@@ -22,6 +22,7 @@ distance.
 | `@reflex/context-compiler`    | `packages/context-compiler`    |
 | `@reflex/semantic-provider`   | `packages/semantic-provider`   |
 | `@reflex/provider-jev`        | `packages/provider-jev`        |
+| `@reflex/provider-local`      | `packages/provider-local`      |
 | `@reflex/adapter-claude-code` | `packages/adapter-claude-code` |
 | `@reflex/adapter-codex`       | `packages/adapter-codex`       |
 | `@reflex/adapter-mcp`         | `packages/adapter-mcp`         |

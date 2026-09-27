@@ -76,6 +76,21 @@ const FORBIDDEN: readonly BoundaryCase[] = [
     code: 'import "@reflex/provider-jev";',
   },
   {
+    label: "core -> provider-local",
+    packageDir: "packages/core",
+    code: 'import "@reflex/provider-local";',
+  },
+  {
+    label: "adapter -> provider-local",
+    packageDir: "packages/adapter-claude-code",
+    code: 'import "@reflex/provider-local";',
+  },
+  {
+    label: "provider-local -> core",
+    packageDir: "packages/provider-local",
+    code: 'import "@reflex/core";',
+  },
+  {
     label: "provider-jev -> core",
     packageDir: "packages/provider-jev",
     code: 'import "@reflex/core";',
@@ -142,6 +157,11 @@ const ALLOWED: readonly BoundaryCase[] = [
     label: "provider-jev -> semantic-provider",
     packageDir: "packages/provider-jev",
     code: 'import "@reflex/semantic-provider";',
+  },
+  {
+    label: "provider-local -> semantic-provider and contracts",
+    packageDir: "packages/provider-local",
+    code: 'import "@reflex/semantic-provider"; import "@reflex/contracts";',
   },
   {
     label: "adapter -> sdk",
