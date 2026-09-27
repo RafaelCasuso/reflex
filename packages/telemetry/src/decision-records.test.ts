@@ -154,6 +154,26 @@ describe("decisionRecordOf", () => {
     expect(resolved).not.toHaveProperty("request");
     expect(parseDecisionRecord(resolved).ok).toBe(true);
   });
+
+  // RFX-125: the human's yes is the label, and it is never "deterministic".
+  it("labels a human override as the human's, not policy's", () => {
+    const overridden = decisionRecordOf({
+      decision: {
+        ...decision,
+        effect: "allow",
+        effectiveEffect: "allow",
+        reasonCodes: ["human_override", "destructive"],
+      },
+      evaluations: [],
+      resolvedByPolicy: false,
+      humanOverride: true,
+      recordedAt: AT,
+    });
+    expect(overridden.labels).toEqual([
+      { kind: "effect", value: "allow", source: "human", at: AT },
+    ]);
+    expect(parseDecisionRecord(overridden).ok).toBe(true);
+  });
 });
 
 describe("joining an outcome and feedback by id", () => {

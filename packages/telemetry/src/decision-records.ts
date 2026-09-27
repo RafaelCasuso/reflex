@@ -60,6 +60,8 @@ export interface DecisionRecordInput {
   readonly evaluations: readonly EvaluationInput[];
   /** A rule or a policy default decided: the effect is a label. */
   readonly resolvedByPolicy: boolean;
+  /** RFX-125: a human overrode a deny; the effect is a human label. */
+  readonly humanOverride?: boolean;
   readonly recordedAt: IsoTimestamp;
 }
 
@@ -113,16 +115,26 @@ export function decisionRecordOf(input: DecisionRecordInput): DecisionRecord {
         ? {}
         : { fallback: decision.fallback }),
     },
-    labels: input.resolvedByPolicy
-      ? [
-          {
-            kind: "effect",
-            value: decision.effect,
-            source: "deterministic_rule",
-            at: input.recordedAt,
-          },
-        ]
-      : [],
+    labels:
+      input.humanOverride === true
+        ? [
+            {
+              kind: "effect",
+              value: decision.effect,
+              source: "human",
+              at: input.recordedAt,
+            },
+          ]
+        : input.resolvedByPolicy
+          ? [
+              {
+                kind: "effect",
+                value: decision.effect,
+                source: "deterministic_rule",
+                at: input.recordedAt,
+              },
+            ]
+          : [],
   };
 }
 

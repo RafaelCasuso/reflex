@@ -1,4 +1,5 @@
 import type { ValidationIssue } from "@reflex/contracts";
+import type { OverrideRefusal } from "@reflex/core";
 import type { RejectionCode } from "@reflex/telemetry";
 
 /**
@@ -71,7 +72,33 @@ export const PROBLEMS = {
     code: "internal-error",
     message: "the gateway could not decide",
   }),
+  /** RFX-125. One status per refusal, so a client can switch on it. */
+  overrideRefused: (reason: OverrideRefusal): Problem => ({
+    status: OVERRIDE_STATUS[reason],
+    code: "override-refused",
+    message: OVERRIDE_MESSAGE[reason],
+  }),
+  notAnOverride: (): Problem => ({
+    status: 400,
+    code: "invalid-request",
+    message: "the body must be { decisionId } with a decision id",
+  }),
 } as const;
+
+const OVERRIDE_STATUS: Readonly<Record<OverrideRefusal, number>> = {
+  "unknown-decision": 404,
+  "not-a-deny": 409,
+  "already-granted": 409,
+  "mandatory-deny": 403,
+};
+
+const OVERRIDE_MESSAGE: Readonly<Record<OverrideRefusal, string>> = {
+  "unknown-decision":
+    "no such decision here: it was not made by this daemon, or it is older than the override window",
+  "not-a-deny": "that decision did not deny; there is nothing to override",
+  "already-granted": "that action already has an override waiting",
+  "mandatory-deny": "a mandatory deny cannot be overridden",
+};
 
 export function problemBody(problem: Problem, requestId: string): ProblemBody {
   return {

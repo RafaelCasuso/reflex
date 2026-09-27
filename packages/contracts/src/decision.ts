@@ -34,6 +34,8 @@ export const REASON_CODES = [
   "decision_timeout",
   "unsupported_action",
   "unknown_risk",
+  // v1.5 (RFX-125): a human overrode a deny, once, outside the agent's reach.
+  "human_override",
 ] as const;
 export type ReasonCode = (typeof REASON_CODES)[number];
 

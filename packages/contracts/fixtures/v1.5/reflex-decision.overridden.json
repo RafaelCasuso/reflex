@@ -1,0 +1,26 @@
+{
+  "id": "dec_01J8ZC2P0R3S5U7W9Y1A3C5E7K",
+  "actionId": "act_01J8ZC2N6Q4T7V9X3B5D8F0H2P",
+  "effect": "allow",
+  "effectiveEffect": "allow",
+  "mode": "autopilot",
+  "risk": 90,
+  "confidence": 1,
+  "reasonCodes": ["human_override", "destructive"],
+  "policyMatches": [
+    {
+      "ruleId": "deny-rm",
+      "ruleName": "Deny recursive removal",
+      "effect": "deny",
+      "mandatory": false,
+      "precedence": 50
+    }
+  ],
+  "policySetHash": "sha256:9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08",
+  "cached": false,
+  "latency": {
+    "totalMs": 2,
+    "policyMs": 1
+  },
+  "decidedAt": "2026-09-27T10:15:31.421Z"
+}

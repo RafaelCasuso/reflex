@@ -91,6 +91,8 @@ export const REJECTION_CODES = [
   "not-found",
   "method-not-allowed",
   "internal-error",
+  // RFX-125: an override that could not be granted.
+  "override-refused",
 ] as const;
 export type RejectionCode = (typeof REJECTION_CODES)[number];
 
@@ -151,8 +153,41 @@ export function shadowEventOf(input: ShadowEventInput): ShadowEvent {
   };
 }
 
+/**
+ * RFX-125: a human overrode a deny, once. The decision that then lets the
+ * action through carries `human_override` in its own event; this one counts
+ * the grant itself, for the human override rate (CLAUDE.md), whether or not
+ * the agent retries.
+ */
+export interface OverrideEvent {
+  readonly kind: "override";
+  readonly eventVersion: typeof DECISION_EVENT_VERSION;
+  readonly at: IsoTimestamp;
+  /** The denied decision that was overridden. */
+  readonly decisionId: DecisionId;
+  readonly requestId?: string;
+}
+
+export function overrideEventOf(
+  decisionId: DecisionId,
+  at: IsoTimestamp,
+  requestId?: string,
+): OverrideEvent {
+  return {
+    kind: "override",
+    eventVersion: DECISION_EVENT_VERSION,
+    at,
+    decisionId,
+    ...(requestId === undefined ? {} : { requestId }),
+  };
+}
+
 export type TelemetryEvent =
-  DecisionEvent | FallbackEvent | RejectedRequestEvent | ShadowEvent;
+  | DecisionEvent
+  | FallbackEvent
+  | RejectedRequestEvent
+  | ShadowEvent
+  | OverrideEvent;
 
 export interface TelemetrySink {
   /** Never on the decision path: called after the answer has been written. */

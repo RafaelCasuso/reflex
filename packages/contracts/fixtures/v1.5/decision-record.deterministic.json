@@ -1,0 +1,35 @@
+{
+  "decisionId": "dec_01J8ZC2P0R3S5U7W9Y1A3C5E7J",
+  "actionId": "act_01J8ZC2N6Q4T7V9X3B5D8F0H2N",
+  "recordedAt": "2026-09-18T10:15:32.000Z",
+  "contractVersion": "1.5",
+  "evaluations": [],
+  "decision": {
+    "effect": "allow",
+    "effectiveEffect": "allow",
+    "mode": "autopilot",
+    "risk": 5,
+    "confidence": 1,
+    "reasonCodes": [
+      "explicit_allow"
+    ],
+    "policyMatches": [
+      {
+        "ruleId": "allow-git-status",
+        "ruleName": "Allow git status",
+        "effect": "allow",
+        "mandatory": false,
+        "precedence": 50
+      }
+    ],
+    "policySetHash": "sha256:9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08"
+  },
+  "labels": [
+    {
+      "kind": "effect",
+      "value": "allow",
+      "source": "deterministic_rule",
+      "at": "2026-09-18T10:15:32.000Z"
+    }
+  ]
+}

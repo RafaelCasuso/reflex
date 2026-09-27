@@ -40,6 +40,16 @@ export {
   type CacheKeyInput,
 } from "./fingerprint.js";
 export { effectiveEffectOf } from "./modes.js";
+export {
+  DEFAULT_OVERRIDE_OPTIONS,
+  OverrideStore,
+  type OverrideCounters,
+  type OverrideGrant,
+  type OverrideRefusal,
+  type OverrideResult,
+  type OverrideStoreOptions,
+  type RememberedDecision,
+} from "./overrides.js";
 export { DETERMINISTIC_RISK, reasonForClass, riskOf } from "./risk.js";
 export {
   DEFAULT_AGGREGATOR_CONFIG,

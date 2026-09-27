@@ -149,6 +149,8 @@ export interface DecisionObservation {
   readonly shadows: readonly Promise<ShadowObservation>[];
   /** A rule or a policy default decided: the effect is a deterministic label. */
   readonly resolvedByPolicy: boolean;
+  /** RFX-125: a human overrode a deny; the effect is the human's label. */
+  readonly humanOverride: boolean;
 }
 
 export type DecisionObserver = (observation: DecisionObservation) => void;

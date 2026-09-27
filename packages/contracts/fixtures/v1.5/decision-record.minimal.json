@@ -1,0 +1,17 @@
+{
+  "decisionId": "dec_01J8ZC2P0R3S5U7W9Y1A3C5E7H",
+  "actionId": "act_01J8ZC2N6Q4T7V9X3B5D8F0H2M",
+  "recordedAt": "2026-09-18T10:15:31.430Z",
+  "contractVersion": "1.5",
+  "evaluations": [],
+  "decision": {
+    "effect": "ask",
+    "effectiveEffect": "ask",
+    "mode": "observe",
+    "risk": 30,
+    "confidence": 0,
+    "reasonCodes": [],
+    "policyMatches": []
+  },
+  "labels": []
+}

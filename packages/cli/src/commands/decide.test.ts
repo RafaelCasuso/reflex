@@ -73,7 +73,9 @@ describe("RFX-043 the answer to the host", () => {
         effectiveEffect: "deny",
         mode: "autopilot",
       }),
-    ).toBe("REFLEX: denied by rule deny-rm");
+    ).toMatch(
+      /^REFLEX: denied by rule deny-rm\. To let it through once, a human runs: rfx override dec_[A-Za-z0-9_-]+$/,
+    );
     expect(describeDecision(decision())).toBe(
       "REFLEX: allowed by rule allow-touch",
     );
@@ -134,6 +136,26 @@ describe("RFX-043 the answer to the host", () => {
     ).toBe(
       "REFLEX: needs your approval, fallback (provider-error) (provider_unavailable)",
     );
+  });
+
+  it("names the human override, and not a rule, when a human let the action through (RFX-125)", () => {
+    expect(
+      describeDecision(
+        decision({
+          effect: "allow",
+          effectiveEffect: "allow",
+          reasonCodes: ["human_override", "destructive"],
+          policyMatches: [
+            {
+              ruleId: "deny-rm",
+              effect: "deny",
+              mandatory: false,
+              precedence: 50,
+            },
+          ],
+        }),
+      ),
+    ).toBe("REFLEX: allowed by human override (destructive)");
   });
 
   // Adversarial: the reason line is shown to the user and may be fed to the

@@ -1,6 +1,6 @@
 import { readFile } from "node:fs/promises";
 
-import type { DecisionObservation } from "@reflex/core";
+import { OverrideStore, type DecisionObservation } from "@reflex/core";
 import {
   parseConsentRecord,
   type ConsentRecord,
@@ -109,11 +109,16 @@ async function main(argv: readonly string[]): Promise<number> {
         directory: defaultDecisionRecordDirectory(config.reflexHome),
       })
     : undefined;
+  // RFX-125: the override path. The store is the engine's and the server's:
+  // the engine remembers every decision in it and takes the grants; the
+  // server turns a human's `rfx override` into a grant.
+  const overrides = new OverrideStore();
   const engine = buildEngine({
     policies,
     failureMode: config.failureMode,
     cache: config.cache,
     home: process.env.HOME,
+    overrides,
     ...(semantic.stage === undefined ? {} : { semantic: semantic.stage }),
     // RFX-142: a shadow's outcome is telemetry of its own (ADR-016 §3).
     ...(telemetry === undefined
@@ -155,6 +160,7 @@ async function main(argv: readonly string[]): Promise<number> {
                     })),
                   ],
                   resolvedByPolicy: observation.resolvedByPolicy,
+                  humanOverride: observation.humanOverride,
                   recordedAt: new Date().toISOString(),
                 }),
               );
@@ -165,6 +171,7 @@ async function main(argv: readonly string[]): Promise<number> {
 
   const server = createGatewayServer({
     engine,
+    overrides,
     ...(telemetry === undefined ? {} : { telemetry }),
     ...(config.rateLimit === undefined
       ? {}
@@ -182,6 +189,8 @@ async function main(argv: readonly string[]): Promise<number> {
       redactionKey: redactionKey.created ? "created" : "present",
       semanticProvider: semantic.provider,
       shadowProviders: semantic.shadows,
+      // RFX-125: the human override rate's numerator, since this start.
+      overrides: overrides.counters(performance.now()),
     }),
   });
 

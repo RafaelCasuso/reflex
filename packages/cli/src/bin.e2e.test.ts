@@ -444,15 +444,83 @@ describe("the hook with a decision (RFX-043)", () => {
       env: { REFLEX_HOME: decisionHome },
     });
     expect(run.code).toBe(0);
-    expect(answerOf(run)).toEqual({
+    const answer = answerOf(run) as {
+      hookSpecificOutput: { permissionDecisionReason: string };
+    };
+    expect(answer).toMatchObject({
       hookSpecificOutput: {
         hookEventName: "PreToolUse",
         permissionDecision: "deny",
-        permissionDecisionReason:
-          "REFLEX: denied by rule deny-rm (destructive)",
       },
     });
+    expect(answer.hookSpecificOutput.permissionDecisionReason).toMatch(
+      /^REFLEX: denied by rule deny-rm \(destructive\)\. To let it through once, a human runs: rfx override dec_[0-9a-f]{32}$/,
+    );
   });
+
+  // RFX-125: the way out of a deny, by a human, once.
+  it("lets a denied action through once after rfx override, and denies it again after", async () => {
+    await installedIn(decisionHome, "autopilot");
+    // Each retry is a new tool call of the host: a new tool_use_id, the same
+    // command. With the same id the daemon would replay its first answer
+    // (RFX-120), which is what idempotency is for.
+    let call = 0;
+    const hook = () => {
+      call += 1;
+      const payload = JSON.parse(fixture("pre-tool-use.bash-remove")) as Record<
+        string,
+        unknown
+      >;
+      payload.tool_use_id = `toolu_override_${String(call)}`;
+      return rfx(["hook", "claude-code"], {
+        stdin: JSON.stringify(payload),
+        env: { REFLEX_HOME: decisionHome },
+      });
+    };
+    const reasonOf = (run: Run): string =>
+      (
+        answerOf(run) as {
+          hookSpecificOutput: { permissionDecisionReason: string };
+        }
+      ).hookSpecificOutput.permissionDecisionReason;
+    const denied = await hook();
+    const id = /rfx override (dec_[0-9a-f]{32})$/.exec(reasonOf(denied))?.[1];
+    expect(id).toBeDefined();
+
+    const overridden = await rfx(["override", id ?? ""], {
+      env: { REFLEX_HOME: decisionHome },
+    });
+    expect(overridden.code).toBe(0);
+    expect(overridden.stdout).toContain(`Override recorded for ${id ?? ""}`);
+
+    const allowed = await hook();
+    expect(answerOf(allowed)).toMatchObject({
+      hookSpecificOutput: {
+        permissionDecision: "allow",
+        permissionDecisionReason:
+          "REFLEX: allowed by human override (destructive)",
+      },
+    });
+    const again = await hook();
+    expect(reasonOf(again)).toMatch(/^REFLEX: denied by rule deny-rm/);
+
+    // Twice for the same decision, an unknown one, and a bad id.
+    const twice = await rfx(["override", id ?? ""], {
+      env: { REFLEX_HOME: decisionHome },
+    });
+    expect(twice.code).toBe(1);
+    expect(twice.stdout).toContain("Not overridden");
+    const unknown = await rfx(
+      ["override", "dec_00000000000000000000000000000099"],
+      { env: { REFLEX_HOME: decisionHome } },
+    );
+    expect(unknown.code).toBe(1);
+    expect(unknown.stdout).toContain("does not remember that decision");
+    const bad = await rfx(["override", "nope"], {
+      env: { REFLEX_HOME: decisionHome },
+    });
+    expect(bad.code).toBe(2);
+  }, 30_000);
 
   it("keeps observing the other events silently in every mode", async () => {
     await installedIn(decisionHome, "autopilot");

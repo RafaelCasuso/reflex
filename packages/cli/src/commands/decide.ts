@@ -125,22 +125,28 @@ export function describeDecision(decision: ReflexDecision): string {
   const codes = decision.reasonCodes.filter(
     (code) => !code.startsWith("explicit_"),
   );
-  const what =
-    rule !== undefined
+  const overridden = decision.reasonCodes.includes("human_override");
+  const what = overridden
+    ? "human override"
+    : rule !== undefined
       ? `rule ${rule.ruleId}`
       : decision.fallback?.used === true
         ? `fallback (${decision.fallback.reason ?? "unknown"})`
         : decision.semanticAssessment !== undefined
           ? `assessment by ${decision.semanticAssessment.provider}`
           : "policy default";
-  const detail = codes.length === 0 ? "" : ` (${codes.join(", ")})`;
+  const detail =
+    codes.filter((code) => code !== "human_override").length === 0
+      ? ""
+      : ` (${codes.filter((code) => code !== "human_override").join(", ")})`;
   switch (decision.effectiveEffect) {
     case "allow":
       return `REFLEX: allowed by ${what}${detail}`;
     case "ask":
       return `REFLEX: needs your approval, ${what}${detail}`;
     case "deny":
-      return `REFLEX: denied by ${what}${detail}`;
+      // RFX-125: the way out, for the human reading this. The id is opaque.
+      return `REFLEX: denied by ${what}${detail}. To let it through once, a human runs: rfx override ${decision.id}`;
   }
 }
 

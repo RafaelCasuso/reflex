@@ -2,13 +2,15 @@ import { createHash, randomBytes } from "node:crypto";
 import type { IncomingMessage, ServerResponse } from "node:http";
 
 import {
+  isOpaqueId,
   parseDecisionRequest,
   type DecisionRequest,
   type ReflexDecision,
 } from "@reflex/contracts";
-import type { ReflexDecisionEngine } from "@reflex/core";
+import type { OverrideStore, ReflexDecisionEngine } from "@reflex/core";
 import {
   decisionEventsOf,
+  overrideEventOf,
   rejectedRequestEvent,
   type TelemetrySink,
 } from "@reflex/telemetry";
@@ -30,6 +32,8 @@ import { PROBLEMS, problemBody, type Problem } from "./problems.js";
 export interface GatewayHandlerOptions {
   readonly engine: ReflexDecisionEngine;
   readonly telemetry?: TelemetrySink;
+  /** RFX-125: `POST /v1/overrides`. Absent, the route does not exist. */
+  readonly overrides?: OverrideStore;
   readonly rateLimiter: RateLimiter;
   readonly idempotency: IdempotencyStore;
   readonly maxBodyBytes: number;
@@ -48,6 +52,7 @@ export type GatewayHandler = (
 
 const REQUEST_ID = /^[A-Za-z0-9._:-]{1,128}$/;
 const DECISIONS = "/v1/decisions";
+const OVERRIDES = "/v1/overrides";
 const HEALTH = "/v1/health";
 
 function requestIdOf(request: IncomingMessage): string {
@@ -159,11 +164,16 @@ export function createGatewayHandler(
     });
   };
 
-  async function decide(
+  /**
+   * Steps 1 to 4 of every POST: the rate limit, the media type, the size,
+   * the body as JSON. `undefined` means the request was already answered
+   * (or nobody is listening any more).
+   */
+  async function readJson(
     request: IncomingMessage,
     response: ServerResponse,
     requestId: string,
-  ): Promise<void> {
+  ): Promise<{ readonly json: unknown } | undefined> {
     const verdict = options.rateLimiter.take(
       options.callerOf(request),
       options.monotonic(),
@@ -175,11 +185,11 @@ export function createGatewayHandler(
         requestId,
         PROBLEMS.rateLimited(verdict.retryAfterSeconds),
       );
-      return;
+      return undefined;
     }
     if (!isJson(request)) {
       reject(request, response, requestId, PROBLEMS.unsupportedMediaType());
-      return;
+      return undefined;
     }
     const declared = declaredLength(request);
     if (declared !== undefined && declared > options.maxBodyBytes) {
@@ -189,7 +199,7 @@ export function createGatewayHandler(
         requestId,
         PROBLEMS.payloadTooLarge(options.maxBodyBytes),
       );
-      return;
+      return undefined;
     }
 
     const body = await readBody(request, options.maxBodyBytes);
@@ -203,16 +213,73 @@ export function createGatewayHandler(
         );
       }
       // Aborted: nobody is listening. Nothing to answer, nothing to decide.
-      return;
+      return undefined;
     }
 
-    let json: unknown;
     try {
-      json = JSON.parse(body.text);
+      return { json: JSON.parse(body.text) as unknown };
     } catch {
       reject(request, response, requestId, PROBLEMS.notJson());
+      return undefined;
+    }
+  }
+
+  /**
+   * RFX-125 — `POST /v1/overrides`, `{ decisionId }`. A human's yes to one
+   * denied decision: a one-shot grant for that very action, or a typed
+   * refusal. The route is reached the way a human reaches it, `rfx
+   * override`, which REFLEX's own rule keeps out of the agent's hands.
+   */
+  async function override(
+    request: IncomingMessage,
+    response: ServerResponse,
+    requestId: string,
+    store: OverrideStore,
+  ): Promise<void> {
+    const read = await readJson(request, response, requestId);
+    if (read === undefined) {
       return;
     }
+    const body = read.json;
+    const decisionId =
+      typeof body === "object" && body !== null && "decisionId" in body
+        ? body.decisionId
+        : undefined;
+    if (!isOpaqueId("dec", decisionId)) {
+      reject(request, response, requestId, PROBLEMS.notAnOverride());
+      return;
+    }
+    const result = store.grant(decisionId, options.monotonic());
+    if (!result.ok) {
+      reject(
+        request,
+        response,
+        requestId,
+        PROBLEMS.overrideRefused(result.reason),
+      );
+      return;
+    }
+    const at = options.clock();
+    send(response, 200, requestId, {
+      decisionId,
+      oneShot: true,
+      expiresAt: new Date(
+        at.getTime() + (result.grant.expiresAt - result.grant.grantedAt),
+      ).toISOString(),
+    });
+    emit(overrideEventOf(decisionId, at.toISOString(), requestId));
+  }
+
+  async function decide(
+    request: IncomingMessage,
+    response: ServerResponse,
+    requestId: string,
+  ): Promise<void> {
+    const read = await readJson(request, response, requestId);
+    if (read === undefined) {
+      return;
+    }
+    const json = read.json;
     const parsed = parseDecisionRequest(json);
     if (!parsed.ok) {
       reject(
@@ -286,6 +353,19 @@ export function createGatewayHandler(
       }
       send(response, 200, requestId, { status: "ok", ...options.health() });
       request.resume();
+      return;
+    }
+    const store = options.overrides;
+    if (path === OVERRIDES && store !== undefined) {
+      if (request.method !== "POST") {
+        reject(request, response, requestId, PROBLEMS.methodNotAllowed());
+        return;
+      }
+      override(request, response, requestId, store).catch(() => {
+        if (!response.headersSent) {
+          reject(request, response, requestId, PROBLEMS.internal());
+        }
+      });
       return;
     }
     if (path !== DECISIONS) {

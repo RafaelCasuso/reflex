@@ -47,7 +47,30 @@ then reports. Nothing in the gateway reads inside an action.
 Every rejection is `{ error: { code, message, issues? }, requestId }` with a
 closed `code`: `invalid-request`, `payload-too-large`, `rate-limited`,
 `idempotency-conflict`, `unsupported-media-type`, `not-found`,
-`method-not-allowed`, `internal-error`. There is no stack trace on the wire.
+`method-not-allowed`, `internal-error`, `override-refused`. There is no
+stack trace on the wire.
+
+**`POST /v1/overrides` (RFX-125)**, body `{ "decisionId": "dec_…" }`, steps
+1 to 4 as above. A human's yes to one denied decision: the daemon remembers
+every decision it made for thirty minutes, by the action's keyed fingerprint
+(ADR-006), and turns a `deny` that was enforced (`effectiveEffect: deny`,
+which only Autopilot produces) into a one-shot grant for that very action,
+valid ten minutes: `200 { decisionId, oneShot: true, expiresAt }`, and an
+`override` telemetry event. The next decision on the same fingerprint is
+`allow` with `human_override` (and the class reason), confidence 1, never
+cached, the deny rule still in `policyMatches`, and its record carries a
+`human` label; after that, the action is decided as before. The grant is
+checked before the cache, so a cached deny cannot outlive it, and the allow
+it produces is not cached. Refusals are `override-refused`: `404` when the
+decision is unknown here (another daemon, or older than the window), `409`
+when it did not deny or the override is already waiting, `403` when a
+matched deny is mandatory. A mandatory deny is refused by the store and,
+should a grant exist for its fingerprint anyway, ignored by the engine: two
+locks. The route exists only when the daemon was given a store, which
+`main.ts` always does; `rfx override <decisionId>` reaches it, and REFLEX's
+own rule keeps that command out of the agent's hands (RFX-103). Health
+reports `overrides: { granted, consumed, refused, pending }` since start, the
+numerator of the human override rate.
 
 ## 3. The daemon
 

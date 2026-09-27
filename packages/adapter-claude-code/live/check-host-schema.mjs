@@ -48,16 +48,33 @@ function declarationsOfRelease(spec) {
   try {
     const out = execFileSync(
       "npm",
-      ["pack", `${PACKAGE}@${spec}`, "--ignore-scripts", "--pack-destination", scratch, "--json"],
+      [
+        "pack",
+        `${PACKAGE}@${spec}`,
+        "--ignore-scripts",
+        "--pack-destination",
+        scratch,
+        "--json",
+      ],
       { encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] },
     );
     const [packed] = JSON.parse(out);
     if (packed === undefined) {
       throw new Error("npm pack returned nothing");
     }
-    execFileSync("tar", ["-xzf", join(scratch, packed.filename), "-C", scratch, `package/${DECLARATIONS}`], {
-      stdio: ["ignore", "ignore", "pipe"],
-    });
+    execFileSync(
+      "tar",
+      [
+        "-xzf",
+        join(scratch, packed.filename),
+        "-C",
+        scratch,
+        `package/${DECLARATIONS}`,
+      ],
+      {
+        stdio: ["ignore", "ignore", "pipe"],
+      },
+    );
     return {
       version: packed.version,
       text: readFileSync(join(scratch, "package", DECLARATIONS), "utf8"),
@@ -70,7 +87,9 @@ function declarationsOfRelease(spec) {
 function declarationsInstalled() {
   const root = execFileSync("npm", ["root", "-g"], { encoding: "utf8" }).trim();
   const directory = join(root, ...PACKAGE.split("/"));
-  const manifest = JSON.parse(readFileSync(join(directory, "package.json"), "utf8"));
+  const manifest = JSON.parse(
+    readFileSync(join(directory, "package.json"), "utf8"),
+  );
   return {
     version: manifest.version,
     text: readFileSync(join(directory, DECLARATIONS), "utf8"),
@@ -86,7 +105,13 @@ function recordedFixtures() {
         typeof payload.tool_input === "object" &&
         payload.tool_input !== null &&
         payload.mcp_server === undefined
-        ? [{ name: file, toolName: payload.tool_name, toolInput: payload.tool_input }]
+        ? [
+            {
+              name: file,
+              toolName: payload.tool_name,
+              toolInput: payload.tool_input,
+            },
+          ]
         : [];
     });
 }
@@ -118,7 +143,9 @@ async function main(argv) {
         return usage();
     }
   } catch (error) {
-    process.stderr.write(`could not read the declarations: ${error instanceof Error ? error.message : String(error)}\n`);
+    process.stderr.write(
+      `could not read the declarations: ${error instanceof Error ? error.message : String(error)}\n`,
+    );
     return 2;
   }
   if (!existsSync(MODULE)) {
@@ -126,7 +153,9 @@ async function main(argv) {
     return 2;
   }
   const { compareHostSchema } = await import(MODULE);
-  const report = compareHostSchema(source.text, { fixtures: recordedFixtures() });
+  const report = compareHostSchema(source.text, {
+    fixtures: recordedFixtures(),
+  });
   process.stdout.write(
     `${JSON.stringify({ package: PACKAGE, version: source.version, ...report }, null, 2)}\n`,
   );

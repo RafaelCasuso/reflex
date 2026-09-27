@@ -141,6 +141,30 @@ given a remote provider, refuses to start without the covering record
 commands REFLEX's own rule asks a human about (RFX-103), so the agent cannot
 give consent for you. Held end to end in `bin.e2e.test.ts`.
 
+## 2d. The way out of a deny (RFX-125)
+
+In Autopilot a `deny` blocks the call, and the reason line the host shows
+ends with the way out:
+
+```
+REFLEX: denied by rule deny-rm (destructive). To let it through once, a human runs: rfx override dec_3f9c…
+```
+
+`rfx override <decisionId>`, in a terminal, asks the daemon for a one-shot
+grant for that very action (`docs/decision-gateway.md` §2). When the agent
+retries the same command, the hook answers `allow` with
+`REFLEX: allowed by human override (destructive)`; the decision carries
+`human_override`, is recorded as the human's, and feeds the human override
+rate. Anything else, and the same command a second time, is decided as
+before. A mandatory deny is not overridable this way, and the command says
+so: the policy that makes it mandatory has to change, with whoever owns it.
+The agent cannot run `rfx override` for you: it is one of the commands
+REFLEX's own rule asks a human about first (RFX-103). If the daemon does not
+remember the decision (it restarted, or the deny is older than thirty
+minutes), let the agent try again and override the new id. Held end to end
+in `bin.e2e.test.ts`: deny, override, allow once, deny again; twice, unknown
+and malformed ids refused.
+
 ## 3. What the host does when the hook fails (RFX-087)
 
 **Status: verified against a live host.** Claude Code 2.1.276, headless

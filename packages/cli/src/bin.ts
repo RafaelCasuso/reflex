@@ -22,6 +22,8 @@ const USAGE = `rfx — REFLEX, the autonomy control layer for AI agents
   rfx provider [none|jev|local] [--model <id>] [--endpoint <url>] [--consent]
       Show or choose what assesses the actions policy leaves open. A remote
       provider shows what leaves this machine and asks for your consent first.
+  rfx override <decisionId>
+      Let one denied action through, once: the id is in the deny's reason line.
   rfx status
       What REFLEX has observed and decided in this project. Local, offline.
   rfx uninstall [--yes] [--purge]
@@ -363,6 +365,43 @@ async function main(): Promise<number> {
         }
       }
       return 0;
+    }
+
+    case "override": {
+      // RFX-125: a human's yes to one denied decision, from a terminal. When
+      // the agent runs this through a tool, REFLEX's own rule asks first.
+      const { isOpaqueId } = await import("@reflex/contracts");
+      if (!isOpaqueId("dec", argument)) {
+        write(
+          'Give the decision id from the deny\'s reason line: "rfx override dec_...".\n',
+        );
+        return 2;
+      }
+      const { REFUSAL_HINTS, overrideDecision } =
+        await import("./commands/override.js");
+      const { reflexHome } = await import("./state.js");
+      const outcome = await overrideDecision(argument, {
+        home: reflexHome(env),
+        nodePath: env.nodePath,
+      });
+      if (outcome.kind === "granted") {
+        write(
+          `Override recorded for ${argument}. The same action is allowed once if the agent tries it again before ${outcome.expiresAt}; anything else stays as decided.\n`,
+        );
+        return 0;
+      }
+      if (outcome.kind === "refused") {
+        write(
+          `Not overridden: ${outcome.message}.\n${REFUSAL_HINTS[outcome.status] ?? ""}\n`,
+        );
+        return 1;
+      }
+      write(
+        outcome.kind === "unreachable"
+          ? "The local daemon could not be started or reached.\n"
+          : "The local daemon's answer could not be read.\n",
+      );
+      return 1;
     }
 
     case "status": {

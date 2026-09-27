@@ -8,6 +8,7 @@ import {
   type ReflexDecisionEngine,
   type SemanticStage,
   type ShadowObserver,
+  type OverrideStore,
 } from "@reflex/core";
 import {
   compilePolicySet,
@@ -120,6 +121,8 @@ export interface EngineBuildOptions {
   readonly onShadow?: ShadowObserver;
   /** RFX-143: what every decision was made of, for the record. */
   readonly onDecision?: DecisionObserver;
+  /** RFX-125: recent decisions and the human's one-shot grants. */
+  readonly overrides?: OverrideStore;
 }
 
 export const DEFAULT_DEADLINE = { defaultMs: 2_000, maxMs: 10_000 } as const;
@@ -136,5 +139,8 @@ export function buildEngine(options: EngineBuildOptions): ReflexDecisionEngine {
     ...(options.onDecision === undefined
       ? {}
       : { onDecision: options.onDecision }),
+    ...(options.overrides === undefined
+      ? {}
+      : { overrides: options.overrides }),
   });
 }

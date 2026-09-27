@@ -3,7 +3,7 @@ import { createServer, type Server } from "node:http";
 import { connect } from "node:net";
 import { dirname } from "node:path";
 
-import type { ReflexDecisionEngine } from "@reflex/core";
+import type { OverrideStore, ReflexDecisionEngine } from "@reflex/core";
 import type { TelemetrySink } from "@reflex/telemetry";
 
 import { createGatewayHandler } from "./http/handler.js";
@@ -54,6 +54,8 @@ export const DEFAULT_LIMITS: GatewayLimits = {
 export interface GatewayServerOptions {
   readonly engine: ReflexDecisionEngine;
   readonly telemetry?: TelemetrySink;
+  /** RFX-125: the same store the engine was given. */
+  readonly overrides?: OverrideStore;
   readonly limits?: Partial<GatewayLimits>;
   readonly idempotency?: IdempotencyOptions;
   readonly health?: () => Readonly<Record<string, unknown>>;
@@ -120,6 +122,9 @@ export function createGatewayServer(
     ...(options.telemetry === undefined
       ? {}
       : { telemetry: options.telemetry }),
+    ...(options.overrides === undefined
+      ? {}
+      : { overrides: options.overrides }),
     rateLimiter: new RateLimiter(limits.rate),
     idempotency: new IdempotencyStore(
       options.idempotency ?? DEFAULT_IDEMPOTENCY,

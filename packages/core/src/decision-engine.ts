@@ -41,6 +41,7 @@ import {
 } from "./fallback.js";
 import { decisionCacheKey, fingerprintAction } from "./fingerprint.js";
 import { effectiveEffectOf } from "./modes.js";
+import type { OverrideStore } from "./overrides.js";
 import { reasonForClass, riskOf } from "./risk.js";
 import type {
   DecisionObserver,
@@ -113,6 +114,11 @@ export interface DecisionEngineOptions {
    * nothing.
    */
   readonly onDecision?: DecisionObserver;
+  /**
+   * RFX-125: recent decisions by fingerprint and the human's one-shot grants.
+   * Absent means nothing can be overridden.
+   */
+  readonly overrides?: OverrideStore;
 }
 
 /** What a caller of the engine sees (moved here from the contracts, ADR-005). */
@@ -144,6 +150,11 @@ function newDecisionId(): DecisionId {
   return `dec_${randomBytes(16).toString("hex")}`;
 }
 
+/** RFX-125: a matched deny that is mandatory is never overridable. */
+function hasMandatoryDeny(matches: readonly PolicyMatch[]): boolean {
+  return matches.some((match) => match.effect === "deny" && match.mandatory);
+}
+
 function withClassReason(
   codes: readonly ReasonCode[],
   sideEffectClass: PolicyEvaluationResult["sideEffectClass"],
@@ -169,6 +180,8 @@ interface Verdict {
   readonly primary?: PrimaryEvaluation;
   readonly shadows?: readonly Promise<ShadowObservation>[];
   readonly resolvedByPolicy?: boolean;
+  /** RFX-125: a human's grant let a denied action through, once. */
+  readonly humanOverride?: boolean;
   /**
    * What the cache may keep: a pure function of the action and the policy
    * set (RFX-106), or a semantic decision of a repeatable class under the
@@ -208,6 +221,24 @@ export function createDecisionEngine(
   const nextId = options.newDecisionId ?? newDecisionId;
   const semantic = options.semantic;
   const cache = options.cache;
+  const overrides = options.overrides;
+
+  /** RFX-125: every decision can be pointed at by `rfx override`, for a while. */
+  const remember = (
+    decision: ReflexDecision,
+    print: string,
+    now: number,
+  ): void => {
+    overrides?.remember(
+      {
+        decisionId: decision.id,
+        fingerprint: print,
+        effectiveEffect: decision.effectiveEffect,
+        mandatoryDeny: hasMandatoryDeny(decision.policyMatches),
+      },
+      now,
+    );
+  };
   for (const shadow of semantic?.shadow ?? []) {
     if (!Number.isInteger(shadow.deadlineMs) || shadow.deadlineMs < 1) {
       throw new RangeError(
@@ -311,7 +342,7 @@ export function createDecisionEngine(
     decision: ReflexDecision,
     verdict: Pick<
       Verdict,
-      "request" | "primary" | "shadows" | "resolvedByPolicy"
+      "request" | "primary" | "shadows" | "resolvedByPolicy" | "humanOverride"
     >,
     more: readonly Promise<ShadowObservation>[] = [],
   ): void {
@@ -326,6 +357,7 @@ export function createDecisionEngine(
         ...(verdict.primary === undefined ? {} : { primary: verdict.primary }),
         shadows: [...(verdict.shadows ?? []), ...more],
         resolvedByPolicy: verdict.resolvedByPolicy === true,
+        humanOverride: verdict.humanOverride === true,
       });
     } catch {
       // An observer that throws is its own problem, never a decision's.
@@ -580,11 +612,29 @@ export function createDecisionEngine(
       const decisionId = nextId();
       const set = options.policy(request.action);
       const action = request.action;
+      const print = fingerprint(action);
+      const pathOptions = {
+        ...(options.paths?.home === undefined
+          ? {}
+          : { home: options.paths.home }),
+      };
+
+      // RFX-125: the human's one-shot grant for this very action, taken
+      // before the cache so that a cached deny cannot outlive the override.
+      // It is honored only when no mandatory deny matches: the store never
+      // issues such a grant, and the engine is the second lock.
+      const grant = overrides?.take(print, startedAt);
+      let evaluation: PolicyEvaluationResult | undefined;
+      let overridden = false;
+      if (grant !== undefined) {
+        evaluation = evaluatePolicy(set, action, pathOptions);
+        overridden = !hasMandatoryDeny(evaluation.evaluation.matches);
+      }
 
       let cacheKey: string | undefined;
       if (cache !== undefined) {
         cacheKey = decisionCacheKey({
-          fingerprint: fingerprint(action),
+          fingerprint: print,
           policySetHash: set.hash,
           ...(action.projectId === undefined
             ? {}
@@ -601,7 +651,7 @@ export function createDecisionEngine(
                   : { model: semantic.provider.model }),
               }),
         });
-        const hit = cache.get(cacheKey, startedAt);
+        const hit = overridden ? undefined : cache.get(cacheKey, startedAt);
         if (hit !== undefined) {
           // Served from the cache, nothing ran: no shadow runs either.
           const served = fromCache(
@@ -611,6 +661,7 @@ export function createDecisionEngine(
             startedAt,
             decisionId,
           );
+          remember(served, print, startedAt);
           setImmediate(() => {
             observeDecision(served, { shadows: [] });
           });
@@ -618,18 +669,20 @@ export function createDecisionEngine(
         }
       }
 
-      const evaluation = evaluatePolicy(set, action, {
-        ...(options.paths?.home === undefined
-          ? {}
-          : { home: options.paths.home }),
-      });
-      const verdict = await verdictOf(
-        request,
-        evaluation,
-        startedAt,
-        signal,
-        decisionId,
-      );
+      evaluation ??= evaluatePolicy(set, action, pathOptions);
+      const verdict: Verdict = overridden
+        ? {
+            effect: "allow",
+            risk: riskOf(evaluation.sideEffectClass),
+            confidence: 1,
+            reasonCodes: withClassReason(
+              ["human_override"],
+              evaluation.sideEffectClass,
+            ),
+            humanOverride: true,
+            cacheable: false,
+          }
+        : await verdictOf(request, evaluation, startedAt, signal, decisionId);
       const finishedAt = monotonic();
 
       // RFX-142: a shadow sampled on everything sees the actions policy
@@ -681,6 +734,8 @@ export function createDecisionEngine(
         latency,
         decidedAt: clock().toISOString(),
       };
+
+      remember(decision, print, startedAt);
 
       // After the answer: the shadows sampled on a resolved action, then the
       // record's observer with everything the decision was made of.
