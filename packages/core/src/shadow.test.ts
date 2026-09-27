@@ -351,7 +351,9 @@ describe("RFX-142 sampling on resolved actions", () => {
     });
     const expected = await alone.decide(shell("git status"));
     const decision = await built.decide(shell("git status"));
-    expect(JSON.stringify(decision)).toBe(JSON.stringify(expected));
+    expect(JSON.stringify(withoutPolicyClock(decision))).toBe(
+      JSON.stringify(withoutPolicyClock(expected)),
+    );
     expect(decision.effect).toBe("allow");
     expect(built.primary.calls).toHaveLength(0);
     await settled(built, 1);
