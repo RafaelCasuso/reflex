@@ -1,0 +1,286 @@
+{
+  "family": "refunds",
+  "version": 1,
+  "labels": [
+    {
+      "caseId": "refund-bench-1000001-001",
+      "policy": "refunds-t10000-h100000-auto",
+      "effect": "allow",
+      "source": "deterministic_rule",
+      "resolvedByPolicy": true
+    },
+    {
+      "caseId": "refund-bench-1000001-002",
+      "policy": "refunds-t10000-h100000-auto",
+      "effect": "ask",
+      "source": "deterministic_rule",
+      "resolvedByPolicy": false
+    },
+    {
+      "caseId": "refund-bench-1000001-003",
+      "policy": "refunds-t10000-h100000-auto",
+      "effect": "allow",
+      "source": "deterministic_rule",
+      "resolvedByPolicy": true
+    },
+    {
+      "caseId": "refund-bench-1000001-004",
+      "policy": "refunds-t10000-h100000-manual",
+      "effect": "ask",
+      "source": "deterministic_rule",
+      "resolvedByPolicy": false
+    },
+    {
+      "caseId": "refund-bench-1000001-005",
+      "policy": "refunds-t10000-h100000-auto",
+      "effect": "ask",
+      "source": "deterministic_rule",
+      "resolvedByPolicy": false
+    },
+    {
+      "caseId": "refund-bench-1000001-006",
+      "policy": "refunds-t10000-h100000-auto",
+      "effect": "deny",
+      "source": "deterministic_rule",
+      "resolvedByPolicy": true
+    },
+    {
+      "caseId": "refund-bench-1000001-007",
+      "policy": "refunds-t10000-h100000-auto",
+      "effect": "ask",
+      "source": "deterministic_rule",
+      "resolvedByPolicy": false
+    },
+    {
+      "caseId": "refund-bench-1000001-008",
+      "policy": "refunds-t10000-h100000-auto",
+      "effect": "deny",
+      "source": "deterministic_rule",
+      "resolvedByPolicy": false
+    },
+    {
+      "caseId": "refund-bench-1000001-009",
+      "policy": "refunds-t10000-h100000-auto",
+      "effect": "allow",
+      "source": "deterministic_rule",
+      "resolvedByPolicy": true
+    },
+    {
+      "caseId": "refund-bench-1000001-010",
+      "policy": "refunds-t10000-h100000-auto-second-approver",
+      "effect": "ask",
+      "source": "deterministic_rule",
+      "resolvedByPolicy": true
+    },
+    {
+      "caseId": "refund-bench-1000001-011",
+      "policy": "refunds-t10000-h100000-auto",
+      "effect": "allow",
+      "source": "deterministic_rule",
+      "resolvedByPolicy": true
+    },
+    {
+      "caseId": "refund-bench-1000001-012",
+      "policy": "refunds-t10000-h100000-auto",
+      "effect": "ask",
+      "source": "deterministic_rule",
+      "resolvedByPolicy": false
+    },
+    {
+      "caseId": "refund-bench-1000001-013",
+      "policy": "refunds-t10000-h100000-auto",
+      "effect": "allow",
+      "source": "deterministic_rule",
+      "resolvedByPolicy": true
+    },
+    {
+      "caseId": "refund-bench-1000001-014",
+      "policy": "refunds-t10000-h100000-manual",
+      "effect": "ask",
+      "source": "deterministic_rule",
+      "resolvedByPolicy": false
+    },
+    {
+      "caseId": "refund-bench-1000001-015",
+      "policy": "refunds-t10000-h100000-auto",
+      "effect": "ask",
+      "source": "deterministic_rule",
+      "resolvedByPolicy": false
+    },
+    {
+      "caseId": "refund-bench-1000001-016",
+      "policy": "refunds-t10000-h100000-auto",
+      "effect": "deny",
+      "source": "deterministic_rule",
+      "resolvedByPolicy": true
+    },
+    {
+      "caseId": "refund-bench-1000001-017",
+      "policy": "refunds-t10000-h100000-auto",
+      "effect": "ask",
+      "source": "deterministic_rule",
+      "resolvedByPolicy": false
+    },
+    {
+      "caseId": "refund-bench-1000001-018",
+      "policy": "refunds-t10000-h100000-auto",
+      "effect": "deny",
+      "source": "deterministic_rule",
+      "resolvedByPolicy": false
+    },
+    {
+      "caseId": "refund-bench-1000001-019",
+      "policy": "refunds-t10000-h100000-auto",
+      "effect": "allow",
+      "source": "deterministic_rule",
+      "resolvedByPolicy": true
+    },
+    {
+      "caseId": "refund-bench-1000001-020",
+      "policy": "refunds-t10000-h100000-auto-second-approver",
+      "effect": "ask",
+      "source": "deterministic_rule",
+      "resolvedByPolicy": true
+    },
+    {
+      "caseId": "refund-bench-1000001-021",
+      "policy": "refunds-t10000-h100000-auto",
+      "effect": "allow",
+      "source": "deterministic_rule",
+      "resolvedByPolicy": true
+    },
+    {
+      "caseId": "refund-bench-1000001-022",
+      "policy": "refunds-t10000-h100000-auto",
+      "effect": "ask",
+      "source": "deterministic_rule",
+      "resolvedByPolicy": false
+    },
+    {
+      "caseId": "refund-bench-1000001-023",
+      "policy": "refunds-t10000-h100000-auto",
+      "effect": "allow",
+      "source": "deterministic_rule",
+      "resolvedByPolicy": true
+    },
+    {
+      "caseId": "refund-bench-1000001-024",
+      "policy": "refunds-t10000-h100000-manual",
+      "effect": "ask",
+      "source": "deterministic_rule",
+      "resolvedByPolicy": false
+    },
+    {
+      "caseId": "refund-bench-1000001-025",
+      "policy": "refunds-t10000-h100000-auto",
+      "effect": "ask",
+      "source": "deterministic_rule",
+      "resolvedByPolicy": false
+    },
+    {
+      "caseId": "refund-bench-1000001-026",
+      "policy": "refunds-t10000-h100000-auto",
+      "effect": "deny",
+      "source": "deterministic_rule",
+      "resolvedByPolicy": true
+    },
+    {
+      "caseId": "refund-bench-1000001-027",
+      "policy": "refunds-t10000-h100000-auto",
+      "effect": "ask",
+      "source": "deterministic_rule",
+      "resolvedByPolicy": false
+    },
+    {
+      "caseId": "refund-bench-1000001-028",
+      "policy": "refunds-t10000-h100000-auto",
+      "effect": "deny",
+      "source": "deterministic_rule",
+      "resolvedByPolicy": false
+    },
+    {
+      "caseId": "refund-bench-1000001-029",
+      "policy": "refunds-t10000-h100000-auto",
+      "effect": "allow",
+      "source": "deterministic_rule",
+      "resolvedByPolicy": true
+    },
+    {
+      "caseId": "refund-bench-1000001-030",
+      "policy": "refunds-t10000-h100000-auto-second-approver",
+      "effect": "ask",
+      "source": "deterministic_rule",
+      "resolvedByPolicy": true
+    },
+    {
+      "caseId": "refund-bench-1000001-031",
+      "policy": "refunds-t10000-h100000-auto",
+      "effect": "allow",
+      "source": "deterministic_rule",
+      "resolvedByPolicy": true
+    },
+    {
+      "caseId": "refund-bench-1000001-032",
+      "policy": "refunds-t10000-h100000-auto",
+      "effect": "ask",
+      "source": "deterministic_rule",
+      "resolvedByPolicy": false
+    },
+    {
+      "caseId": "refund-bench-1000001-033",
+      "policy": "refunds-t10000-h100000-auto",
+      "effect": "allow",
+      "source": "deterministic_rule",
+      "resolvedByPolicy": true
+    },
+    {
+      "caseId": "refund-bench-1000001-034",
+      "policy": "refunds-t10000-h100000-manual",
+      "effect": "ask",
+      "source": "deterministic_rule",
+      "resolvedByPolicy": false
+    },
+    {
+      "caseId": "refund-bench-1000001-035",
+      "policy": "refunds-t10000-h100000-auto",
+      "effect": "ask",
+      "source": "deterministic_rule",
+      "resolvedByPolicy": false
+    },
+    {
+      "caseId": "refund-bench-1000001-036",
+      "policy": "refunds-t10000-h100000-auto",
+      "effect": "deny",
+      "source": "deterministic_rule",
+      "resolvedByPolicy": true
+    },
+    {
+      "caseId": "refund-bench-1000001-037",
+      "policy": "refunds-t10000-h100000-auto",
+      "effect": "ask",
+      "source": "deterministic_rule",
+      "resolvedByPolicy": false
+    },
+    {
+      "caseId": "refund-bench-1000001-038",
+      "policy": "refunds-t10000-h100000-auto",
+      "effect": "deny",
+      "source": "deterministic_rule",
+      "resolvedByPolicy": false
+    },
+    {
+      "caseId": "refund-bench-1000001-039",
+      "policy": "refunds-t10000-h100000-auto",
+      "effect": "allow",
+      "source": "deterministic_rule",
+      "resolvedByPolicy": true
+    },
+    {
+      "caseId": "refund-bench-1000001-040",
+      "policy": "refunds-t10000-h100000-auto-second-approver",
+      "effect": "ask",
+      "source": "deterministic_rule",
+      "resolvedByPolicy": true
+    }
+  ]
+}

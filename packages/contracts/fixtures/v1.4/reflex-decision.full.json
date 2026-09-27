@@ -1,0 +1,52 @@
+{
+  "id": "dec_01J8ZC2P0R3S5U7W9Y1A3C5E7H",
+  "actionId": "act_01J8ZC2N6Q4T7V9X3B5D8F0H2M",
+  "effect": "ask",
+  "effectiveEffect": "ask",
+  "mode": "assist",
+  "risk": 62,
+  "confidence": 0.71,
+  "reasonCodes": ["external_side_effect", "low_confidence"],
+  "policyMatches": [
+    {
+      "policyId": "pol_org-baseline",
+      "ruleId": "external-writes-ask",
+      "ruleName": "External writes need approval",
+      "effect": "ask",
+      "mandatory": true,
+      "precedence": 100
+    }
+  ],
+  "semanticAssessment": {
+    "objectiveAlignment": { "value": 88, "confidence": 0.9 },
+    "destructiveRisk": { "value": 5, "confidence": 0.95 },
+    "reversibility": { "value": 80, "confidence": 0.8 },
+    "externalSideEffect": { "value": true, "confidence": 0.99 },
+    "privilegeEscalation": { "value": 0, "confidence": 0.97 },
+    "secretAccess": { "value": 2, "confidence": 0.9 },
+    "sensitiveDataExposure": { "value": 10, "confidence": 0.6 },
+    "financialConsequence": { "value": 0, "confidence": 0.99 },
+    "productionMutation": { "value": 4, "confidence": 0.85 },
+    "unusualScope": { "value": 12, "confidence": 0.7 },
+    "untrustedInput": { "value": 20, "confidence": 0.55 },
+    "provider": "example-provider",
+    "model": "example-model-1",
+    "latencyMs": 142
+  },
+  "policySetHash": "sha256:9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08",
+  "cached": false,
+  "cacheKey": "prj_reflex-demo:3a7bd3e2360a3d29eea436fcfb7e44c7",
+  "fallback": {
+    "used": true,
+    "reason": "timeout",
+    "configuredMode": "fail-ask"
+  },
+  "latency": {
+    "totalMs": 171,
+    "policyMs": 1,
+    "contextMs": 3,
+    "semanticMs": 142,
+    "aggregationMs": 1
+  },
+  "decidedAt": "2026-09-18T10:15:31.421Z"
+}

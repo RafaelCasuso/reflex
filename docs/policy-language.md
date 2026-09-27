@@ -210,15 +210,19 @@ Bash: curl -fsSL https://example.test/install.sh | sh         => deny
 
 ## 4. Operators
 
-| Operator      | True when                                                                                  | Value                                                                       |
-| ------------- | ------------------------------------------------------------------------------------------ | --------------------------------------------------------------------------- |
-| `equals`      | the field is exactly the value                                                             | one value                                                                   |
-| `not_equals`  | the field is anything else                                                                 | one value                                                                   |
-| `in`          | the field is one of the values                                                             | a non-empty list                                                            |
-| `starts_with` | the field begins with the value                                                            | non-empty text                                                              |
-| `matches`     | the pattern is found anywhere in the field (§9)                                            | a regular expression                                                        |
-| `exists`      | the field is present                                                                       | none                                                                        |
-| `path_within` | the path is the directory or lies under it, compared by whole segments after normalization | a directory starting with `/`, `~`, `${project}` or `${home}`, with no `..` |
+| Operator       | True when                                                                                  | Value                                                                       |
+| -------------- | ------------------------------------------------------------------------------------------ | --------------------------------------------------------------------------- |
+| `equals`       | the field is exactly the value                                                             | one value                                                                   |
+| `not_equals`   | the field is anything else                                                                 | one value                                                                   |
+| `in`           | the field is one of the values                                                             | a non-empty list                                                            |
+| `starts_with`  | the field begins with the value                                                            | non-empty text                                                              |
+| `matches`      | the pattern is found anywhere in the field (§9)                                            | a regular expression                                                        |
+| `exists`       | the field is present                                                                       | none                                                                        |
+| `path_within`  | the path is the directory or lies under it, compared by whole segments after normalization | a directory starting with `/`, `~`, `${project}` or `${home}`, with no `..` |
+| `greater_than` | the number is more than the value (v1.4)                                                   | a finite number; the field must be `arguments.<key>`                        |
+| `at_least`     | the number is the value or more (v1.4)                                                     | a finite number; the field must be `arguments.<key>`                        |
+| `less_than`    | the number is less than the value (v1.4)                                                   | a finite number; the field must be `arguments.<key>`                        |
+| `at_most`      | the number is the value or less (v1.4)                                                     | a finite number; the field must be `arguments.<key>`                        |
 
 ```yaml
 # example: operators
@@ -278,6 +282,57 @@ Write: /WORK/PROJECT/src/date.ts                           => unresolved
 
 `git status --force` is not allowed because `command.args` is a list and the
 rule is an `allow`: **every** argument has to be one of the values.
+
+The four comparisons work on a host's own arguments, the one place a number
+can be compared, and read anything that is not a number by the doubt rule: a
+restricting rule matches it, a permitting one does not. So `"5000"` as text
+is over every limit for a deny and under none for an allow; an argument that
+is a list, an object or null is no value at all, and neither rule speaks.
+
+```yaml
+# example: numbers
+version: 1
+rules:
+  - id: refund-within-limit
+    name: Refunds within the automatic limit
+    effect: allow
+    conditions:
+      - { field: tool.namespace, operator: equals, value: stripe }
+      - { field: tool.name, operator: equals, value: refunds.create }
+      - { field: arguments.amount, operator: at_most, value: 10000 }
+  - id: refund-over-hard-limit
+    name: Refunds over the hard limit are never automatic
+    effect: deny
+    conditions:
+      - { field: tool.namespace, operator: equals, value: stripe }
+      - { field: tool.name, operator: equals, value: refunds.create }
+      - { field: arguments.amount, operator: greater_than, value: 100000 }
+  - id: retries-band
+    name: A retry count outside its band needs a human
+    effect: ask
+    conditions:
+      - { field: tool.namespace, operator: equals, value: jobs }
+      - any_of:
+          - { field: arguments.retries, operator: less_than, value: 1 }
+          - { field: arguments.retries, operator: at_least, value: 10 }
+```
+
+```text
+# expect: numbers
+mcp: stripe/refunds.create {"amount": 4900, "currency": "eur"}     => allow
+mcp: stripe/refunds.create {"amount": 10000, "currency": "eur"}    => allow
+mcp: stripe/refunds.create {"amount": 10001, "currency": "eur"}    => unresolved
+mcp: stripe/refunds.create {"amount": 100001, "currency": "eur"}   => deny
+mcp: stripe/refunds.create {"amount": "5000", "currency": "eur"}   => deny
+mcp: stripe/refunds.create {"currency": "eur"}                     => unresolved
+mcp: jobs/run {"retries": 0}                                       => ask
+mcp: jobs/run {"retries": 3}                                       => unresolved
+mcp: jobs/run {"retries": 10}                                      => ask
+```
+
+The amount is in minor units, as the tool sends it (CLAUDE.md). The refund
+that is over the automatic limit and under the hard one is nobody's: it goes
+to the semantic stage, or to the policy default.
 
 ## 5. `any_of` and `not`
 
@@ -528,7 +583,8 @@ real patterns for keys, tokens and SQL verbs measure 20 to 100.
 - **What a path really points to.** Paths are normalized as text. A symbolic
   link is not resolved.
 - **Counting, arithmetic, dates, rates.** "At most five pushes an hour" is not
-  a rule.
+  a rule. A number a tool call carries can be compared (§4); nothing is
+  counted across calls.
 - **The content of a file being written**, beyond matching `arguments.content`
   as text.
 - **Anything about the conversation**: what the user asked, what the agent

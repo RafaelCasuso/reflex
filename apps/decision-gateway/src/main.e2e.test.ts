@@ -7,7 +7,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { parseDecisionRecord } from "@reflex/contracts";
+import { CONTRACT_VERSION, parseDecisionRecord } from "@reflex/contracts";
 import { afterEach, beforeAll, describe, expect, it } from "vitest";
 
 import {
@@ -422,7 +422,7 @@ describe("RFX-141 the daemon with a semantic provider", () => {
       );
       expect(first).toMatchObject({
         actionId: "act_00000000000000000000000000000001",
-        contractVersion: "1.3",
+        contractVersion: `${String(CONTRACT_VERSION.major)}.${String(CONTRACT_VERSION.minor)}`,
         decision: { effect: (assessed.json as { effect: string }).effect },
         labels: [],
       });

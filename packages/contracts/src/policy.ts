@@ -17,6 +17,16 @@ export const POLICY_OPERATORS = [
   "exists",
   /** v1.2 (RFX-097): the path is inside this directory, after normalization. */
   "path_within",
+  /**
+   * v1.4 (RFX-146): numeric comparisons, for a host's own arguments only,
+   * which are the one place a number can be compared. A value that is not a
+   * number is read by the doubt rule: a restricting rule matches, a
+   * permitting one does not.
+   */
+  "greater_than",
+  "at_least",
+  "less_than",
+  "at_most",
 ] as const;
 export type PolicyOperator = (typeof POLICY_OPERATORS)[number];
 

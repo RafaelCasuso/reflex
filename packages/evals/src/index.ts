@@ -66,3 +66,13 @@ export {
   type CalibrationReport,
   type DimensionReliability,
 } from "./calibration.js";
+export {
+  labelRefundBenchmark,
+  pairsThatDoNotFlip,
+  vectorProvider,
+  type BenchmarkLabel,
+  type CounterfactualPair,
+  type GeneratedRefundBenchmark,
+  type GeneratedRefundCase,
+  type LabelledRefundBenchmark,
+} from "./refund-benchmark.js";

@@ -566,6 +566,42 @@ function readCondition(
       return { field: field.name, operator, value };
     }
 
+    case "greater_than":
+    case "at_least":
+    case "less_than":
+    case "at_most": {
+      if (!entries.has("value")) {
+        parse.at("missing_key", path, node, `${operator} needs a number`);
+        return undefined;
+      }
+      if (!field.name.startsWith(RAW_ARGUMENTS_PREFIX)) {
+        parse.at(
+          "invalid_value",
+          `${path}.operator`,
+          operatorNode,
+          `${operator} compares numbers; ${field.name} is text, and only a host's own argument (arguments.<key>) holds a number`,
+        );
+        return undefined;
+      }
+      if (!parse.plain(valueNode, valuePath)) {
+        return undefined;
+      }
+      if (
+        !isScalar(valueNode) ||
+        typeof valueNode.value !== "number" ||
+        !Number.isFinite(valueNode.value)
+      ) {
+        parse.at(
+          "invalid_type",
+          valuePath,
+          valueNode,
+          `${operator} needs a finite number`,
+        );
+        return undefined;
+      }
+      return { field: field.name, operator, value: valueNode.value };
+    }
+
     case "starts_with":
     case "matches": {
       if (!entries.has("value")) {
@@ -601,6 +637,21 @@ function readCondition(
         }
       }
       return { field: field.name, operator, value };
+    }
+
+    default: {
+      // Unreachable by the types. At run time the operator list comes from
+      // the contracts, which may be newer than this engine: an operator this
+      // switch does not handle must fail the policy, never drop the
+      // condition, because a rule with one condition fewer matches more.
+      const unsupported: never = operator;
+      parse.at(
+        "unknown_operator",
+        `${path}.operator`,
+        operatorNode,
+        `operator ${String(unsupported)} is not supported by this engine`,
+      );
+      return undefined;
     }
   }
 }

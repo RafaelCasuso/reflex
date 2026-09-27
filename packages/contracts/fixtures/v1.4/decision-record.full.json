@@ -1,0 +1,162 @@
+{
+  "decisionId": "dec_01J8ZC2P0R3S5U7W9Y1A3C5E7H",
+  "actionId": "act_01J8ZC2N6Q4T7V9X3B5D8F0H2M",
+  "recordedAt": "2026-09-18T10:15:31.430Z",
+  "contractVersion": "1.4",
+  "request": {
+    "action": {
+      "userObjective": "Fix the failing date-formatting test and open a pull request.",
+      "taskSummary": "The agent is pushing the branch it fixed the test on.",
+      "tool": {
+        "name": "Bash"
+      },
+      "arguments": {
+        "command": "git push -u origin fix/date-format"
+      },
+      "sideEffectClass": "external-write",
+      "repository": {
+        "branch": "fix/date-format",
+        "remoteHost": "github.com"
+      }
+    },
+    "policyHints": [
+      "External writes need approval"
+    ],
+    "maxInputTokens": 600,
+    "deadlineMs": 1800
+  },
+  "evaluations": [
+    {
+      "provider": "example-provider",
+      "model": "example-model-1",
+      "role": "primary",
+      "latencyMs": 142,
+      "assessment": {
+        "objectiveAlignment": {
+          "value": 88,
+          "confidence": 0.9
+        },
+        "destructiveRisk": {
+          "value": 5,
+          "confidence": 0.95
+        },
+        "reversibility": {
+          "value": 80,
+          "confidence": 0.8
+        },
+        "externalSideEffect": {
+          "value": true,
+          "confidence": 0.99
+        },
+        "privilegeEscalation": {
+          "value": 0,
+          "confidence": 0.97
+        },
+        "secretAccess": {
+          "value": 2,
+          "confidence": 0.9
+        },
+        "sensitiveDataExposure": {
+          "value": 10,
+          "confidence": 0.6
+        },
+        "financialConsequence": {
+          "value": 0,
+          "confidence": 0.99
+        },
+        "productionMutation": {
+          "value": 4,
+          "confidence": 0.85
+        },
+        "unusualScope": {
+          "value": 12,
+          "confidence": 0.7
+        },
+        "untrustedInput": {
+          "value": 20,
+          "confidence": 0.55
+        },
+        "provider": "example-provider",
+        "latencyMs": 142,
+        "model": "example-model-1"
+      }
+    },
+    {
+      "provider": "local",
+      "model": "rdm-0.1.0",
+      "role": "shadow",
+      "sampledOn": "unresolved",
+      "latencyMs": 2000,
+      "error": {
+        "kind": "timeout",
+        "retryable": true
+      }
+    }
+  ],
+  "decision": {
+    "effect": "ask",
+    "effectiveEffect": "ask",
+    "mode": "assist",
+    "risk": 62,
+    "confidence": 0.71,
+    "reasonCodes": [
+      "external_side_effect",
+      "low_confidence"
+    ],
+    "policyMatches": [
+      {
+        "policyId": "pol_org-baseline",
+        "ruleId": "external-writes-ask",
+        "ruleName": "External writes need approval",
+        "effect": "ask",
+        "mandatory": true,
+        "precedence": 100
+      }
+    ],
+    "policySetHash": "sha256:9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08"
+  },
+  "labels": [
+    {
+      "kind": "effect",
+      "value": "ask",
+      "source": "deterministic_rule",
+      "at": "2026-09-18T10:15:31.430Z"
+    },
+    {
+      "kind": "effect",
+      "value": "allow",
+      "source": "human",
+      "at": "2026-09-18T10:16:02.000Z"
+    },
+    {
+      "kind": "dimension",
+      "dimension": "externalSideEffect",
+      "value": true,
+      "source": "llm_teacher",
+      "at": "2026-09-19T08:00:00.000Z"
+    },
+    {
+      "kind": "dimension",
+      "dimension": "destructiveRisk",
+      "value": 0,
+      "source": "llm_teacher",
+      "at": "2026-09-19T08:00:00.000Z"
+    }
+  ],
+  "outcome": {
+    "actionId": "act_01J8ZC2N6Q4T7V9X3B5D8F0H2M",
+    "prompted": "yes",
+    "humanResponse": "approved",
+    "executed": "yes",
+    "observedAt": "2026-09-18T10:16:02.000Z"
+  },
+  "feedback": [
+    {
+      "decisionId": "dec_01J8ZC2P0R3S5U7W9Y1A3C5E7H",
+      "value": "should-allow",
+      "actorId": "usr_reviewer",
+      "note": "Pushing a branch is routine here.",
+      "createdAt": "2026-09-18T11:00:00.000Z"
+    }
+  ]
+}

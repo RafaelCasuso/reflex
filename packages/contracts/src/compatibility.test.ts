@@ -239,6 +239,48 @@ describe("RFX-011 frozen fixtures are not edited", () => {
       "vocabulary.json":
         "e0470ec9d797f2f59d1d4eb3dbd1d90ca0b4468c0f209a2baa926fd422af680c",
     },
+    "v1.4": {
+      "action-outcome.blocked-by-host.json":
+        "b8eeb7e6f6fdad5d12dba1de4bfc48925ea5d5fb36dd5ba94761922a631c6faf",
+      "action-outcome.executed-without-prompt.json":
+        "2f180556d6e4b8af436cad974c8f050822012a0d28102a5fec8d5f03463f1b03",
+      "action-outcome.no-signal.json":
+        "890d1ef1d2e74c906ee27970813d1ff8bc4190b6d8b2e7e9d5898774000c7862",
+      "action-outcome.prompted-approved.json":
+        "59d73999ea1ed752709d572b98ba504388e1ba88bbd5ef24a7f56d831dd407f1",
+      "action-outcome.prompted-rejected.json":
+        "89bd7e8d9990ea802be02a4939ad65da9a32e9b815c7c718e658766550f74455",
+      "canonical-action.full.json":
+        "09fffb3d041294c4146df1ed0f66d97b7127303a840019f30ca672423b2ebba3",
+      "canonical-action.minimal.json":
+        "f2db44d14d19b90bd8f8ee20278c1fdf33aa47d9307662bdaa9c1647b0b4b3e8",
+      "canonical-action.operands-argv.json":
+        "3126914b06fe8f92cd1be2ff027e9df7cd548a739392be9f8000fce185995762",
+      "canonical-action.operands.json":
+        "aa704159bd41621233daab41dc5a693fc8558a7ded77b53b8379c13346814735",
+      "decision-feedback.full.json":
+        "47f4b241fbcfef750b407df12386f8b058d6fdec8d2150a94fb1e62a4f06514a",
+      "decision-feedback.minimal.json":
+        "90161dd81364a974b154c8adfc2ca190148c0ecc302ce940dc22868b1d583e95",
+      "decision-record.deterministic.json":
+        "b384452e5c306fea7de5c57807bea965e752466c57b9d9e5f31928675134cabc",
+      "decision-record.full.json":
+        "905aad46cdcc49817ffb8318ca5d62febec8a3fd64e37d7be712a2ab94f24091",
+      "decision-record.minimal.json":
+        "046eb78a2dfa22748f4dd378b63687cad4adbad98b204f8dbb2f5937895ba414",
+      "decision-request.full.json":
+        "5e4563884a0132b2c68dad92c6b716aab198a715d2084a0f1193229788dae28c",
+      "decision-request.minimal.json":
+        "ace2d9ca0ba8bc0b28bfc44d255d8d26b7e29a38c34623c5bf24a14563bdcfa3",
+      "reflex-decision.full.json":
+        "901e4c4da0f7d3bb31ffff22d262542d16ffd534521bb67a30b1dff6fa699afc",
+      "reflex-decision.minimal.json":
+        "0232b3f7fbb27cd6f491d58cd3a598b0824285a888fc9302050cddcf02c3d1c7",
+      "semantic-assessment.json":
+        "a832bca12b82a1c5c3a6d35d81bfc7aec0d1c708dbd6ba5f034fa84379e563f9",
+      "vocabulary.json":
+        "3cbc117e1268969856c90e8b135767a05f4ca4276001675433f6a617a7549577",
+    },
   };
 
   it("has a checksum entry for every released fixture set", () => {

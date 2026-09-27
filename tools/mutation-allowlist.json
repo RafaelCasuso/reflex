@@ -67,14 +67,14 @@
     {
       "package": "packages/policy-engine",
       "file": "src/matcher.ts",
-      "line": 88,
+      "line": 104,
       "operator": "or-to-and",
       "reason": "Equivalent within the contract: `path_within` is accepted by the parser on the `path` field only, whose values are always text, and its expected value is always text; the guard against a non-string on either side is defensive and cannot be reached through a compiled policy."
     },
     {
       "package": "packages/policy-engine",
       "file": "src/matcher.ts",
-      "line": 89,
+      "line": 105,
       "operator": "false-to-true",
       "reason": "Equivalent within the contract: the body of the guard at line 88, which cannot be reached through a compiled policy (`path_within` is accepted on the `path` field only, and both sides are always text)."
     },

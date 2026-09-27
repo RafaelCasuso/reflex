@@ -84,6 +84,22 @@ function compare(
       // loaded. If one is missing all the same, the doubt rule applies.
       return pattern === undefined ? kind === "restricts" : pattern.test(value);
     }
+    case "greater_than":
+    case "at_least":
+    case "less_than":
+    case "at_most": {
+      if (
+        typeof value !== "number" ||
+        !Number.isFinite(value) ||
+        typeof expected !== "number"
+      ) {
+        // A value that is not a number cannot be compared: "5000" as text,
+        // a boolean, a NaN. The doubt rule applies, as for a root that
+        // cannot be resolved: a restrict matches, a permit does not.
+        return kind === "restricts";
+      }
+      return compareNumbers(condition.operator, value, expected);
+    }
     case "path_within": {
       if (typeof value !== "string" || typeof expected !== "string") {
         return false;
@@ -94,6 +110,23 @@ function compare(
       }
       return isWithin(value, root, kind === "restricts");
     }
+  }
+}
+
+function compareNumbers(
+  operator: "greater_than" | "at_least" | "less_than" | "at_most",
+  value: number,
+  expected: number,
+): boolean {
+  switch (operator) {
+    case "greater_than":
+      return value > expected;
+    case "at_least":
+      return value >= expected;
+    case "less_than":
+      return value < expected;
+    case "at_most":
+      return value <= expected;
   }
 }
 

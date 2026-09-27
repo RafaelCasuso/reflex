@@ -10,6 +10,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 
 import {
+  CONTRACT_VERSION,
   parseDecisionRecord,
   type ActionOutcome,
   type DecisionFeedback,
@@ -113,7 +114,7 @@ describe("decisionRecordOf", () => {
     expect(record).toMatchObject({
       decisionId: decision.id,
       actionId: decision.actionId,
-      contractVersion: "1.3",
+      contractVersion: `${String(CONTRACT_VERSION.major)}.${String(CONTRACT_VERSION.minor)}`,
       request,
       decision: { effect: "allow", policySetHash: "sha256:abc" },
       labels: [],

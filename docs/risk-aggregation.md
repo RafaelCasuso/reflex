@@ -121,6 +121,12 @@ reads and local writes. What the adversary gets: an off-task read, allowed,
 because nothing but the model can see that it is off task. That is the
 honest limit of a wrong provider, and it is written into the test.
 
+A third corpus, `corpus/refunds/v1/` (RFX-146), is the refund benchmark of
+the Reflex Decision Model: generated cases whose labels are effects the real
+engine produced under the scenario's policy and this aggregator's default
+configuration, with counterfactual pairs that flip the effect on one
+variable. `packages/evals/corpus/README.md` says how it is made and remade.
+
 ## 4. Calibration (RFX-110)
 
 `calibrate(provider, cases)` runs a provider over every case with an

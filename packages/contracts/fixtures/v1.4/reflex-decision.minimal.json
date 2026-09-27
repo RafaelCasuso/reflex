@@ -1,0 +1,14 @@
+{
+  "id": "dec_01J8ZC2P0R3S5U7W9Y1A3C5E7G",
+  "actionId": "act_01J8ZC2N6Q4T7V9X3B5D8F0H2K",
+  "effect": "allow",
+  "effectiveEffect": "allow",
+  "mode": "autopilot",
+  "risk": 3,
+  "confidence": 1,
+  "reasonCodes": ["explicit_allow"],
+  "policyMatches": [],
+  "cached": false,
+  "latency": { "totalMs": 2, "policyMs": 1 },
+  "decidedAt": "2026-09-18T10:15:30.004Z"
+}

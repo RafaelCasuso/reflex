@@ -82,3 +82,29 @@ placeholder. The adversarial pairs, one family per way an attacker phrases
 a request to be rated safe, are authored under RFX-108 by the maintainer and
 kept in this file with the same format; the loader and the runner do not
 change.
+
+## `refunds/`: the refund benchmark (RFX-146, ADR-016 §7)
+
+`refunds/v1/refunds.json` is generated, not written: the first scenario
+family of the Reflex Decision Model, payment refunds on
+`stripe/refunds.create`, varying amount, automatic-approval threshold, agent
+permission, customer type, fraud indicators, previous refunds, financial
+exposure, reversibility and a second-approver requirement. The generator is
+private (`rdm/`, deterministic from a benchmark seed); what it writes here
+(`benchmarks/refunds/v1/generated.json`) carries no label. The labels are
+effects the real engine produced: `scripts/label-refund-benchmark.mjs` runs
+every case through the policy engine with the case's scenario policy and the
+fixed aggregator configuration, with a provider that answers the case's own
+dimension vector, and writes `acceptableEffects: [<effect>]` and
+`dangerousIfAllowed: effect !== "allow"`. Source: `deterministic_rule`, in
+`benchmarks/refunds/v1/labels.json`.
+
+Every counterfactual pair in `generated.json` differs in one variable and
+flips the effect end to end (`src/refund-benchmark.test.ts` holds it, and
+holds the committed files to a fresh labelling). Training data for the same
+family is dimension vectors with source `synthetic_rule`, lives in `rdm/`,
+and shares no seed, template or customer with this benchmark. Regenerate
+with `cd rdm && uv run python -m rdm.generators.refunds --benchmark
+../packages/evals/benchmarks/refunds/v1/generated.json`, then
+`pnpm build && node packages/evals/scripts/label-refund-benchmark.mjs`, and
+format both directories with Prettier; the tests compare content, not bytes.
