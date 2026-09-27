@@ -10,6 +10,10 @@
     ".": {
       "types": "./dist/index.d.ts",
       "default": "./dist/index.js"
+    },
+    "./hook": {
+      "types": "./dist/hook.d.ts",
+      "default": "./dist/hook.js"
     }
   },
   "files": [
@@ -22,6 +26,9 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "@reflex/contracts": "workspace:*"
+    "@reflex/contracts": "workspace:*",
+    "@reflex/telemetry": "workspace:*",
+    "jsonc-parser": "^3.3.1",
+    "smol-toml": "^1.9.0"
   }
 }
