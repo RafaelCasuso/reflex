@@ -85,9 +85,26 @@ The model is required and pinned; the endpoint defaults to port 8765 on
 the loopback. As a shadow: `--shadow-provider local --semantic-model
 <pin>`, and `--shadow-sample all` is accepted for it alone.
 
-## 4. What does not exist yet
+## 4. The server, and what does not exist yet
 
-No server. `rdm/inference` (ADR-016 §5) is the server RDM and Laya will
-load into, and RFX-147 measures Laya through it. The client is tested
-against a fake server on the loopback (`src/server.test.ts`) and the
-daemon end to end against another; both speak exactly what this page says.
+`rdm/inference` (ADR-016 §5, private) is the server: standard library
+only, loopback only, `POST /v1/assess` and `GET /v1/health`, a
+`Checkpoint` behind it that sees the request and returns the eleven
+dimensions. It checks the checkpoint's answer against the contract before
+sending it (a partial answer is a 500, never a partial assessment), reads a
+body that is not a request as 400 and assesses nothing, and writes nothing
+about a request anywhere.
+
+```
+cd rdm && uv run python -m rdm.inference --port 8765 --checkpoint constant
+```
+
+The one checkpoint today is `constant`: every dimension at a fixed level,
+for standing the pipeline up. RDM and Laya are checkpoints to add (RFX-147
+for Laya; training for RDM), and nothing in the server or the client
+changes for them. The client is tested against a fake server on the
+loopback (`src/server.test.ts`), the daemon end to end against another,
+the Python server against the wire with its own tests, and the two sides
+against each other by hand on 2026-09-27: the TypeScript client assessed
+through the Python server, and refused an answer in another checkpoint's
+name.

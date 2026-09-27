@@ -211,6 +211,7 @@ reflex/
 │   ├── rdm/dataset/         # label provenance sides and the split rule: benchmark and training share nothing
 │   ├── rdm/generators/      # scenario families; payment refunds first (RFX-146)
 │   ├── rdm/benchmark/       # run through packages/evals' runner against the real engine (RFX-146)
+│   ├── rdm/inference/       # the loopback server on the canonical contract; checkpoints behind it (RFX-147)
 │   └── tests/
 │
 ├── docs/
