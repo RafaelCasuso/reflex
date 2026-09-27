@@ -227,9 +227,27 @@ export function renderStatus(report: StatusReport, now: Date): string {
   }
   lines.push(
     "",
+    report.daemon.running
+      ? `Daemon       running, v${report.daemon.version ?? "?"}${report.daemon.pid === undefined ? "" : `, pid ${String(report.daemon.pid)}`}, up ${duration(report.daemon.uptimeMs ?? 0)}`
+      : "Daemon       not running (starts on the first decision it is asked for)",
     `Identity     ${report.identity?.agentId ?? "none"}  (local, anonymous)`,
     `Log          ${safe(report.logFile)}`,
     "",
   );
   return lines.join("\n");
+}
+
+function duration(ms: number): string {
+  const seconds = Math.round(ms / 1_000);
+  if (seconds < 90) {
+    return `${String(seconds)}s`;
+  }
+  const minutes = Math.round(seconds / 60);
+  if (minutes < 90) {
+    return `${String(minutes)}m`;
+  }
+  const hours = Math.round(minutes / 60);
+  return hours < 48
+    ? `${String(hours)}h`
+    : `${String(Math.round(hours / 24))}d`;
 }

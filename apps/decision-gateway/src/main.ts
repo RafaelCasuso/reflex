@@ -156,6 +156,9 @@ async function main(argv: readonly string[]): Promise<number> {
       : { limits: { rate: config.rateLimit } }),
     health: () => ({
       version: VERSION,
+      // RFX-138: the lifecycle stops the daemon it can see answering, never
+      // a process it merely remembers.
+      pid: process.pid,
       policySetHash: policies.state().current.hash,
       policyLoadedAt: policies.state().loadedAt ?? null,
       policyProblems: policies.state().lastProblems.length,

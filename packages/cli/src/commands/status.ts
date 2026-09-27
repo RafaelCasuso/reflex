@@ -11,6 +11,7 @@ import {
 } from "@reflex/telemetry";
 
 import type { FileSystemPort } from "../backups/file-system.js";
+import { daemonStatus, type DaemonStatus } from "../daemon/lifecycle.js";
 import {
   parseIdentity,
   parseRegistry,
@@ -66,6 +67,8 @@ export interface HookOverhead {
 export interface StatusReport {
   readonly mode: "observe";
   readonly identity: LocalIdentity | undefined;
+  /** RFX-138: whether the local decision daemon answers, and what it says. */
+  readonly daemon: DaemonStatus;
   readonly adapters: readonly AdapterStatus[];
   readonly lastAction: ObservedActionRecord | undefined;
   readonly summary: OutcomeSummary;
@@ -101,8 +104,10 @@ export function summarize(outcomes: readonly ActionOutcome[]): OutcomeSummary {
 export async function collectStatus(
   environment: Environment,
   fileSystem: FileSystemPort,
+  probe: (home: string) => Promise<DaemonStatus> = daemonStatus,
 ): Promise<StatusReport> {
   const paths = statePaths(reflexHome(environment));
+  const daemon = await probe(reflexHome(environment));
   const registry = parseRegistry(
     (await fileSystem.read(paths.installs))?.content.toString("utf8"),
   );
@@ -162,6 +167,7 @@ export async function collectStatus(
   return {
     mode: "observe",
     identity,
+    daemon,
     adapters,
     lastAction: actions.at(-1),
     summary: summarize(assembleOutcomes(records)),

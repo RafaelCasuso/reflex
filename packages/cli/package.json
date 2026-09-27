@@ -28,6 +28,7 @@
   "dependencies": {
     "@reflex/adapter-claude-code": "workspace:*",
     "@reflex/contracts": "workspace:*",
+    "@reflex/decision-gateway": "workspace:*",
     "@reflex/telemetry": "workspace:*"
   }
 }

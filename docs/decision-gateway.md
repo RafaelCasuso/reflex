@@ -128,7 +128,43 @@ turned away. Canary values for every item of the never-stored list (ADR-008
 §3) go through the whole pipeline in `src/telemetry.test.ts` and must not
 come out.
 
-Who starts the daemon, keeps one per user, upgrades and removes it is RFX-138.
+### The lifecycle (RFX-138)
+
+The CLI starts, finds, replaces and stops the daemon; the user never
+manages a process. `packages/cli/src/daemon/lifecycle.ts`:
+
+- **One daemon per user.** Its socket is `<REFLEX_HOME>/run/reflex.sock`
+  (directory `0700`, socket `0600`); `run/daemon.json` remembers the pid,
+  the version and when it started, advisory only; `run/daemon.log` holds
+  its stderr. Every project and host of the user shares it.
+- **Started once, however many hooks find it down at the same moment.**
+  `ensureDaemon` probes `GET /v1/health` over the socket with a hand-written
+  HTTP/1.1 client on `node:net` (the hook must not load `node:http`,
+  ADR-010). Down, it takes `run/start.lock` with `O_EXCL`; the holder spawns
+  `node <gateway>/dist/main.js --socket … --home … [--policy
+<home>/policy.yaml] [provider flags from <home>/config.json]`, detached,
+  and waits for the answer; the others wait for the same answer. A lock
+  older than fifteen seconds belongs to a starter that died and is taken
+  over. The whole thing fits the hook's own deadline (2.5 s by default).
+- **Replaced when it is not the shipped version.** The version the health
+  reports is compared with the gateway manifest this installation ships;
+  another one is stopped with `SIGTERM`, which lets the gateway finish
+  what is in flight before it exits, and the shipped one is started. The
+  binary reports exactly its manifest's version (a test holds it), so a
+  replacement never loops.
+- **Never joined when stale.** A socket file nobody answers on is replaced
+  by the daemon itself when it starts (`server.ts`); a `daemon.json` naming
+  a dead process is ignored; the only pid ever signalled is the one the
+  daemon answering on the socket reports as its own (`health.pid`).
+- **Stopped on `rfx uninstall`**, with the socket and the state file
+  removed; `SIGKILL` after the grace period if it does not exit. `rfx
+status` shows whether it runs, its version, pid and uptime.
+
+The daemon's configuration is the user's, `<REFLEX_HOME>/config.json`
+(`semanticProvider`, `semanticModel`, `semanticEndpoint`, `shadowProviders`,
+`shadowSample`, `shadowDeadlineMs`); absent or unreadable, it runs with no
+provider. The user's policy is `<REFLEX_HOME>/policy.yaml` when it exists;
+a project's `.reflex/policy.yaml` is G9's.
 
 ## 4. What it costs (RFX-024)
 

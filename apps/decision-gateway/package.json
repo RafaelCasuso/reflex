@@ -5,6 +5,13 @@
   "description": "Latency-sensitive runtime decision endpoint. Deployable independently of dashboard/control-plane concerns.",
   "license": "Apache-2.0",
   "type": "module",
+  "exports": {
+    "./main.js": "./dist/main.js",
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "dist"
+  ],
   "scripts": {
     "build": "tsc -p tsconfig.build.json",
     "typecheck": "tsc -p tsconfig.json",

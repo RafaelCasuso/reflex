@@ -213,6 +213,20 @@ async function main(): Promise<number> {
         }
         write("Removed.\n");
       }
+      // RFX-138: the daemon is stopped and its socket removed. It starts
+      // again on the first decision another install asks for.
+      {
+        const { reflexHome } = await import("./state.js");
+        const { stopDaemon } = await import("./daemon/lifecycle.js");
+        const stopped = await stopDaemon(reflexHome(env));
+        if (stopped.wasRunning) {
+          write(
+            stopped.gracefully
+              ? "Daemon stopped.\n"
+              : "Daemon did not stop in time and was killed.\n",
+          );
+        }
+      }
       if (values.purge) {
         const { reflexHome } = await import("./state.js");
         const { rm } = await import("node:fs/promises");

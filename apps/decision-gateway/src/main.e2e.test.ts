@@ -1,5 +1,5 @@
 import { spawn, type ChildProcess } from "node:child_process";
-import { existsSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { mkdtemp, readFile, rm, stat, writeFile } from "node:fs/promises";
 import { createServer, request as httpRequest } from "node:http";
 import type { AddressInfo } from "node:net";
@@ -127,6 +127,19 @@ describe("the decision daemon as a process", () => {
       const health = await call(running.socketPath, "GET", "/v1/health");
       expect(health.status).toBe(200);
       expect(health.json).toMatchObject({ status: "ok", policyProblems: 0 });
+      // RFX-138: the lifecycle replaces a daemon whose version is not the
+      // shipped manifest's; the binary must report exactly that version, or
+      // every hook call would restart it.
+      const manifest = JSON.parse(
+        readFileSync(
+          fileURLToPath(new URL("../package.json", import.meta.url)),
+          "utf8",
+        ),
+      ) as { version: string };
+      expect(health.json).toMatchObject({
+        version: manifest.version,
+        pid: running.child.pid,
+      });
       expect((health.json as { policySetHash: string }).policySetHash).toMatch(
         /^sha256:/,
       );

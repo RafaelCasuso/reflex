@@ -184,6 +184,8 @@ and do not change it.
 
 ## Open questions
 
+_Resolved 2026-09-27 by RFX-138 (`docs/decision-gateway.md` §3, "The lifecycle"): who starts the daemon (the first hook that finds it down, once, under a lock), one daemon per user, replacement by version with in-flight decisions finished, removal on uninstall, stale sockets never joined._
+
 - On-demand start by the first hook call, or a login item installed by
   `rfx init`? The first is friendlier to uninstall, the second to latency.
 - The end-to-end budget, and whether the client can stay a Node script. The

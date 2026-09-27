@@ -110,6 +110,9 @@ importers:
       '@reflex/contracts':
         specifier: workspace:*
         version: link:../contracts
+      '@reflex/decision-gateway':
+        specifier: workspace:*
+        version: link:../../apps/decision-gateway
       '@reflex/telemetry':
         specifier: workspace:*
         version: link:../telemetry
