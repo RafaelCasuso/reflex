@@ -53,6 +53,57 @@ never a value, until the redactor exists (RFX-031). Key names are written only
 when they look like schema identifiers and only in the top two object levels: a
 token used as a map key must not reach the log.
 
+## 2b. Decisions (RFX-043, RFX-045, RFX-046)
+
+Since G7 the same hook decides, when the project asks it to. The mode is
+per project, in REFLEX's install registry, set by `rfx init --mode` or
+`rfx mode`; the daemon never knows it and the hook reads it on every call
+by the payload's own working directory. Absent, `observe`.
+
+| Mode        | What the hook does on `PreToolUse`                                                                                        |
+| ----------- | ------------------------------------------------------------------------------------------------------------------------- |
+| `observe`   | records, answers nothing: §2 holds in full                                                                                |
+| `assist`    | records, asks the daemon, answers `allow` for what a rule or the model allows and `ask` for everything else; never `deny` |
+| `autopilot` | records, asks the daemon, answers `allow`, `ask` or `deny` as decided                                                     |
+
+The answer is the host's own `PreToolUse` permission decision, one JSON
+line on stdout and nothing else:
+
+```json
+{
+  "hookSpecificOutput": {
+    "hookEventName": "PreToolUse",
+    "permissionDecision": "ask",
+    "permissionDecisionReason": "REFLEX: needs your approval, rule deny-rm (destructive)"
+  }
+}
+```
+
+`ask` is native delegation and nothing else (CLAUDE.md principle 4): the
+host's own approval flow decides, and REFLEX opens no dialog of its own.
+The effect answered is the engine's `effectiveEffect` for the mode
+(ADR-002), which is how Assist never blocks. The reason line names the rule
+id, the reason codes, the provider or the fallback, never a rule's name or
+an argument value; it may be shown to the user or fed to the model.
+
+**When the daemon does not answer** (ADR-003 §4): the hook starts it once
+(RFX-138, `docs/decision-gateway.md` §3), inside its own budget of 2.5 s,
+well under the hook's 5 s timeout after which the host runs the call. If
+it still cannot decide, the hook answers by itself: `ask`, or `deny` in
+Autopilot under `fail-closed`. It never exits non-zero, never prints
+anything but its answer, and never stays silent in these modes, because
+silence would let the host run the call. The failure mode is per project
+too (`rfx mode --failure-mode`), `fail-ask` by default.
+
+The other events (`PermissionRequest`, `PostToolUse`, `PostToolUseFailure`,
+`PermissionDenied`, `Stop`) are observed silently in every mode. Every one
+of these rows is held by `packages/cli/src/bin.e2e.test.ts` against the
+real binary and the real daemon: Observe silent on an allowed and on a
+denied fixture; Assist `allow` for `touch marker.txt` under a rule,
+`ask` for `rm -rf build` under a deny rule and for an unresolved write;
+Autopilot `deny` for the same `rm`; and the client's own `deny` under
+`fail-closed` when the daemon cannot start, in time.
+
 ## 3. What the host does when the hook fails (RFX-087)
 
 **Status: verified against a live host.** Claude Code 2.1.276, headless

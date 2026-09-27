@@ -2,7 +2,13 @@ import { randomBytes } from "node:crypto";
 import { join } from "node:path";
 
 import type { SettingsScope } from "@reflex/adapter-claude-code";
-import type { AgentId, IsoTimestamp, ProjectId } from "@reflex/contracts";
+import type {
+  AgentId,
+  FailureMode,
+  IsoTimestamp,
+  ProjectId,
+  ReflexMode,
+} from "@reflex/contracts";
 
 /**
  * REFLEX's own local state. It lives under the user's home, not inside the
@@ -67,6 +73,25 @@ export interface InstallRecord {
   /** The transaction manifest that holds the pre-install backup. */
   readonly manifestPath: string;
   readonly installedAt: IsoTimestamp;
+  /**
+   * RFX-043: what the hook does with a decision in this project (ADR-002).
+   * Absent means `observe`: a registry written before modes existed keeps
+   * observing, and never starts deciding on its own.
+   */
+  readonly mode?: ReflexMode;
+  /** RFX-043: what the hook answers when it can reach nothing (ADR-003 §4). */
+  readonly failureMode?: FailureMode;
+}
+
+export const DEFAULT_MODE: ReflexMode = "observe";
+export const DEFAULT_FAILURE_MODE: FailureMode = "fail-ask";
+
+export function modeOf(install: InstallRecord | undefined): ReflexMode {
+  return install?.mode ?? DEFAULT_MODE;
+}
+
+export function failureModeOf(install: InstallRecord | undefined): FailureMode {
+  return install?.failureMode ?? DEFAULT_FAILURE_MODE;
 }
 
 /**
@@ -137,16 +162,39 @@ export function parseRegistry(text: string | undefined): InstallRegistry {
       parsed.version === 1 &&
       Array.isArray(parsed.installs)
     ) {
-      const installs = (parsed.installs as unknown[]).filter(
-        (entry): entry is InstallRecord =>
-          isRecord(entry) &&
-          entry.host === "claude-code" &&
-          typeof entry.settingsPath === "string" &&
-          typeof entry.projectDir === "string" &&
-          typeof entry.projectId === "string" &&
-          typeof entry.manifestPath === "string" &&
-          typeof entry.scope === "string" &&
-          typeof entry.installedAt === "string",
+      const installs = (parsed.installs as unknown[]).flatMap(
+        (entry): InstallRecord[] => {
+          if (
+            !isRecord(entry) ||
+            entry.host !== "claude-code" ||
+            typeof entry.settingsPath !== "string" ||
+            typeof entry.projectDir !== "string" ||
+            typeof entry.projectId !== "string" ||
+            typeof entry.manifestPath !== "string" ||
+            typeof entry.scope !== "string" ||
+            typeof entry.installedAt !== "string"
+          ) {
+            return [];
+          }
+          const { mode, failureMode, ...rest } = entry;
+          // A mode or a failure mode that is not one is read as absent: the
+          // default is the quietest, never a guess in the other direction.
+          return [
+            {
+              ...(rest as unknown as InstallRecord),
+              ...(mode === "observe" ||
+              mode === "assist" ||
+              mode === "autopilot"
+                ? { mode }
+                : {}),
+              ...(failureMode === "fail-open" ||
+              failureMode === "fail-ask" ||
+              failureMode === "fail-closed"
+                ? { failureMode }
+                : {}),
+            },
+          ];
+        },
       );
       const declared = Array.isArray(parsed.projects)
         ? (parsed.projects as unknown[]).filter(

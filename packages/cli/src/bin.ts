@@ -14,10 +14,13 @@ import { parseArgs } from "node:util";
  */
 const USAGE = `rfx — REFLEX, the autonomy control layer for AI agents
 
-  rfx init [--scope local|project|user] [--yes] [--dry-run]
-      Show the plan, then install the Observe hook for Claude Code.
+  rfx init [--scope local|project|user] [--mode observe|assist|autopilot]
+           [--failure-mode fail-open|fail-ask|fail-closed] [--yes] [--dry-run]
+      Show the plan, then install the hook for Claude Code. Observe by default.
+  rfx mode [observe|assist|autopilot] [--failure-mode fail-open|fail-ask|fail-closed]
+      Show or change what the hook does with a decision in this project.
   rfx status
-      What REFLEX has observed in this project. Local, offline.
+      What REFLEX has observed and decided in this project. Local, offline.
   rfx uninstall [--yes] [--purge]
       Remove REFLEX from this project. --purge also deletes ~/.reflex.
 `;
@@ -27,7 +30,10 @@ const write = (text: string): void => {
 };
 
 async function hook(host: string | undefined): Promise<void> {
-  // Observe: no stdout, no stderr, exit 0. Whatever happens. See hook.ts.
+  // Observe: no stdout, no stderr, exit 0, whatever happens (see hook.ts).
+  // Assist and Autopilot: the same, plus one JSON answer on stdout for a
+  // `PreToolUse`, always, even when nothing can be reached (ADR-003 §4).
+  let answer: string | undefined;
   try {
     if (host !== "claude-code") {
       return;
@@ -38,11 +44,13 @@ async function hook(host: string | undefined): Promise<void> {
         import("@reflex/telemetry"),
         import("./state.js"),
       ]);
-    const home = state.reflexHome(environment(process.cwd()));
+    const env = environment(process.cwd());
+    const home = state.reflexHome(env);
     const log = new ObservationLog({
       directory: state.statePaths(home).observe,
     });
-    await runClaudeCodeHook(await readStdin(process.stdin), {
+    const stdin = await readStdin(process.stdin);
+    const observed = await runClaudeCodeHook(stdin, {
       now: () => new Date(),
       log: {
         // `performance.now()` counts from process start, so at this point it
@@ -59,8 +67,45 @@ async function hook(host: string | undefined): Promise<void> {
           ),
       },
     });
+    if (
+      observed.event?.kind !== "tool" ||
+      observed.event.event !== "PreToolUse"
+    ) {
+      return;
+    }
+    // RFX-043: the project's mode, from the registry, by the payload's own
+    // working directory. Observe answers nothing.
+    const { readFile } = await import("node:fs/promises");
+    const registry = state.parseRegistry(
+      await readFile(state.statePaths(home).installs, "utf8").catch(
+        () => undefined,
+      ),
+    );
+    const projectDir = observed.event.cwd ?? env.projectDir;
+    const install = registry.installs.find(
+      (entry) => entry.projectDir === projectDir,
+    );
+    const mode = state.modeOf(install);
+    if (mode === "observe") {
+      return;
+    }
+    const { decideForHost } = await import("./commands/decide.js");
+    const outcome = await decideForHost(observed.event, {
+      home,
+      nodePath: env.nodePath,
+      mode,
+      failureMode: state.failureModeOf(install),
+      ...(install === undefined ? {} : { projectId: install.projectId }),
+      now: env.now,
+    });
+    answer = JSON.stringify(outcome.answer);
   } catch {
-    // Deliberately silent.
+    // Deliberately silent: in Observe nothing is owed to the host, and in
+    // the other modes an answer was already computed or none can be.
+  } finally {
+    if (answer !== undefined) {
+      process.stdout.write(`${answer}\n`);
+    }
   }
 }
 
@@ -134,6 +179,8 @@ async function main(): Promise<number> {
     allowPositionals: true,
     options: {
       scope: { type: "string", default: "local" },
+      mode: { type: "string" },
+      "failure-mode": { type: "string" },
       yes: { type: "boolean", default: false },
       "dry-run": { type: "boolean", default: false },
       purge: { type: "boolean", default: false },
@@ -157,6 +204,20 @@ async function main(): Promise<number> {
     import("./output/render.js"),
   ]);
 
+  const { FAILURE_MODES, REFLEX_MODES } = await import("@reflex/contracts");
+  const modeOption = REFLEX_MODES.find((known) => known === values.mode);
+  const failureModeOption = FAILURE_MODES.find(
+    (known) => known === values["failure-mode"],
+  );
+  if (values.mode !== undefined && modeOption === undefined) {
+    write(`Unknown mode. Use one of: ${REFLEX_MODES.join(", ")}.\n`);
+    return 2;
+  }
+  if (values["failure-mode"] !== undefined && failureModeOption === undefined) {
+    write(`Unknown failure mode. Use one of: ${FAILURE_MODES.join(", ")}.\n`);
+    return 2;
+  }
+
   switch (command) {
     case "init": {
       const { SETTINGS_SCOPES } = await import("@reflex/adapter-claude-code");
@@ -166,7 +227,12 @@ async function main(): Promise<number> {
         return 2;
       }
       const { applyInit, planInit } = await import("./commands/init.js");
-      const plan = await planInit(env, scope, nodeFileSystem, probes);
+      const plan = await planInit(env, scope, nodeFileSystem, probes, {
+        ...(modeOption === undefined ? {} : { mode: modeOption }),
+        ...(failureModeOption === undefined
+          ? {}
+          : { failureMode: failureModeOption }),
+      });
       write(render.renderInitPlan(plan));
       if (plan.kind === "blocked") {
         return 1;
@@ -184,6 +250,42 @@ async function main(): Promise<number> {
           : render.renderTransactionFailure(result),
       );
       return result.ok ? 0 : 1;
+    }
+
+    case "mode": {
+      const { changeMode, readMode } = await import("./commands/mode.js");
+      const wanted = REFLEX_MODES.find((known) => known === argument);
+      if (argument !== undefined && wanted === undefined) {
+        write(`Unknown mode. Use one of: ${REFLEX_MODES.join(", ")}.\n`);
+        return 2;
+      }
+      if (wanted === undefined && failureModeOption === undefined) {
+        const current = await readMode(env, nodeFileSystem);
+        write(
+          current.installed
+            ? `mode: ${current.mode}  failure mode: ${current.failureMode}\n`
+            : 'Not installed in this project. Run "rfx init".\n',
+        );
+        return 0;
+      }
+      const changed = await changeMode(env, nodeFileSystem, {
+        ...(wanted === undefined ? {} : { mode: wanted }),
+        ...(failureModeOption === undefined
+          ? {}
+          : { failureMode: failureModeOption }),
+      });
+      if (!changed.ok) {
+        write(
+          changed.reason === "not-installed"
+            ? 'Not installed in this project. Run "rfx init".\n'
+            : "Could not write the registry.\n",
+        );
+        return 1;
+      }
+      write(
+        `mode: ${changed.after.mode}  failure mode: ${changed.after.failureMode}${changed.after.mode === "observe" ? "  (records only, never interferes)" : ""}\n`,
+      );
+      return 0;
     }
 
     case "status": {

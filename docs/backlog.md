@@ -909,6 +909,8 @@ RFX-041, RFX-042 and RFX-044 moved to G1.5, where the adapter is first exercised
 
 **Depends on:** RFX-138.
 
+**Status:** Done (2026-09-27). `packages/cli/src/commands/decide.ts`: on a `PreToolUse` in a project whose mode is Assist or Autopilot, the hook translates the event, starts the daemon once if it does not answer (RFX-138), posts the decision request over the socket and prints the host's own permission decision (`hookSpecificOutput.permissionDecision`), one JSON line and nothing else; in Observe it prints nothing. **ASK delegates to host approval:** `ask` is the host's native flow, no dialog of REFLEX's own; the effect answered is the engine's `effectiveEffect` for the mode, so Assist never answers `deny`. **DENY reliably blocks where supported:** `permissionDecision: deny` on `PreToolUse`, the answer the live runs of RFX-087 showed blocks the call, held end to end in Autopilot. **The client answers by itself, inside its own deadline, when the daemon does not answer, after trying once to start it:** a 2.5 s budget under the host's 5 s timeout, `ask` or `deny` under `fail-closed` in Autopilot (ADR-003 §4), with a reason line that names what failed; held end to end against a daemon that cannot start. The mode and the failure mode are per project in the install registry (`rfx init --mode`, `rfx mode`, `--failure-mode`), read by the hook on every call by the payload's working directory; a registry from before modes existed observes. The reason line carries rule ids, reason codes, the provider or the fallback, never a rule's name or an argument value. Switching modes or overriding through the agent needs a human: `mode` and `override` join REFLEX's own rule (`reflex.protect-own-command`). `docs/claude-code-hook.md` §2b.
+
 ### RFX-123 — Consent before action content leaves the machine
 
 **Goal:** Ask once, clearly, before the first time tool arguments are sent to a remote gateway or semantic provider.
@@ -923,11 +925,15 @@ RFX-041, RFX-042 and RFX-044 moved to G1.5, where the adapter is first exercised
 
 **Acceptance:** No observed action is blocked or auto-approved in Observe.
 
+**Status:** Done (2026-09-27). Observe is the default mode and the one a registry from before modes existed reads; in it the hook records and answers nothing, for an allowed fixture and for a denied one alike, held against the real binary and the real daemon (`bin.e2e.test.ts`, "in Observe answers nothing"), on top of the Observe guarantee held since RFX-086.
+
 ### RFX-046 — Claude Assist mode
 
 **Goal:** Auto-resolve safe supported actions and delegate others.
 
 **Acceptance:** Unsafe/uncertain fixture always reaches native approval or block.
+
+**Status:** Done (2026-09-27). In Assist the hook answers `allow` only for what a rule or the model allows, and `ask` for everything else: the engine's `effectiveEffect` turns a `deny` into `ask` (ADR-002), so Assist never blocks and never lets an unsafe action through. **Unsafe or uncertain fixture always reaches native approval or block:** `rm -rf build` under a deny rule answers `ask` (native approval), an unresolved write answers `ask`, and when nothing can be reached the client's own answer is `ask` (or `deny` under Autopilot with `fail-closed`), never silence; each held end to end in `bin.e2e.test.ts`.
 
 ### RFX-124 — Host hook schema canary
 

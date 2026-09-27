@@ -304,3 +304,228 @@ describe("rfx: the command line", () => {
     expect((await rfx(["frobnicate"], {})).code).toBe(2);
   });
 });
+
+/**
+ * RFX-043, RFX-045, RFX-046 — the hook with a decision: Observe answers
+ * nothing; Assist allows what a rule allows and hands the rest to the
+ * host's own approval, never blocking; Autopilot blocks what is denied;
+ * and when the daemon cannot be started the client answers by itself,
+ * inside the host's timeout. The real binary, the real daemon, in a
+ * temporary REFLEX home.
+ */
+const POLICY_FOR_FIXTURES = `version: 1
+defaults:
+  unresolved: ask
+rules:
+  - id: allow-touch
+    name: Allow touch
+    effect: allow
+    conditions:
+      - { field: command.name, operator: equals, value: touch }
+  - id: deny-rm
+    name: Deny rm
+    effect: deny
+    conditions:
+      - { field: command.name, operator: equals, value: rm }
+`;
+
+async function installedIn(
+  home: string,
+  mode: "observe" | "assist" | "autopilot",
+  failureMode: "fail-open" | "fail-ask" | "fail-closed" = "fail-ask",
+): Promise<void> {
+  await mkdir(home, { recursive: true, mode: 0o700 });
+  await writeFile(
+    join(home, "installs.json"),
+    JSON.stringify({
+      version: 1,
+      installs: [
+        {
+          host: "claude-code",
+          scope: "local",
+          settingsPath: "/work/project/.claude/settings.local.json",
+          projectDir: "/work/project",
+          projectId: "prj_00000000000000000000000000000001",
+          manifestPath: join(home, "backups", "manifest.json"),
+          installedAt: "2026-09-27T10:00:00.000Z",
+          mode,
+          failureMode,
+        },
+      ],
+      projects: [],
+    }),
+  );
+  await writeFile(join(home, "policy.yaml"), POLICY_FOR_FIXTURES);
+}
+
+const answerOf = (run: Run): unknown =>
+  run.stdout === "" ? undefined : JSON.parse(run.stdout.trim());
+
+describe("the hook with a decision (RFX-043)", () => {
+  let decisionHome: string;
+
+  beforeEach(() => {
+    decisionHome = join(root, "decision-home");
+  });
+
+  afterEach(async () => {
+    const { stopDaemon } = await import("./daemon/lifecycle.js");
+    await stopDaemon(decisionHome, { graceMs: 2_000 });
+  });
+
+  it("in Observe answers nothing, whatever the policy says (RFX-045)", async () => {
+    await installedIn(decisionHome, "observe");
+    for (const name of ["pre-tool-use.bash", "pre-tool-use.bash-remove"]) {
+      expect(
+        await rfx(["hook", "claude-code"], {
+          stdin: fixture(name),
+          env: { REFLEX_HOME: decisionHome },
+        }),
+      ).toEqual(SILENT_SUCCESS);
+    }
+  });
+
+  it("in Assist allows what a rule allows, and answers within the budget from a cold daemon", async () => {
+    await installedIn(decisionHome, "assist");
+    const started = Date.now();
+    const run = await rfx(["hook", "claude-code"], {
+      stdin: fixture("pre-tool-use.bash"),
+      env: { REFLEX_HOME: decisionHome },
+    });
+    expect(Date.now() - started).toBeLessThan(4_500);
+    expect(run.code).toBe(0);
+    expect(run.stderr).toBe("");
+    expect(answerOf(run)).toEqual({
+      hookSpecificOutput: {
+        hookEventName: "PreToolUse",
+        permissionDecision: "allow",
+        permissionDecisionReason: "REFLEX: allowed by rule allow-touch",
+      },
+    });
+    // The observation is still recorded.
+    const log = await readFile(
+      join(decisionHome, "observe", "observations.jsonl"),
+      "utf8",
+    );
+    expect(log).toContain('"toolName":"Bash"');
+    expect(log).not.toContain("marker");
+  });
+
+  it("in Assist an unsafe action reaches the host's own approval, never a block (RFX-046)", async () => {
+    await installedIn(decisionHome, "assist");
+    const denied = await rfx(["hook", "claude-code"], {
+      stdin: fixture("pre-tool-use.bash-remove"),
+      env: { REFLEX_HOME: decisionHome },
+    });
+    expect(answerOf(denied)).toEqual({
+      hookSpecificOutput: {
+        hookEventName: "PreToolUse",
+        permissionDecision: "ask",
+        permissionDecisionReason:
+          "REFLEX: needs your approval, rule deny-rm (destructive)",
+      },
+    });
+    // Unresolved: the policy default asks, and so does the answer.
+    const open = await rfx(["hook", "claude-code"], {
+      stdin: fixture("pre-tool-use.write"),
+      env: { REFLEX_HOME: decisionHome },
+    });
+    expect(
+      (answerOf(open) as { hookSpecificOutput: { permissionDecision: string } })
+        .hookSpecificOutput.permissionDecision,
+    ).toBe("ask");
+  });
+
+  it("in Autopilot blocks what a rule denies", async () => {
+    await installedIn(decisionHome, "autopilot");
+    const run = await rfx(["hook", "claude-code"], {
+      stdin: fixture("pre-tool-use.bash-remove"),
+      env: { REFLEX_HOME: decisionHome },
+    });
+    expect(run.code).toBe(0);
+    expect(answerOf(run)).toEqual({
+      hookSpecificOutput: {
+        hookEventName: "PreToolUse",
+        permissionDecision: "deny",
+        permissionDecisionReason:
+          "REFLEX: denied by rule deny-rm (destructive)",
+      },
+    });
+  });
+
+  it("keeps observing the other events silently in every mode", async () => {
+    await installedIn(decisionHome, "autopilot");
+    for (const name of [
+      "post-tool-use.bash",
+      "permission-request.bash",
+      "stop",
+    ]) {
+      expect(
+        await rfx(["hook", "claude-code"], {
+          stdin: fixture(name),
+          env: { REFLEX_HOME: decisionHome },
+        }),
+      ).toEqual(SILENT_SUCCESS);
+    }
+  });
+
+  // Adversarial: the daemon cannot start (it is asked for a provider it
+  // cannot build), so the client must answer on its own, in time, as the
+  // failure mode says. Never silence: silence would let the host run it.
+  it("answers by itself, in time, when the daemon cannot be started", async () => {
+    await installedIn(decisionHome, "autopilot", "fail-closed");
+    await writeFile(
+      join(decisionHome, "config.json"),
+      JSON.stringify({ version: 1, semanticProvider: "jev" }),
+    );
+    const started = Date.now();
+    const run = await rfx(["hook", "claude-code"], {
+      stdin: fixture("pre-tool-use.bash"),
+      env: { REFLEX_HOME: decisionHome, TYPESAFE_API_KEY: "" },
+    });
+    expect(Date.now() - started).toBeLessThan(4_500);
+    expect(run.code).toBe(0);
+    expect(run.stderr).toBe("");
+    expect(answerOf(run)).toEqual({
+      hookSpecificOutput: {
+        hookEventName: "PreToolUse",
+        permissionDecision: "deny",
+        permissionDecisionReason:
+          "REFLEX: the local daemon could not be started or reached; blocked as configured (fail-closed)",
+      },
+    });
+    const assist = await rfx(["hook", "claude-code"], {
+      stdin: fixture("pre-tool-use.bash"),
+      env: { REFLEX_HOME: decisionHome, TYPESAFE_API_KEY: "" },
+    });
+    // Under Autopilot with fail-ask (the registry says fail-closed here): the
+    // same daemon, the same answer, still deny. Switch the registry to see ask.
+    expect(
+      (
+        answerOf(assist) as {
+          hookSpecificOutput: { permissionDecision: string };
+        }
+      ).hookSpecificOutput.permissionDecision,
+    ).toBe("deny");
+  }, 20_000);
+});
+
+describe("rfx mode", () => {
+  it("shows, changes and refuses an unknown mode", async () => {
+    const home = join(root, "mode-home");
+    const project = join(root, "mode-project");
+    await mkdir(project, { recursive: true });
+    await installedIn(home, "observe");
+    // The registry above names /work/project; this project is not installed.
+    const notInstalled = await rfx(["mode"], {
+      env: { REFLEX_HOME: home },
+      cwd: project,
+    });
+    expect(notInstalled.stdout).toContain("Not installed");
+    const unknown = await rfx(["mode", "yolo"], {
+      env: { REFLEX_HOME: home },
+      cwd: project,
+    });
+    expect(unknown.code).toBe(2);
+  });
+});

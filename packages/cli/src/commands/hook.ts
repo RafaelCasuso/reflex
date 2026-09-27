@@ -1,6 +1,7 @@
 import {
   readHookInput,
   toObservationRecord,
+  type ClaudeHookEvent,
 } from "@reflex/adapter-claude-code/hook";
 import { ObservationLog } from "@reflex/telemetry";
 
@@ -52,28 +53,37 @@ export type HookOutcome =
   | "record-failed"
   | "internal-error";
 
-/** Never throws. The return value exists for tests and diagnostics only. */
+export interface HookResult {
+  readonly outcome: HookOutcome;
+  /** The event that was read, when one was, for the decision path (RFX-043). */
+  readonly event?: ClaudeHookEvent;
+}
+
+/** Never throws. The return value exists for the decision path and tests. */
 export async function runClaudeCodeHook(
   stdin: string | undefined,
   dependencies: HookDependencies,
-): Promise<HookOutcome> {
+): Promise<HookResult> {
   try {
     if (stdin === undefined) {
-      return "unreadable-payload";
+      return { outcome: "unreadable-payload" };
     }
     const input = readHookInput(stdin);
     if (!input.ok) {
-      return "unreadable-payload";
+      return { outcome: "unreadable-payload" };
     }
     const record = toObservationRecord(input.event, {
       now: dependencies.now,
     });
     if (record === undefined) {
-      return "nothing-to-record";
+      return { outcome: "nothing-to-record", event: input.event };
     }
     const appended = await dependencies.log.append(record);
-    return appended.ok ? "recorded" : "record-failed";
+    return {
+      outcome: appended.ok ? "recorded" : "record-failed",
+      event: input.event,
+    };
   } catch {
-    return "internal-error";
+    return { outcome: "internal-error" };
   }
 }

@@ -1,5 +1,6 @@
 import { join } from "node:path";
 
+import type { FailureMode, ReflexMode } from "@reflex/contracts";
 import {
   buildHookCommand,
   inspectSettings,
@@ -41,6 +42,12 @@ import {
  * `applyInit` will do: the exact bytes, the exact paths. Nothing is decided
  * at apply time, so what the user approved is what happens.
  */
+/** RFX-043: what the hook will do with a decision (ADR-002, ADR-003). */
+export interface InitPreferences {
+  readonly mode?: ReflexMode;
+  readonly failureMode?: FailureMode;
+}
+
 export interface ScopeReport {
   readonly scope: SettingsScope | "managed";
   readonly path: string;
@@ -105,6 +112,7 @@ export async function planInit(
   scope: SettingsScope,
   fileSystem: FileSystemPort,
   probes: InitProbes,
+  preferences: InitPreferences = {},
 ): Promise<InitPlan> {
   const home = reflexHome(environment);
   const paths = statePaths(home);
@@ -181,6 +189,10 @@ export async function planInit(
     scope,
     settingsPath: target,
     projectDir: environment.projectDir,
+    // RFX-043: a re-install keeps the mode the project had unless told
+    // otherwise; a first install observes unless told otherwise.
+    mode: preferences.mode ?? previous?.mode ?? "observe",
+    failureMode: preferences.failureMode ?? previous?.failureMode ?? "fail-ask",
     // A project keeps its identity across re-installs and uninstalls.
     projectId:
       registry.projects.find(
