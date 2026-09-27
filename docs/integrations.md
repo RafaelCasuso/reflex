@@ -36,3 +36,6 @@ REFLEX deny
 ```
 
 All host behavior must be fixture-tested against the currently supported hook schema.
+"Currently" moves without a commit: a scheduled canary compares what each
+adapter reads with the latest host release and fails on drift (RFX-124 for
+Claude Code, `docs/claude-code-hook.md` §5).

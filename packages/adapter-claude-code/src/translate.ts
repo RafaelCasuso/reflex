@@ -103,8 +103,11 @@ export function classifyByName(tool: ActionTool): SideEffectClass {
  * This is the one place where this adapter knows the shape of a tool's input,
  * and it only copies: a string is a string, never parsed, never interpreted.
  * The field names are those of `sdk-tools.d.ts` as shipped in claude-code
- * 2.1.276. A tool that is not listed, an MCP tool, or an argument of another
- * type yields no operand, and absent is unknown, never safe (ADR-001 §4).
+ * 2.1.276, and the schema canary (RFX-124, `host-schema.ts`) compares them
+ * with every later release. A tool that is not listed, an MCP tool, or an
+ * argument of another type yields no operand, and absent is unknown, never
+ * safe (ADR-001 §4). `MultiEdit` is kept for hosts that still have it; no
+ * checked release declares it.
  */
 const COMMAND_ARGUMENT: Readonly<Record<string, string>> = { Bash: "command" };
 const PATH_ARGUMENT: Readonly<Record<string, string>> = {

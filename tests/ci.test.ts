@@ -4,6 +4,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   auditWorkflow,
+  HOST_SCHEMA_REQUIREMENTS,
   MUTATION_REQUIREMENTS,
   SECURITY_REQUIREMENTS,
 } from "./support/ci.js";
@@ -153,6 +154,69 @@ describe("RFX-111 mutation check", () => {
     expect(script).toContain("git");
     expect(script).toContain("--allow-dirty");
     expect(script).toContain("was not restored");
+  });
+});
+
+/** RFX-124 — a host release that changes what the adapter reads fails a check. */
+describe("RFX-124 host schema canary", () => {
+  const workflow = readText(".github", "workflows", "host-schema.yml");
+  const audit = (text: string) => auditWorkflow(text, HOST_SCHEMA_REQUIREMENTS);
+
+  it("passes the audit as committed", () => {
+    expect(audit(workflow)).toEqual([]);
+  });
+
+  it("runs daily, on demand, and on a pull request that changes what the adapter reads", () => {
+    expect(workflow).toMatch(
+      /^ {2}schedule:\n {4}(?:#.*\n {4})?- cron: "0 7 \* \* \*"/m,
+    );
+    expect(workflow).toContain("workflow_dispatch:");
+    for (const path of [
+      "packages/adapter-claude-code/src/host-schema.ts",
+      "packages/adapter-claude-code/src/translate.ts",
+      "packages/adapter-claude-code/fixtures/**",
+      "packages/adapter-claude-code/live/check-host-schema.mjs",
+    ]) {
+      expect(workflow).toContain(`- "${path}"`);
+    }
+  });
+
+  it("has the script it runs, which spends nothing and needs no login", () => {
+    const script = readText(
+      "packages",
+      "adapter-claude-code",
+      "live",
+      "check-host-schema.mjs",
+    );
+    expect(script).toContain("--ignore-scripts");
+    expect(script).toContain("npm");
+    expect(script).not.toContain("claude -p");
+    expect(script).not.toContain("--max-budget");
+  });
+
+  it.each([
+    {
+      label: "the check is deleted",
+      tamper: (text: string) =>
+        text.replace(
+          "run: node packages/adapter-claude-code/live/check-host-schema.mjs --latest",
+          "run: echo skipped",
+        ),
+      expected:
+        'missing quality gate "node packages/adapter-claude-code/live/check-host-schema.mjs --latest"',
+    },
+    {
+      label: "the check's exit code is swallowed",
+      tamper: (text: string) =>
+        text.replace(
+          "check-host-schema.mjs --latest",
+          "check-host-schema.mjs --latest || true",
+        ),
+      expected:
+        'gate result can be swallowed: "node packages/adapter-claude-code/live/check-host-schema.mjs --latest || true"',
+    },
+  ])("rejects the workflow when $label", ({ tamper, expected }) => {
+    expect(audit(tamper(workflow))).toContain(expected);
   });
 });
 

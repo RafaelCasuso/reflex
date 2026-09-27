@@ -49,3 +49,14 @@ export {
   toCanonicalAction,
   type TranslationContext,
 } from "./translate.js";
+
+export {
+  HOST_INPUT_DEPENDENCIES,
+  compareHostSchema,
+  declaredInputs,
+  type HostInputDependency,
+  type HostSchemaDrift,
+  type HostSchemaDriftKind,
+  type HostSchemaReport,
+  type RecordedToolInput,
+} from "./host-schema.js";

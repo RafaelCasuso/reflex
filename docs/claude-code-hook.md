@@ -332,14 +332,32 @@ number excludes process start, so it is a lower bound on what the host waits.
 
 ## 5. Where these facts come from
 
-| Fact                                                        | Source                                                                                                                                                                                                                                          |
-| ----------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Envelope fields, output contract, exit codes, configuration | Official Claude Code hooks reference and settings reference, 2.1.x                                                                                                                                                                              |
-| `tool_input` field names                                    | `sdk-tools.d.ts` shipped inside `@anthropic-ai/claude-code` 2.1.276                                                                                                                                                                             |
-| The six event names exist in this version                   | Checked against the installed 2.1.276 binary, with a made-up name as a control                                                                                                                                                                  |
-| Latency                                                     | Measured, this document                                                                                                                                                                                                                         |
-| Host behavior on hook failure                               | **Verified live** on 2.1.276, headless (RFX-087, §3). Two rows remain documentation only and say so                                                                                                                                             |
-| Real payload shapes                                         | **Captured live** on 2.1.276, headless: `Bash` (RFX-087); `Write`, `Read`, `Edit`, `WebFetch`, `ToolSearch` and an MCP tool (RFX-089, `docs/canonical-action-review.md`). `MultiEdit`, `NotebookEdit` and `PermissionDenied` have not been seen |
+| Fact                                                        | Source                                                                                                                                                                                                                                                   |
+| ----------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Envelope fields, output contract, exit codes, configuration | Official Claude Code hooks reference and settings reference, 2.1.x                                                                                                                                                                                       |
+| `tool_input` field names                                    | `sdk-tools.d.ts` shipped inside `@anthropic-ai/claude-code` 2.1.276, and the schema canary (RFX-124, `live/check-host-schema.mjs`, daily in CI against the latest release on npm; 2.1.282 and 2.1.283 checked identical for the tools the adapter reads) |
+| The six event names exist in this version                   | Checked against the installed 2.1.276 binary, with a made-up name as a control                                                                                                                                                                           |
+| Latency                                                     | Measured, this document                                                                                                                                                                                                                                  |
+| Host behavior on hook failure                               | **Verified live** on 2.1.276, headless (RFX-087, §3). Two rows remain documentation only and say so                                                                                                                                                      |
+| Real payload shapes                                         | **Captured live** on 2.1.276, headless: `Bash` (RFX-087); `Write`, `Read`, `Edit`, `WebFetch`, `ToolSearch` and an MCP tool (RFX-089, `docs/canonical-action-review.md`). `MultiEdit`, `NotebookEdit` and `PermissionDenied` have not been seen          |
+
+**The schema canary (RFX-124).** The host releases several times a week,
+outside REFLEX's cycle. `packages/adapter-claude-code/src/host-schema.ts`
+lists the top-level fields the adapter reads from each built-in tool's input
+(`Bash.command`, `Read/Write/Edit.file_path`, `NotebookEdit.notebook_path`,
+`WebFetch.url`) and the interface each is declared under; a test holds that
+list to what `translate.ts` actually reads. `live/check-host-schema.mjs`
+fetches a release's declarations (`npm pack`, no login, no cost) and fails
+when an interface the adapter relies on is gone, when a field it reads is no
+longer top-level, or when a recorded fixture carries a field the release
+does not declare. `.github/workflows/host-schema.yml` runs it daily against
+the latest release, on demand, and on a pull request that changes what the
+adapter reads. What it cannot see: the hook envelope is not declared in that
+file; at run time a payload the adapter does not recognize is a typed failure
+(`readHookInput`: `not-json`, `missing-event-name`, `invalid-tool-event`; an
+unknown event is `ignored`), never a guess, and in Assist or Autopilot the
+hook then answers as the failure mode says (§2b). `MultiEdit` is declared by
+no checked release; the adapter keeps its entry for hosts that still have it.
 
 A documentation summary consulted while building the adapter gave wrong field
 names for `Write` and `Edit` (`file_text`, `old_text`). The shipped type

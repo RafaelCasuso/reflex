@@ -1,0 +1,70 @@
+# RFX-124 — the host hook schema canary.
+#
+# Daily, on demand, and on a pull request that changes what the adapter
+# reads or the check itself. The host (@anthropic-ai/claude-code) releases
+# outside REFLEX's cycle; this compares the fields the adapter reads and the
+# recorded fixtures with the type declarations of the latest release on npm
+# (packages/adapter-claude-code/live/check-host-schema.mjs) and fails on
+# drift. It needs no logged-in host and spends nothing.
+#
+# Rules guarded by tests/ci.test.ts:
+#   - install is lockfile-frozen
+#   - the packages are built and the check runs, and either can fail the job
+#   - no `continue-on-error`, no `|| true`
+#   - third-party actions are pinned to a full commit SHA
+name: Host schema
+
+on:
+  pull_request:
+    paths:
+      - "packages/adapter-claude-code/src/host-schema.ts"
+      - "packages/adapter-claude-code/src/translate.ts"
+      - "packages/adapter-claude-code/src/hook-input.ts"
+      - "packages/adapter-claude-code/fixtures/**"
+      - "packages/adapter-claude-code/live/check-host-schema.mjs"
+      - ".github/workflows/host-schema.yml"
+  schedule:
+    # Daily 07:00 UTC: the host ships several releases a week.
+    - cron: "0 7 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: host-schema-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  host-schema:
+    name: Host schema canary
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    env:
+      TURBO_TELEMETRY_DISABLED: "1"
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
+
+      - name: Set up Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+
+      - name: Install (frozen lockfile)
+        id: install
+        run: pnpm install --frozen-lockfile
+
+      - name: Build
+        if: ${{ !cancelled() && steps.install.outcome == 'success' }}
+        run: pnpm build
+
+      - name: Host schema canary (latest release on npm)
+        if: ${{ !cancelled() && steps.install.outcome == 'success' }}
+        run: node packages/adapter-claude-code/live/check-host-schema.mjs --latest

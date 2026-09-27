@@ -49,6 +49,15 @@ export const MUTATION_REQUIREMENTS: WorkflowRequirements = {
   commands: ["pnpm build", "pnpm mutation"],
 };
 
+/** RFX-124. The packages are built, then the latest host release is compared. */
+export const HOST_SCHEMA_REQUIREMENTS: WorkflowRequirements = {
+  install: FROZEN_INSTALL,
+  commands: [
+    "pnpm build",
+    "node packages/adapter-claude-code/live/check-host-schema.mjs --latest",
+  ],
+};
+
 export function auditWorkflow(
   workflow: string,
   requirements: WorkflowRequirements = CI_REQUIREMENTS,
