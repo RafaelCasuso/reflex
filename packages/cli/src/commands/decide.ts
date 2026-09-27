@@ -4,6 +4,7 @@ import type {
 } from "@reflex/adapter-claude-code/hook";
 import { toCanonicalAction } from "@reflex/adapter-claude-code/hook";
 import type {
+  CanonicalAction,
   DecisionEffect,
   FailureMode,
   ProjectId,
@@ -164,31 +165,22 @@ function isDecision(value: unknown): value is ReflexDecision {
   );
 }
 
-export async function decideForHost(
-  event: ClaudeToolEvent,
-  options: DecideOptions,
-): Promise<DecideOutcome> {
+/** What the daemon said, or why it could not be asked. Host-agnostic. */
+export type DecisionOutcome =
+  | { readonly kind: "decided"; readonly decision: ReflexDecision }
+  | { readonly kind: "fallback"; readonly reason: FallbackWhy };
+
+/**
+ * The daemon dance, for any host: start it once if it does not answer
+ * (RFX-138), post the request inside the budget, read the answer. What the
+ * outcome becomes on the host's channel is the adapter's business.
+ */
+export async function decideAction(
+  action: CanonicalAction,
+  options: Omit<DecideOptions, "hostVersion" | "projectId" | "now">,
+): Promise<DecisionOutcome> {
   const started = Date.now();
   const budget = options.budgetMs ?? DEFAULT_BUDGET_MS;
-  const context: TranslationContext = {
-    now: options.now,
-    ...(options.hostVersion === undefined
-      ? {}
-      : { hostVersion: options.hostVersion }),
-  };
-  const action = {
-    ...toCanonicalAction(event, context),
-    ...(options.projectId === undefined
-      ? {}
-      : { projectId: options.projectId }),
-  };
-
-  const fallback = (why: FallbackWhy): DecideOutcome => ({
-    kind: "fallback",
-    reason: why,
-    answer: fallbackAnswer(options.mode, options.failureMode, why),
-  });
-
   const ensured = await ensureDaemon({
     home: options.home,
     nodePath: options.nodePath,
@@ -199,7 +191,7 @@ export async function decideForHost(
       : { entry: options.daemonEntry }),
   });
   if (!ensured.ok) {
-    return fallback("daemon-unavailable");
+    return { kind: "fallback", reason: "daemon-unavailable" };
   }
   const remaining = budget - (Date.now() - started);
   const timeoutMs = Math.max(MIN_REQUEST_MS, remaining);
@@ -217,17 +209,46 @@ export async function decideForHost(
     timeoutMs,
   });
   if (!result.ok) {
-    return fallback(
-      result.reason === "timeout" ? "daemon-timeout" : "daemon-unavailable",
-    );
+    return {
+      kind: "fallback",
+      reason:
+        result.reason === "timeout" ? "daemon-timeout" : "daemon-unavailable",
+    };
   }
   if (result.response.status !== 200) {
-    return fallback("daemon-rejected");
+    return { kind: "fallback", reason: "daemon-rejected" };
   }
   if (!isDecision(result.response.json)) {
-    return fallback("malformed-answer");
+    return { kind: "fallback", reason: "malformed-answer" };
   }
-  const decision = result.response.json;
+  return { kind: "decided", decision: result.response.json };
+}
+
+export async function decideForHost(
+  event: ClaudeToolEvent,
+  options: DecideOptions,
+): Promise<DecideOutcome> {
+  const context: TranslationContext = {
+    now: options.now,
+    ...(options.hostVersion === undefined
+      ? {}
+      : { hostVersion: options.hostVersion }),
+  };
+  const action = {
+    ...toCanonicalAction(event, context),
+    ...(options.projectId === undefined
+      ? {}
+      : { projectId: options.projectId }),
+  };
+  const outcome = await decideAction(action, options);
+  if (outcome.kind === "fallback") {
+    return {
+      kind: "fallback",
+      reason: outcome.reason,
+      answer: fallbackAnswer(options.mode, options.failureMode, outcome.reason),
+    };
+  }
+  const { decision } = outcome;
   return {
     kind: "decided",
     decision,

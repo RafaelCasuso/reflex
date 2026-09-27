@@ -31,11 +31,11 @@ Accepted by the maintainer on 2026-09-20, as recommended when it was proposed.
 Everything else is from the host's documentation and is verified by the ticket
 named.
 
-| Host        | `allow`                                                      | `ask`                                                                 | `deny`                                                            | Observe                            |
-| ----------- | ------------------------------------------------------------ | --------------------------------------------------------------------- | ----------------------------------------------------------------- | ---------------------------------- |
-| Claude Code | `PreToolUse` answers `permissionDecision: "allow"` (RFX-043) | `PreToolUse` answers `permissionDecision: "ask"` (headless: verified) | `PreToolUse` answers `permissionDecision: "deny"` (verified)      | the hook emits nothing (verified)  |
-| Codex       | `PermissionRequest` approves the request (RFX-049)           | the hook abstains and Codex shows its own prompt (RFX-049)            | `PreToolUse` blocks (RFX-048)                                     | the hook emits nothing (RFX-051)   |
-| MCP proxy   | the call is forwarded (RFX-074)                              | no native prompt exists: see section 2 (RFX-074)                      | a structured error is returned and nothing is forwarded (RFX-074) | the call is forwarded and recorded |
+| Host        | `allow`                                                        | `ask`                                                                                                                                                                          | `deny`                                                                   | Observe                            |
+| ----------- | -------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------ | ---------------------------------- |
+| Claude Code | `PreToolUse` answers `permissionDecision: "allow"` (RFX-043)   | `PreToolUse` answers `permissionDecision: "ask"` (headless: verified)                                                                                                          | `PreToolUse` answers `permissionDecision: "deny"` (verified)             | the hook emits nothing (verified)  |
+| Codex       | `PermissionRequest` approves the request (RFX-049; documented) | `PreToolUse` answers `ask`, the documented value for Codex's own prompt, and `PermissionRequest` abstains so the prompt goes on (RFX-049; documented, `docs/codex-hook.md` §2) | `PreToolUse` blocks and `PermissionRequest` denies (RFX-048; documented) | the hook emits nothing (RFX-051)   |
+| MCP proxy   | the call is forwarded (RFX-074)                                | no native prompt exists: see section 2 (RFX-074)                                                                                                                               | a structured error is returned and nothing is forwarded (RFX-074)        | the call is forwarded and recorded |
 
 Rules that hold for every host:
 

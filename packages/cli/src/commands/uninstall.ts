@@ -1,11 +1,6 @@
 import { join } from "node:path";
 
-import {
-  inspectSettings,
-  planUninstall,
-  SETTINGS_SCOPES,
-  settingsPath,
-} from "@reflex/adapter-claude-code";
+import { planDisableHooks } from "@reflex/adapter-codex";
 
 import { sha256, type FileSystemPort } from "../backups/file-system.js";
 import {
@@ -14,6 +9,7 @@ import {
   type PlannedWrite,
   type TransactionResult,
 } from "../backups/transaction.js";
+import { hostProfile, SUPPORTED_HOSTS, type SupportedHost } from "../hosts.js";
 import {
   parseRegistry,
   reflexHome,
@@ -21,10 +17,11 @@ import {
   STATE_FILE_MODE,
   statePaths,
   type Environment,
+  type InstallRecord,
 } from "../state.js";
 
 /**
- * RFX-057 — `rfx uninstall`.
+ * RFX-057 — `rfx uninstall`, for every host installed in this project.
  *
  * Two ways back, chosen per file (RFX-044):
  *
@@ -34,7 +31,10 @@ import {
  * - **Surgical.** If the user has edited the file since, only REFLEX's own
  *   entries are removed and every other byte stays, their edits included.
  *
- * Idempotent: with nothing installed there is nothing to do, and it says so.
+ * A file shared with another project (a `user` scope: Codex's default) is
+ * left as it is while that project is still installed; only this project's
+ * registry entry goes. Codex's `features.hooks` is unset only when REFLEX
+ * was the one that set it, the same two ways. Idempotent.
  */
 export type RemovalMethod = "exact-restore" | "surgical" | "already-gone";
 
@@ -47,6 +47,8 @@ export interface UninstallCommandPlan {
   readonly removals: readonly PlannedRemoval[];
   /** Files that could not be understood. Left alone, and reported. */
   readonly skipped: readonly string[];
+  /** Files shared with another installed project, kept for it. */
+  readonly kept: readonly string[];
   readonly writes: readonly PlannedWrite[];
   readonly backupDir: string;
 }
@@ -63,6 +65,14 @@ function readManifest(text: string | undefined): BackupManifest | undefined {
   }
 }
 
+interface Candidate {
+  readonly path: string;
+  readonly host: SupportedHost;
+  /** The install whose manifest holds this file's backup, when known. */
+  readonly entry: InstallRecord | undefined;
+  readonly kind: "hooks" | "feature";
+}
+
 export async function planUninstallCommand(
   environment: Environment,
   fileSystem: FileSystemPort,
@@ -71,42 +81,78 @@ export async function planUninstallCommand(
   const registryFile = await fileSystem.read(paths.installs);
   const registry = parseRegistry(registryFile?.content.toString("utf8"));
 
-  // Registered installs for this project, plus any settings file of this
+  // Registered installs for this project, plus any hooks file of this
   // project that still carries a REFLEX hook the registry has lost track of.
   const registered = registry.installs.filter(
     (entry) => entry.projectDir === environment.projectDir,
   );
-  const candidates = new Set(registered.map((entry) => entry.settingsPath));
-  for (const scope of SETTINGS_SCOPES) {
-    const path = settingsPath(scope, environment);
-    const found = await fileSystem.read(path);
-    if (
-      inspectSettings(found?.content.toString("utf8")).installedEvents.length >
-      0
-    ) {
-      candidates.add(path);
+  const candidates = new Map<string, Candidate>();
+  for (const entry of registered) {
+    candidates.set(entry.settingsPath, {
+      path: entry.settingsPath,
+      host: entry.host,
+      entry,
+      kind: "hooks",
+    });
+    if (entry.enabledFeatureIn !== undefined) {
+      candidates.set(entry.enabledFeatureIn, {
+        path: entry.enabledFeatureIn,
+        host: entry.host,
+        entry,
+        kind: "feature",
+      });
+    }
+  }
+  for (const host of SUPPORTED_HOSTS) {
+    const profile = hostProfile(host);
+    for (const scope of profile.scopes) {
+      const path = profile.settingsPath(scope, environment);
+      if (candidates.has(path)) {
+        continue;
+      }
+      const found = await fileSystem.read(path);
+      if (
+        profile.inspect(found?.content.toString("utf8")).installedEvents
+          .length > 0
+      ) {
+        candidates.set(path, { path, host, entry: undefined, kind: "hooks" });
+      }
     }
   }
 
   const removals: PlannedRemoval[] = [];
   const skipped: string[] = [];
+  const kept: string[] = [];
   const writes: PlannedWrite[] = [];
 
-  for (const path of candidates) {
+  for (const candidate of candidates.values()) {
+    const { path, host, entry } = candidate;
+    // Another project still needs this file as it is: the same hooks file,
+    // or, for the feature flag, any other Codex install at all.
+    const sharedWith = registry.installs.filter(
+      (other) =>
+        other.projectDir !== environment.projectDir &&
+        (candidate.kind === "feature"
+          ? other.host === host
+          : other.settingsPath === path),
+    );
+    if (sharedWith.length > 0) {
+      kept.push(path);
+      continue;
+    }
     const current = await fileSystem.read(path);
     if (current === undefined) {
       removals.push({ settingsPath: path, method: "already-gone" });
       continue;
     }
     const currentSha = sha256(current.content);
-    const entry = registered.find((install) => install.settingsPath === path);
     const manifestFile =
       entry === undefined
         ? undefined
         : await fileSystem.read(entry.manifestPath);
     const backup = readManifest(
       manifestFile?.content.toString("utf8"),
-    )?.entries.find((candidate) => candidate.path === path);
+    )?.entries.find((candidateEntry) => candidateEntry.path === path);
 
     if (backup?.writtenSha256 === currentSha) {
       const original =
@@ -128,7 +174,10 @@ export async function planUninstallCommand(
       }
     }
 
-    const surgical = planUninstall(current.content.toString("utf8"));
+    const surgical =
+      candidate.kind === "feature"
+        ? planDisableHooks(current.content.toString("utf8"))
+        : hostProfile(host).planUninstall(current.content.toString("utf8"));
     switch (surgical.kind) {
       case "modify":
         writes.push({
@@ -139,9 +188,12 @@ export async function planUninstallCommand(
         removals.push({ settingsPath: path, method: "surgical" });
         break;
       case "nothing-to-remove":
+      case "unchanged":
+      case "create":
         removals.push({ settingsPath: path, method: "already-gone" });
         break;
       case "unparseable":
+      case "unsupported":
         skipped.push(path);
         break;
     }
@@ -171,6 +223,7 @@ export async function planUninstallCommand(
   return {
     removals,
     skipped,
+    kept,
     writes,
     backupDir: join(paths.backups, `${stamp}-uninstall`),
   };

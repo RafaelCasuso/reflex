@@ -1,9 +1,6 @@
-import {
-  readHookInput,
-  toObservationRecord,
-  type ClaudeHookEvent,
-} from "@reflex/adapter-claude-code/hook";
-import { ObservationLog } from "@reflex/telemetry";
+import * as claude from "@reflex/adapter-claude-code/hook";
+import * as codex from "@reflex/adapter-codex/hook";
+import type { ObservationLog, ObservationRecord } from "@reflex/telemetry";
 
 /**
  * RFX-086 — the Observe hook for Claude Code.
@@ -53,28 +50,49 @@ export type HookOutcome =
   | "record-failed"
   | "internal-error";
 
-export interface HookResult {
+export interface HookResult<Event> {
   readonly outcome: HookOutcome;
   /** The event that was read, when one was, for the decision path (RFX-043). */
-  readonly event?: ClaudeHookEvent;
+  readonly event?: Event;
+}
+
+/** What a host's hot-path entry gives the runner: a reader and a recorder. */
+export interface HostHook<Event> {
+  readonly read: (
+    stdin: string,
+  ) =>
+    | { readonly ok: true; readonly event: Event }
+    | { readonly ok: false; readonly reason: string };
+  readonly record: (
+    event: Event,
+    context: { readonly now: () => Date },
+  ) => ObservationRecord | undefined;
+  /**
+   * G8: whether an event should be recorded at all. A user-scoped hook
+   * fires in every project; Codex keeps to the projects REFLEX was
+   * installed in. Absent means everything is recorded.
+   */
+  readonly accepts?: (event: Event) => boolean;
 }
 
 /** Never throws. The return value exists for the decision path and tests. */
-export async function runClaudeCodeHook(
+export async function runObserveHook<Event>(
+  host: HostHook<Event>,
   stdin: string | undefined,
   dependencies: HookDependencies,
-): Promise<HookResult> {
+): Promise<HookResult<Event>> {
   try {
     if (stdin === undefined) {
       return { outcome: "unreadable-payload" };
     }
-    const input = readHookInput(stdin);
+    const input = host.read(stdin);
     if (!input.ok) {
       return { outcome: "unreadable-payload" };
     }
-    const record = toObservationRecord(input.event, {
-      now: dependencies.now,
-    });
+    if (host.accepts !== undefined && !host.accepts(input.event)) {
+      return { outcome: "nothing-to-record" };
+    }
+    const record = host.record(input.event, { now: dependencies.now });
     if (record === undefined) {
       return { outcome: "nothing-to-record", event: input.event };
     }
@@ -86,4 +104,26 @@ export async function runClaudeCodeHook(
   } catch {
     return { outcome: "internal-error" };
   }
+}
+
+export const CLAUDE_CODE_HOOK: HostHook<claude.ClaudeHookEvent> = {
+  read: claude.readHookInput,
+  record: claude.toObservationRecord,
+};
+
+export function codexHook(
+  accepts: (event: codex.CodexHookEvent) => boolean,
+): HostHook<codex.CodexHookEvent> {
+  return {
+    read: codex.readHookInput,
+    record: codex.toObservationRecord,
+    accepts,
+  };
+}
+
+export function runClaudeCodeHook(
+  stdin: string | undefined,
+  dependencies: HookDependencies,
+): Promise<HookResult<claude.ClaudeHookEvent>> {
+  return runObserveHook(CLAUDE_CODE_HOOK, stdin, dependencies);
 }

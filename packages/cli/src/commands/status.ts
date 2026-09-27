@@ -1,8 +1,4 @@
-import {
-  buildHookCommand,
-  inspectSettings,
-  OBSERVED_EVENTS,
-} from "@reflex/adapter-claude-code";
+import { configFilePath, inspectConfig } from "@reflex/adapter-codex";
 import type { ActionOutcome } from "@reflex/contracts";
 import {
   assembleOutcomes,
@@ -12,6 +8,7 @@ import {
 
 import type { FileSystemPort } from "../backups/file-system.js";
 import { daemonStatus, type DaemonStatus } from "../daemon/lifecycle.js";
+import { hostProfile, type SupportedHost } from "../hosts.js";
 import { readProvider, type ProviderReport } from "./provider.js";
 import {
   parseIdentity,
@@ -44,9 +41,11 @@ export type HookHealth =
   | "unreadable";
 
 export interface AdapterStatus {
-  readonly host: "claude-code";
+  readonly host: SupportedHost;
   readonly settingsPath: string;
   readonly health: HookHealth;
+  /** What disabled it, when `disabled`. */
+  readonly disabledBy?: string;
 }
 
 export interface OutcomeSummary {
@@ -124,27 +123,42 @@ export async function collectStatus(
     if (install.projectDir !== environment.projectDir) {
       continue;
     }
+    const profile = hostProfile(install.host);
     const file = await fileSystem.read(install.settingsPath);
-    const inspection = inspectSettings(
+    const inspection = profile.inspect(
       file?.content.toString("utf8"),
-      buildHookCommand(environment.nodePath, environment.entryPath),
+      profile.hookCommand(environment.nodePath, environment.entryPath),
     );
-    const complete = OBSERVED_EVENTS.every(({ event }) =>
+    const complete = profile.events.every((event) =>
       inspection.installedEvents.includes(event),
     );
+    // Codex runs no hook while `features.hooks` is off (G8).
+    let disabledBy: string | undefined;
+    if (inspection.hooksDisabled) {
+      disabledBy = `"disableAllHooks" in that file`;
+    } else if (install.host === "codex") {
+      const configPath = configFilePath("user", environment);
+      const config = inspectConfig(
+        (await fileSystem.read(configPath))?.content.toString("utf8"),
+      );
+      if (config.hooksEnabled !== true) {
+        disabledBy = `features.hooks is off in ${configPath}`;
+      }
+    }
     adapters.push({
-      host: "claude-code",
+      host: install.host,
       settingsPath: install.settingsPath,
       health:
         inspection.state === "unparseable"
           ? "unreadable"
-          : inspection.hooksDisabled
+          : disabledBy !== undefined
             ? "disabled"
             : !complete
               ? "missing"
               : inspection.alteredEvents.length > 0
                 ? "altered"
                 : "active",
+      ...(disabledBy === undefined ? {} : { disabledBy }),
     });
   }
 

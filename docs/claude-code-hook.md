@@ -5,7 +5,9 @@ hook call costs. Gate G1.5: REFLEX observes and never answers the host.
 
 ## 1. What gets installed
 
-`rfx init` adds one hook to each of six events in a Claude Code settings file:
+`rfx init` installs for each agent it finds on `PATH` (`claude`, `codex`), or
+for `--host`; this page is Claude Code's, `docs/codex-hook.md` is Codex's. For
+Claude Code it adds one hook to each of six events in a settings file:
 
 | Event                | What it tells REFLEX                          |
 | -------------------- | --------------------------------------------- |

@@ -68,7 +68,13 @@ async function listAll(dir: string): Promise<string[]> {
 }
 
 async function install(): Promise<void> {
-  const plan = await planInit(env, "local", nodeFileSystem, probes);
+  const plan = await planInit(
+    env,
+    "claude-code",
+    "local",
+    nodeFileSystem,
+    probes,
+  );
   if (plan.kind !== "install") {
     throw new Error(`expected an install plan, got ${plan.kind}`);
   }
@@ -88,7 +94,13 @@ describe("rfx init: the plan", () => {
     await writeFile(settings, '{\n  "model": "opus"\n}\n');
     const before = await listAll(root);
 
-    const plan = await planInit(env, "local", nodeFileSystem, probes);
+    const plan = await planInit(
+      env,
+      "claude-code",
+      "local",
+      nodeFileSystem,
+      probes,
+    );
 
     expect(plan.kind).toBe("install");
     expect(await listAll(root)).toEqual(before);
@@ -97,8 +109,20 @@ describe("rfx init: the plan", () => {
 
   it("is deterministic: the same state gives the same plan, byte for byte", async () => {
     await writeFile(settings, '{\n  "model": "opus"\n}\n');
-    const first = await planInit(env, "local", nodeFileSystem, probes);
-    const second = await planInit(env, "local", nodeFileSystem, probes);
+    const first = await planInit(
+      env,
+      "claude-code",
+      "local",
+      nodeFileSystem,
+      probes,
+    );
+    const second = await planInit(
+      env,
+      "claude-code",
+      "local",
+      nodeFileSystem,
+      probes,
+    );
 
     expect(renderInitPlan(first)).toBe(renderInitPlan(second));
     if (first.kind === "install" && second.kind === "install") {
@@ -109,7 +133,7 @@ describe("rfx init: the plan", () => {
 
   it("says exactly what it will do before doing it", async () => {
     const text = renderInitPlan(
-      await planInit(env, "local", nodeFileSystem, probes),
+      await planInit(env, "claude-code", "local", nodeFileSystem, probes),
     );
     expect(text).toContain(`create  ${settings}`);
     expect(text).toContain("PreToolUse, PermissionRequest, PostToolUse");
@@ -120,7 +144,13 @@ describe("rfx init: the plan", () => {
 
   it("refuses to touch a settings file it cannot read", async () => {
     await writeFile(settings, '{"hooks": {');
-    const plan = await planInit(env, "local", nodeFileSystem, probes);
+    const plan = await planInit(
+      env,
+      "claude-code",
+      "local",
+      nodeFileSystem,
+      probes,
+    );
 
     expect(plan).toMatchObject({ kind: "blocked", settingsPath: settings });
     expect(renderInitPlan(plan)).toContain("will not touch it");
@@ -134,7 +164,7 @@ describe("rfx init: the plan", () => {
       join(env.homeDir, ".claude", "settings.json"),
       '{"disableAllHooks": true}',
     );
-    const plan = await planInit(env, "local", nodeFileSystem, {
+    const plan = await planInit(env, "claude-code", "local", nodeFileSystem, {
       hostVersion: () => Promise.resolve(undefined),
       isGitIgnored: () => Promise.resolve(false),
     });
@@ -146,7 +176,13 @@ describe("rfx init: the plan", () => {
   });
 
   it("warns before writing a machine-specific path into the shared file", async () => {
-    const plan = await planInit(env, "project", nodeFileSystem, probes);
+    const plan = await planInit(
+      env,
+      "claude-code",
+      "project",
+      nodeFileSystem,
+      probes,
+    );
     expect(plan.kind === "install" && plan.warnings.map((w) => w.kind)).toEqual(
       ["shared-settings-file"],
     );
@@ -200,7 +236,13 @@ describe("rfx init: applying the plan", () => {
   it("is idempotent", async () => {
     await install();
     const once = await readFile(settings, "utf8");
-    const plan = await planInit(env, "local", nodeFileSystem, probes);
+    const plan = await planInit(
+      env,
+      "claude-code",
+      "local",
+      nodeFileSystem,
+      probes,
+    );
 
     expect(plan.kind).toBe("already-installed");
     expect(await readFile(settings, "utf8")).toBe(once);
@@ -209,7 +251,13 @@ describe("rfx init: applying the plan", () => {
   // Adversarial: the user approved a plan for specific bytes.
   it("writes nothing if the file changed while the plan was on screen", async () => {
     await writeFile(settings, '{\n  "model": "opus"\n}\n');
-    const plan = await planInit(env, "local", nodeFileSystem, probes);
+    const plan = await planInit(
+      env,
+      "claude-code",
+      "local",
+      nodeFileSystem,
+      probes,
+    );
     await writeFile(settings, '{\n  "model": "sonnet"\n}\n');
 
     expect(plan.kind).toBe("install");
@@ -299,7 +347,13 @@ describe("rfx uninstall", () => {
     await install();
     const other = { ...env, projectDir: join(root, "other") };
     await mkdir(join(other.projectDir, ".claude"), { recursive: true });
-    const plan = await planInit(other, "local", nodeFileSystem, probes);
+    const plan = await planInit(
+      other,
+      "claude-code",
+      "local",
+      nodeFileSystem,
+      probes,
+    );
     if (plan.kind === "install") {
       await applyInit(
         plan,
@@ -521,5 +575,285 @@ describe("rfx status", () => {
     expect(text).not.toContain("\x1b");
     expect(text).not.toContain("\x07");
     expect(text).toContain("All actions approved");
+  });
+});
+
+/** G8 — RFX-047, RFX-050: Codex, one hooks.json representation, the feature flag, shared files. */
+describe("rfx init for Codex", () => {
+  const codexProbes: InitProbes = {
+    hostVersion: (host) =>
+      Promise.resolve(host === "codex" ? "codex-cli 0.157.1" : undefined),
+    isGitIgnored: () => Promise.resolve(true),
+  };
+  const USER_CONFIG = `model = "gpt-5.3-codex"
+approval_policy = "on-request"
+sandbox_mode = "workspace-write"
+
+[features]
+web_search = true
+`;
+  const USER_HOOKS = `{
+  "description": "mine",
+  "hooks": {
+    "PreToolUse": [
+      { "matcher": "Bash", "hooks": [{ "type": "command", "command": "python3 policy.py" }] }
+    ]
+  }
+}
+`;
+  let hooksFile: string;
+  let configFile: string;
+
+  beforeEach(async () => {
+    hooksFile = join(env.homeDir, ".codex", "hooks.json");
+    configFile = join(env.homeDir, ".codex", "config.toml");
+    await mkdir(join(env.homeDir, ".codex"), { recursive: true });
+  });
+
+  async function installCodex(): Promise<void> {
+    const plan = await planInit(
+      env,
+      "codex",
+      undefined,
+      nodeFileSystem,
+      codexProbes,
+    );
+    if (plan.kind !== "install") {
+      throw new Error(`expected an install plan, got ${plan.kind}`);
+    }
+    expect((await applyInit(plan, nodeFileSystem, env.now)).ok).toBe(true);
+  }
+
+  it("plans the user hooks.json by default, sets features.hooks, and reports the trust-sensitive setup", async () => {
+    await writeFile(configFile, USER_CONFIG);
+    const plan = await planInit(
+      env,
+      "codex",
+      undefined,
+      nodeFileSystem,
+      codexProbes,
+    );
+    expect(plan.kind).toBe("install");
+    if (plan.kind !== "install") {
+      return;
+    }
+    expect(plan).toMatchObject({
+      host: "codex",
+      scope: "user",
+      settingsPath: hooksFile,
+      action: "create",
+      events: ["PreToolUse", "PermissionRequest", "PostToolUse", "Stop"],
+      codex: {
+        configPath: configFile,
+        feature: "set",
+        config: {
+          approvalPolicy: "on-request",
+          sandboxMode: "workspace-write",
+          hooksEnabled: undefined,
+        },
+      },
+      warnings: [],
+    });
+    expect(plan.command).toContain("hook codex");
+    const text = renderInitPlan(plan);
+    expect(text).toContain("REFLEX will observe Codex");
+    expect(text).toContain("set features.hooks = true");
+    expect(text).toContain(
+      "approval policy on-request, sandbox workspace-write",
+    );
+    // Detection changed nothing (RFX-047).
+    expect(await readFile(configFile, "utf8")).toBe(USER_CONFIG);
+    expect(await nodeFileSystem.read(hooksFile)).toBeUndefined();
+  });
+
+  it("installs, keeps the user's hooks and config keys, and uninstalls back to the same bytes", async () => {
+    await writeFile(configFile, USER_CONFIG);
+    await writeFile(hooksFile, USER_HOOKS);
+    await installCodex();
+    const hooks = await readFile(hooksFile, "utf8");
+    expect(hooks).toContain("python3 policy.py");
+    expect(hooks).toContain("hook codex");
+    const config = await readFile(configFile, "utf8");
+    expect(config).toBe(
+      USER_CONFIG.replace("[features]\n", "[features]\nhooks = true\n"),
+    );
+    const registry = JSON.parse(
+      await readFile(statePaths(env.reflexHomeOverride ?? "").installs, "utf8"),
+    ) as {
+      installs: { host: string; scope: string; enabledFeatureIn?: string }[];
+    };
+    expect(registry.installs).toEqual([
+      expect.objectContaining({
+        host: "codex",
+        scope: "user",
+        enabledFeatureIn: configFile,
+      }),
+    ]);
+
+    const plan = await planUninstallCommand(env, nodeFileSystem);
+    expect(plan.removals.map((entry) => entry.method)).toEqual([
+      "exact-restore",
+      "exact-restore",
+    ]);
+    await uninstall();
+    expect(await readFile(hooksFile, "utf8")).toBe(USER_HOOKS);
+    expect(await readFile(configFile, "utf8")).toBe(USER_CONFIG);
+  });
+
+  it("leaves a flag the user had on alone, on install and on uninstall", async () => {
+    await writeFile(configFile, "[features]\nhooks = true\n");
+    const plan = await planInit(
+      env,
+      "codex",
+      undefined,
+      nodeFileSystem,
+      codexProbes,
+    );
+    expect(plan.kind === "install" && plan.codex?.feature).toBe("already-on");
+    await installCodex();
+    expect(await readFile(configFile, "utf8")).toBe(
+      "[features]\nhooks = true\n",
+    );
+    await uninstall();
+    expect(await readFile(configFile, "utf8")).toBe(
+      "[features]\nhooks = true\n",
+    );
+    expect(await nodeFileSystem.read(hooksFile)).toBeUndefined();
+  });
+
+  it("keeps the user's flag edits and removes only its own line when the config changed since", async () => {
+    await writeFile(configFile, USER_CONFIG);
+    await installCodex();
+    await writeFile(
+      configFile,
+      (await readFile(configFile, "utf8")).replace(
+        'model = "gpt-5.3-codex"',
+        'model = "gpt-5.4"',
+      ),
+    );
+    const plan = await planUninstallCommand(env, nodeFileSystem);
+    expect(
+      plan.removals.find((entry) => entry.settingsPath === configFile)?.method,
+    ).toBe("surgical");
+    await uninstall();
+    expect(await readFile(configFile, "utf8")).toBe(
+      USER_CONFIG.replace('model = "gpt-5.3-codex"', 'model = "gpt-5.4"'),
+    );
+  });
+
+  it("warns, and still installs, when it cannot set the flag; and about a [hooks] table it leaves alone", async () => {
+    await writeFile(
+      configFile,
+      'features = { web_search = true }\n\n[[hooks.PreToolUse]]\nmatcher = "Bash"\n\n[[hooks.PreToolUse.hooks]]\ntype = "command"\ncommand = "python3 policy.py"\n',
+    );
+    const plan = await planInit(
+      env,
+      "codex",
+      undefined,
+      nodeFileSystem,
+      codexProbes,
+    );
+    expect(plan.kind === "install" && plan.warnings.map((w) => w.kind)).toEqual(
+      ["inline-hooks-table", "hooks-feature-not-set"],
+    );
+    expect(plan.kind === "install" && plan.codex?.feature).toBe("not-set");
+    expect(
+      plan.kind === "install" && plan.writes.map((w) => w.path),
+    ).not.toContain(configFile);
+    expect(renderInitPlan(plan)).toContain("would be installed and never run");
+  });
+
+  it("uses Codex's default scope for --scope local, and says so; project scope warns about the shared file", async () => {
+    const local = await planInit(
+      env,
+      "codex",
+      "local",
+      nodeFileSystem,
+      codexProbes,
+    );
+    expect(local.kind === "install" && local.scope).toBe("user");
+    expect(
+      local.kind === "install" && local.warnings.map((w) => w.kind),
+    ).toEqual(["scope-substituted"]);
+    const project = await planInit(
+      env,
+      "codex",
+      "project",
+      nodeFileSystem,
+      codexProbes,
+    );
+    expect(project.kind === "install" && project.settingsPath).toBe(
+      join(env.projectDir, ".codex", "hooks.json"),
+    );
+    expect(
+      project.kind === "install" && project.warnings.map((w) => w.kind),
+    ).toEqual(["shared-settings-file"]);
+  });
+
+  // RFX-050: the user file is shared by every project. Uninstalling one
+  // project keeps the file for the other.
+  it("keeps the shared user file while another project still uses it", async () => {
+    await installCodex();
+    const other: Environment = { ...env, projectDir: join(root, "other") };
+    const otherPlan = await planInit(
+      other,
+      "codex",
+      undefined,
+      nodeFileSystem,
+      codexProbes,
+    );
+    expect(
+      otherPlan.kind === "install" && otherPlan.writes.map((w) => w.path),
+    ).toEqual([statePaths(env.reflexHomeOverride ?? "").installs]);
+    if (otherPlan.kind === "install") {
+      expect((await applyInit(otherPlan, nodeFileSystem, env.now)).ok).toBe(
+        true,
+      );
+    }
+    const hooksBefore = await readFile(hooksFile, "utf8");
+    const plan = await planUninstallCommand(env, nodeFileSystem);
+    expect(plan.kept).toEqual([hooksFile, configFile]);
+    expect(plan.removals).toEqual([]);
+    await uninstall();
+    expect(await readFile(hooksFile, "utf8")).toBe(hooksBefore);
+    const registry = JSON.parse(
+      await readFile(statePaths(env.reflexHomeOverride ?? "").installs, "utf8"),
+    ) as { installs: { projectDir: string }[] };
+    expect(registry.installs.map((entry) => entry.projectDir)).toEqual([
+      join(root, "other"),
+    ]);
+    // The last project out takes the file and the flag with it: it did not
+    // write them, so surgically.
+    const last = await planUninstallCommand(other, nodeFileSystem);
+    expect(last.kept).toEqual([]);
+    expect(last.removals.map((entry) => entry.method)).toEqual([
+      "surgical",
+      "surgical",
+    ]);
+    expect((await applyUninstall(last, nodeFileSystem, env.now)).ok).toBe(true);
+    expect(await readFile(hooksFile, "utf8")).not.toContain("REFLEX_MANAGED");
+    expect(await readFile(configFile, "utf8")).not.toContain("hooks = true");
+  });
+
+  it("shows both hosts in status, each with its own file", async () => {
+    await install();
+    await installCodex();
+    const report = await collectStatus(env, nodeFileSystem);
+    expect(report.adapters).toEqual([
+      expect.objectContaining({ host: "claude-code", health: "active" }),
+      expect.objectContaining({
+        host: "codex",
+        health: "active",
+        settingsPath: hooksFile,
+      }),
+    ]);
+    // The flag off again: Codex is installed and not running, and status says so.
+    await writeFile(configFile, "[features]\nhooks = false\n");
+    const off = await collectStatus(env, nodeFileSystem);
+    expect(off.adapters[1]).toMatchObject({
+      host: "codex",
+      health: "disabled",
+    });
+    expect(renderStatus(off, NOW)).toContain("features.hooks is off");
   });
 });

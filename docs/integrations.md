@@ -21,6 +21,7 @@ Current Codex hook behavior requires a deliberate split:
 - `PreToolUse` can inspect calls and can block supported calls.
 - `PermissionRequest` occurs when Codex is about to ask for approval and can allow, deny, or abstain so the native prompt continues.
 - Therefore REFLEX must not pretend that `PreToolUse` alone provides a universal `ASK` operation.
+- Since G8 (`docs/codex-hook.md`): `PreToolUse` answers the documented `ask` value (Codex shows its own prompt) and never `allow`; `PermissionRequest` approves, denies, or abstains. Documented, not yet verified live.
 
 Adapter mapping:
 

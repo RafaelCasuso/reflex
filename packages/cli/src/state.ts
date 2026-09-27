@@ -1,7 +1,6 @@
 import { randomBytes } from "node:crypto";
 import { join } from "node:path";
 
-import type { SettingsScope } from "@reflex/adapter-claude-code";
 import type {
   AgentId,
   FailureMode,
@@ -9,6 +8,12 @@ import type {
   ProjectId,
   ReflexMode,
 } from "@reflex/contracts";
+
+import {
+  isSupportedHost,
+  type HostScope,
+  type SupportedHost,
+} from "./hosts.js";
 
 /**
  * REFLEX's own local state. It lives under the user's home, not inside the
@@ -65,9 +70,16 @@ export function newProjectId(): ProjectId {
 }
 
 export interface InstallRecord {
-  readonly host: "claude-code";
-  readonly scope: SettingsScope;
+  readonly host: SupportedHost;
+  readonly scope: HostScope;
+  /** The file REFLEX put its hooks in. Shared by projects under `user` scope. */
   readonly settingsPath: string;
+  /**
+   * G8, Codex: the `config.toml` in which REFLEX set `features.hooks = true`
+   * because it was not on. Absent when the user had it on already, or for
+   * a host without such a flag. `rfx uninstall` unsets only what it set.
+   */
+  readonly enabledFeatureIn?: string;
   readonly projectDir: string;
   readonly projectId: ProjectId;
   /** The transaction manifest that holds the pre-install backup. */
@@ -166,7 +178,7 @@ export function parseRegistry(text: string | undefined): InstallRegistry {
         (entry): InstallRecord[] => {
           if (
             !isRecord(entry) ||
-            entry.host !== "claude-code" ||
+            !isSupportedHost(entry.host) ||
             typeof entry.settingsPath !== "string" ||
             typeof entry.projectDir !== "string" ||
             typeof entry.projectId !== "string" ||

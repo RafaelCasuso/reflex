@@ -1,16 +1,13 @@
 import { join } from "node:path";
 
-import type { FailureMode, ReflexMode } from "@reflex/contracts";
+import { managedSettingsPaths } from "@reflex/adapter-claude-code";
 import {
-  buildHookCommand,
-  inspectSettings,
-  managedSettingsPaths,
-  planInstall,
-  SETTINGS_SCOPES,
-  settingsPath,
-  type SettingsInspection,
-  type SettingsScope,
-} from "@reflex/adapter-claude-code";
+  configFilePath,
+  inspectConfig,
+  planEnableHooks,
+  type CodexConfigInspection,
+} from "@reflex/adapter-codex";
+import type { FailureMode, ReflexMode } from "@reflex/contracts";
 
 import {
   sha256,
@@ -22,6 +19,13 @@ import {
   type PlannedWrite,
   type TransactionResult,
 } from "../backups/transaction.js";
+import {
+  hostProfile,
+  scopeFor,
+  type HookFileInspection,
+  type HostScope,
+  type SupportedHost,
+} from "../hosts.js";
 import {
   newIdentity,
   newProjectId,
@@ -40,7 +44,9 @@ import {
  *
  * `planInit` is read-only and its result is the whole truth about what
  * `applyInit` will do: the exact bytes, the exact paths. Nothing is decided
- * at apply time, so what the user approved is what happens.
+ * at apply time, so what the user approved is what happens. Since G8 it
+ * plans one host at a time (RFX-050 for Codex, RFX-052 for Claude Code);
+ * the binary runs it once per host it detected.
  */
 /** RFX-043: what the hook will do with a decision (ADR-002, ADR-003). */
 export interface InitPreferences {
@@ -49,9 +55,9 @@ export interface InitPreferences {
 }
 
 export interface ScopeReport {
-  readonly scope: SettingsScope | "managed";
+  readonly scope: HostScope | "managed";
   readonly path: string;
-  readonly inspection: SettingsInspection;
+  readonly inspection: HookFileInspection;
 }
 
 export type InitWarning =
@@ -59,11 +65,30 @@ export type InitWarning =
   | { readonly kind: "managed-hooks-only"; readonly path: string }
   | { readonly kind: "not-git-ignored"; readonly path: string }
   | { readonly kind: "shared-settings-file"; readonly path: string }
-  | { readonly kind: "host-not-found" };
+  | { readonly kind: "host-not-found"; readonly host: SupportedHost }
+  /** The `--scope` given is not one of this host's; its default is used. */
+  | { readonly kind: "scope-substituted"; readonly scope: HostScope }
+  /** Codex: `features.hooks` is off and this planner cannot set it here. */
+  | {
+      readonly kind: "hooks-feature-not-set";
+      readonly path: string;
+      readonly reason: string;
+    }
+  /** Codex: the user declares hooks in a `[hooks]` table. Left alone. */
+  | { readonly kind: "inline-hooks-table"; readonly path: string };
+
+/** RFX-047: the trust-sensitive setup the plan reports, never changes. */
+export interface CodexReport {
+  readonly configPath: string;
+  readonly config: CodexConfigInspection;
+  /** What the plan does to `features.hooks`. */
+  readonly feature: "already-on" | "set" | "not-set";
+}
 
 export interface InstallInitPlan {
   readonly kind: "install";
-  readonly scope: SettingsScope;
+  readonly host: SupportedHost;
+  readonly scope: HostScope;
   readonly settingsPath: string;
   readonly action: "create" | "modify";
   readonly command: string;
@@ -73,10 +98,12 @@ export interface InstallInitPlan {
   readonly writes: readonly PlannedWrite[];
   readonly reports: readonly ScopeReport[];
   readonly warnings: readonly InitWarning[];
+  readonly codex?: CodexReport;
 }
 
 export interface AlreadyInstalledPlan {
   readonly kind: "already-installed";
+  readonly host: SupportedHost;
   readonly settingsPath: string;
   readonly reports: readonly ScopeReport[];
   readonly warnings: readonly InitWarning[];
@@ -84,6 +111,7 @@ export interface AlreadyInstalledPlan {
 
 export interface BlockedPlan {
   readonly kind: "blocked";
+  readonly host: SupportedHost;
   readonly reason: "unparseable-settings";
   readonly settingsPath: string;
 }
@@ -92,7 +120,7 @@ export type InitPlan = InstallInitPlan | AlreadyInstalledPlan | BlockedPlan;
 
 export interface InitProbes {
   /** The host's version string, or `undefined` when it is not installed. */
-  readonly hostVersion: () => Promise<string | undefined>;
+  readonly hostVersion: (host: SupportedHost) => Promise<string | undefined>;
   /** `undefined` when the path is not inside a git repository. */
   readonly isGitIgnored: (path: string) => Promise<boolean | undefined>;
 }
@@ -109,35 +137,47 @@ function backupStamp(now: Date): string {
 
 export async function planInit(
   environment: Environment,
-  scope: SettingsScope,
+  host: SupportedHost,
+  wantedScope: HostScope | undefined,
   fileSystem: FileSystemPort,
   probes: InitProbes,
   preferences: InitPreferences = {},
 ): Promise<InitPlan> {
+  const profile = hostProfile(host);
   const home = reflexHome(environment);
   const paths = statePaths(home);
-  const target = settingsPath(scope, environment);
+  const { scope, substituted } = scopeFor(host, wantedScope);
+  const target = profile.settingsPath(scope, environment);
   const now = environment.now();
+  const command = profile.hookCommand(
+    environment.nodePath,
+    environment.entryPath,
+  );
 
-  // Read everything first. Detection never writes (RFX-041).
+  // Read everything first. Detection never writes (RFX-041, RFX-047).
   const reports: ScopeReport[] = [];
-  for (const candidate of SETTINGS_SCOPES) {
-    const path = settingsPath(candidate, environment);
+  for (const candidate of profile.scopes) {
+    const path = profile.settingsPath(candidate, environment);
     reports.push({
       scope: candidate,
       path,
-      inspection: inspectSettings(text(await fileSystem.read(path))),
+      inspection: profile.inspect(text(await fileSystem.read(path))),
     });
   }
-  for (const path of managedSettingsPaths(environment.platform)) {
-    reports.push({
-      scope: "managed",
-      path,
-      inspection: inspectSettings(text(await fileSystem.read(path))),
-    });
+  if (host === "claude-code") {
+    for (const path of managedSettingsPaths(environment.platform)) {
+      reports.push({
+        scope: "managed",
+        path,
+        inspection: profile.inspect(text(await fileSystem.read(path))),
+      });
+    }
   }
 
   const warnings: InitWarning[] = [];
+  if (substituted && wantedScope !== undefined) {
+    warnings.push({ kind: "scope-substituted", scope: wantedScope });
+  }
   for (const report of reports) {
     if (report.inspection.hooksDisabled) {
       warnings.push({ kind: "hooks-disabled", path: report.path });
@@ -148,51 +188,121 @@ export async function planInit(
   }
   if (scope === "project") {
     warnings.push({ kind: "shared-settings-file", path: target });
-  } else if ((await probes.isGitIgnored(target)) === false) {
+  } else if (
+    scope === "local" &&
+    (await probes.isGitIgnored(target)) === false
+  ) {
     warnings.push({ kind: "not-git-ignored", path: target });
   }
-  if ((await probes.hostVersion()) === undefined) {
-    warnings.push({ kind: "host-not-found" });
+  if ((await probes.hostVersion(host)) === undefined) {
+    warnings.push({ kind: "host-not-found", host });
   }
 
   const current = await fileSystem.read(target);
-  const command = buildHookCommand(environment.nodePath, environment.entryPath);
-  const install = planInstall(text(current), command);
-
+  const install = profile.planInstall(text(current), command);
   if (install.kind === "unparseable") {
     return {
       kind: "blocked",
+      host,
       reason: "unparseable-settings",
       settingsPath: target,
     };
   }
-  if (install.kind === "already-installed") {
-    return {
-      kind: "already-installed",
-      settingsPath: target,
-      reports,
-      warnings,
-    };
+
+  // Codex runs no hook unless `features.hooks` is on, in the user's
+  // config.toml, whatever the scope of the hooks file (RFX-050).
+  let codex: CodexReport | undefined;
+  let configWrite: PlannedWrite | undefined;
+  if (host === "codex") {
+    const configPath = configFilePath("user", environment);
+    const configFile = await fileSystem.read(configPath);
+    const config = inspectConfig(text(configFile), environment.projectDir);
+    if (config.inlineHookEvents.length > 0) {
+      warnings.push({ kind: "inline-hooks-table", path: configPath });
+    }
+    if (config.hooksEnabled === true) {
+      codex = { configPath, config, feature: "already-on" };
+    } else {
+      const feature = planEnableHooks(text(configFile));
+      if (feature.kind === "create" || feature.kind === "modify") {
+        codex = { configPath, config, feature: "set" };
+        configWrite = {
+          path: configPath,
+          content: Buffer.from(feature.newText, "utf8"),
+          expectedSha256: digest(configFile),
+          createMode: STATE_FILE_MODE,
+        };
+      } else {
+        codex = { configPath, config, feature: "not-set" };
+        warnings.push({
+          kind: "hooks-feature-not-set",
+          path: configPath,
+          reason:
+            feature.kind === "unsupported"
+              ? feature.reason
+              : feature.kind === "unparseable"
+                ? "the file is not valid TOML"
+                : "it is off",
+        });
+      }
+    }
   }
 
   const identityFile = await fileSystem.read(paths.identity);
   const identity = parseIdentity(text(identityFile));
   const registryFile = await fileSystem.read(paths.installs);
   const registry = parseRegistry(text(registryFile));
-
-  const backupDir = join(paths.backups, backupStamp(now));
   const previous = registry.installs.find(
-    (entry) => entry.settingsPath === target,
+    (entry) =>
+      entry.host === host && entry.projectDir === environment.projectDir,
   );
+
+  // Already installed means: the file carries the hooks, the flag is on,
+  // and this project is registered. A second project behind the same user
+  // file (Codex's default scope) still gets its registry entry.
+  if (
+    install.kind === "already-installed" &&
+    configWrite === undefined &&
+    previous !== undefined
+  ) {
+    return {
+      kind: "already-installed",
+      host,
+      settingsPath: target,
+      reports,
+      warnings,
+    };
+  }
+
+  const backupDir = join(paths.backups, `${backupStamp(now)}-${host}`);
+  const reflexSetFlag =
+    configWrite?.path ??
+    previous?.enabledFeatureIn ??
+    registry.installs.find(
+      (entry) => entry.host === host && entry.enabledFeatureIn !== undefined,
+    )?.enabledFeatureIn;
   const record: InstallRecord = {
-    host: "claude-code",
+    host,
     scope,
     settingsPath: target,
     projectDir: environment.projectDir,
     // RFX-043: a re-install keeps the mode the project had unless told
-    // otherwise; a first install observes unless told otherwise.
-    mode: preferences.mode ?? previous?.mode ?? "observe",
-    failureMode: preferences.failureMode ?? previous?.failureMode ?? "fail-ask",
+    // otherwise; a first install observes unless told otherwise. The mode
+    // is the project's: another host's install in it says the same.
+    mode:
+      preferences.mode ??
+      previous?.mode ??
+      registry.installs.find(
+        (entry) => entry.projectDir === environment.projectDir,
+      )?.mode ??
+      "observe",
+    failureMode:
+      preferences.failureMode ??
+      previous?.failureMode ??
+      registry.installs.find(
+        (entry) => entry.projectDir === environment.projectDir,
+      )?.failureMode ??
+      "fail-ask",
     // A project keeps its identity across re-installs and uninstalls.
     projectId:
       registry.projects.find(
@@ -202,33 +312,46 @@ export async function planInit(
     // the file. A re-install must not replace it with a backup of itself.
     manifestPath: previous?.manifestPath ?? join(backupDir, "manifest.json"),
     installedAt: now.toISOString(),
+    // The flag is REFLEX's to unset when REFLEX set it, for whichever
+    // project set it: every Codex install shares that fact, and the last
+    // one out turns it off.
+    ...(reflexSetFlag === undefined ? {} : { enabledFeatureIn: reflexSetFlag }),
   };
 
-  const writes: PlannedWrite[] = [
-    {
+  const writes: PlannedWrite[] = [];
+  if (install.kind !== "already-installed") {
+    writes.push({
       path: target,
       content: Buffer.from(install.newText, "utf8"),
       expectedSha256: digest(current),
-    },
-    {
-      path: paths.installs,
-      content: serialize({
-        version: 1,
-        installs: [
-          ...registry.installs.filter((entry) => entry.settingsPath !== target),
-          record,
-        ],
-        projects: [
-          ...registry.projects.filter(
-            (entry) => entry.projectDir !== environment.projectDir,
-          ),
-          { projectDir: environment.projectDir, projectId: record.projectId },
-        ],
-      }),
-      expectedSha256: digest(registryFile),
-      createMode: STATE_FILE_MODE,
-    },
-  ];
+    });
+  }
+  if (configWrite !== undefined) {
+    writes.push(configWrite);
+  }
+  writes.push({
+    path: paths.installs,
+    content: serialize({
+      version: 1,
+      installs: [
+        ...registry.installs.filter(
+          (entry) =>
+            !(
+              entry.host === host && entry.projectDir === environment.projectDir
+            ),
+        ),
+        record,
+      ],
+      projects: [
+        ...registry.projects.filter(
+          (entry) => entry.projectDir !== environment.projectDir,
+        ),
+        { projectDir: environment.projectDir, projectId: record.projectId },
+      ],
+    }),
+    expectedSha256: digest(registryFile),
+    createMode: STATE_FILE_MODE,
+  });
   if (identity === undefined) {
     writes.push({
       path: paths.identity,
@@ -240,16 +363,18 @@ export async function planInit(
 
   return {
     kind: "install",
+    host,
     scope,
     settingsPath: target,
-    action: install.kind,
+    action: install.kind === "already-installed" ? "modify" : install.kind,
     command,
-    events: install.events,
+    events: profile.events,
     createsIdentity: identity === undefined,
     backupDir,
     writes,
     reports,
     warnings,
+    ...(codex === undefined ? {} : { codex }),
   };
 }
 

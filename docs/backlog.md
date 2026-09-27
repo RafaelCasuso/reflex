@@ -969,11 +969,15 @@ RFX-041, RFX-042 and RFX-044 moved to G1.5, where the adapter is first exercised
 
 **Acceptance:** Detection never overwrites existing hook representation.
 
+**Status:** Done (2026-09-27). `packages/adapter-codex/src/detect.ts` knows the four places Codex loads hooks from (its documentation, read 2026-09-27): `~/.codex/hooks.json`, a `[hooks]` table in `~/.codex/config.toml`, `<repo>/.codex/hooks.json` and a `[hooks]` table in `<repo>/.codex/config.toml`. `rfx init` reads them all and writes to none while planning (`commands.test.ts`, "plans the user hooks.json by default": detection changed nothing). **Trust-sensitive setup** is read from `config.toml` with a TOML parser and reported in the plan, never changed: `approval_policy`, `sandbox_mode`, the project's `projects."<dir>".trust_level`, whether `features.hooks` is on, and whether the user declares hooks inline. **Detection never overwrites existing hook representation:** a `[hooks]` table in `config.toml` is left as it is and the plan says so (`inline-hooks-table`); REFLEX installs into `hooks.json`, which Codex reads as well, and a `hooks.json` the user already has keeps its hooks, comments, tabs and `description` byte for byte (`hooks-config.test.ts`). Not verified against a live Codex yet (`docs/codex-hook.md`).
+
 ### RFX-048 — Implement Codex PreToolUse translator
 
 **Goal:** Translate supported PreToolUse events.
 
 **Acceptance:** Bash/apply_patch/MCP fixture coverage.
+
+**Status:** Done (2026-09-27). `packages/adapter-codex/src/{hook-input,translate,identity}.ts`: the documented envelope (`session_id`, `hook_event_name`, `cwd`, `permission_mode`, `turn_id`, `tool_name`, `tool_input`, `tool_use_id`) read strictly where the adapter relies on it, tolerant elsewhere; a payload it cannot use is a typed failure, never a guess. **Bash/apply_patch/MCP fixture coverage:** fixtures composed from the documentation (`fixtures/codex-hooks-doc/`, README says so) for `Bash` (the command as an operand, uninterpreted, `unknown` by name), `apply_patch` (the patch in `tool_input.command`; only its file headers are read, into path operands; `local-write`, or `destructive` when it deletes a file, as `rm` is; not a documented patch is `unknown` with no operand), `mcp__<server>__<tool>` (namespace and name, never classified) and `update_plan` (`none`). Adversarial: a Bash command carrying patch headers is a command, not a patch; a tool named `apply_patch` with anything but a patch is unknown. Ids are derived as for Claude Code, so every event about one call shares an action id; `PermissionRequest` has none (documented) and gets a random one. `docs/codex-hook.md` §3.
 
 ### RFX-049 — Implement Codex PermissionRequest handler
 
@@ -981,17 +985,23 @@ RFX-041, RFX-042 and RFX-044 moved to G1.5, where the adapter is first exercised
 
 **Acceptance:** ASK is implemented as abstention/native approval, not fake PreToolUse ask.
 
+**Status:** Done (2026-09-27). `packages/cli/src/commands/codex-hook.ts`: on `PermissionRequest` the hook answers `decision.behavior: allow` for an allow, `decision.behavior: deny` with the reason for a deny, and **nothing for an ask, so that Codex's own prompt goes on** (abstention, ADR-007). On `PreToolUse` it answers `deny` to block, the documented `ask` value to make Codex show its own prompt, and nothing for an allow: `allow` is granted where Codex asks, never before, so `PreToolUse` never widens what Codex would have done on its own. **ASK is implemented as abstention/native approval, not fake PreToolUse ask:** no dialog of REFLEX's own anywhere; the `PreToolUse` `ask` is the host's documented value for its native prompt, and `docs/codex-hook.md` §2 says what changes if a live run shows it ignored (the abstention remains). When the daemon cannot be reached the hook answers by itself on the channel the event has (ask or deny under fail-closed on `PreToolUse`; abstention or deny on `PermissionRequest`). Held end to end against the real binary and daemon with the documented payloads (`bin.e2e.test.ts`, "rfx hook codex"); ADR-007's Codex row updated and marked documented, not verified live.
+
 ### RFX-050 — Implement reversible Codex installer
 
 **Goal:** Install one supported hooks representation with backup.
 
 **Acceptance:** Existing user hooks are preserved/merged safely.
 
+**Status:** Done (2026-09-27). `rfx init` plans one host at a time and installs for each agent it detects (`claude`, `codex` on `PATH`) or for `--host`; for Codex it writes **one representation**, `~/.codex/hooks.json` (scope `user`, Codex's default here because it has no personal project-scoped file; `--scope project` writes `<repo>/.codex/hooks.json` and warns; `local` falls back to `user` and says so), one hook on each of `PreToolUse`, `PermissionRequest`, `PostToolUse`, `Stop`, 5 s timeout, and sets `features.hooks = true` in `~/.codex/config.toml` with the smallest line edit (`features.ts`, re-parsed before it is trusted; an inline `features = {}` table is left to the user with a warning), recording that REFLEX set it. Every write is in the reversible transaction with a backup (RFX-053). **Existing user hooks are preserved/merged safely:** the user's `hooks.json` keeps its hooks, comments, tabs and `description`; a `[hooks]` table in `config.toml` is never touched. `rfx uninstall` restores each file byte for byte when unchanged since, otherwise removes only REFLEX's entries and its `hooks = true` line; a user file another installed project still uses is kept, and the last project out takes the file and the flag with it (`commands.test.ts`, "rfx init for Codex"; `bin.e2e.test.ts`, "rfx init for Codex, end to end"). The user-scoped hook fires in every Codex session and keeps to the projects REFLEX is installed in (registry, by `cwd`). Codex asks the user to trust a new hook once (`/hooks`); `rfx init` says so. `docs/codex-hook.md` §1.
+
 ### RFX-051 — Codex Observe/Assist modes
 
 **Goal:** Honor product-mode semantics across both hook types.
 
 **Acceptance:** Observe never changes execution; Assist never suppresses needed approval.
+
+**Status:** Done (2026-09-27). The mode is the project's, in the install registry, shared by every host installed in it (`rfx mode` updates all). **Observe never changes execution:** the Codex hook prints nothing and exits 0 on every documented event, records the action's shape and the signals, and records nothing for a project REFLEX is not installed in (end to end). **Assist never suppresses needed approval:** a denied or unresolved action arrives as `ask`, which is `permissionDecision: ask` on `PreToolUse` (Codex prompts) and abstention on `PermissionRequest` (the prompt goes on); only what a rule or the model allows is approved on `PermissionRequest`, and Assist never answers `deny` on either channel (end to end). Autopilot blocks on `PreToolUse` and denies on `PermissionRequest`. `docs/codex-hook.md` §2.
 
 ### RFX-093 — Capture action outcomes in Codex
 
@@ -1001,7 +1011,11 @@ RFX-041, RFX-042 and RFX-044 moved to G1.5, where the adapter is first exercised
 
 **Depends on:** RFX-091.
 
+**Status:** Done (2026-09-27). `packages/adapter-codex/src/observe.ts`: `PreToolUse` is the action (shape of the arguments, never a value), `PermissionRequest` is `permission-requested` (by session and tool, since Codex gives it no `tool_use_id`), `PostToolUse` is `executed`, `Stop` ends the turn; the host-agnostic assembler (RFX-091) does the rest. **Fixture tests cover the same four cases as RFX-092:** prompted and approved, prompted and rejected, ran without a prompt, and no signal (`observe.test.ts`), the last of them from the documented payloads through the real binary and `rfx status` (`bin.e2e.test.ts`). **Where Codex exposes no signal, the outcome says `unknown`:** it has no `PermissionDenied` or `PostToolUseFailure`, so a refusal or a failure is never inferred; `unknown` is never folded into a certainty. `docs/codex-hook.md` §4.
+
 **Gate exit:** all tickets above are green in CI and documented; no known dangerous false-allow regression. **Specifically:** ASK is abstention on `PermissionRequest`, never a simulated `PreToolUse` ask; a user's existing hooks survive install and uninstall unchanged.
+
+**Gate status:** Done locally, pending CI (2026-09-27). All six tickets are done and documented on branch `feat/g8-codex-adapter`. **The two specific exits hold:** ASK is abstention on `PermissionRequest` (the hook prints nothing and the native prompt goes on), and on `PreToolUse` it is the value Codex documents for its own prompt, never a dialog or a block dressed as one; a user's existing hooks survive install and uninstall unchanged (`hooks.json` byte for byte when unchanged since, their entries and comments otherwise; a `[hooks]` table never touched). **No known dangerous false allow:** `PreToolUse` never answers `allow`, so REFLEX never widens what Codex would do on its own; `allow` is only ever given where Codex was about to ask. **What this gate does not claim:** nothing has been observed against a live Codex; the installed Codex (0.101.0) predates hooks, the fixtures are composed from the documentation and say so, and `docs/codex-hook.md` §5 is the maintainer's procedure for the live run, after which the "documented" marks become "verified" or the table changes. Whether Codex honors `ask` on `PreToolUse`, whether `hooks.json` and a `[hooks]` table are both loaded, and the shape of `tool_response` are the open questions.
 
 ## G9 — CLI and zero-friction onboarding
 

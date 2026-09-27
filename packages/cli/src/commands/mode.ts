@@ -88,10 +88,13 @@ export async function changeMode(
     failureMode: change.failureMode ?? before.failureMode,
   };
   try {
+    // The mode is the project's: every host installed in it follows.
     const content = serialize({
       ...registry,
       installs: registry.installs.map((entry) =>
-        entry === install ? updated : entry,
+        entry.projectDir === environment.projectDir
+          ? { ...entry, mode: updated.mode, failureMode: updated.failureMode }
+          : entry,
       ),
     });
     // The registry is small and the write is atomic; a concurrent `rfx

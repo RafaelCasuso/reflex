@@ -5,6 +5,8 @@ import { createInterface } from "node:readline/promises";
 import { fileURLToPath } from "node:url";
 import { parseArgs } from "node:util";
 
+import type { HostScope, SupportedHost } from "./hosts.js";
+
 /**
  * `rfx` — entry point.
  *
@@ -14,9 +16,11 @@ import { parseArgs } from "node:util";
  */
 const USAGE = `rfx — REFLEX, the autonomy control layer for AI agents
 
-  rfx init [--scope local|project|user] [--mode observe|assist|autopilot]
+  rfx init [--host claude-code|codex] [--scope local|project|user]
+           [--mode observe|assist|autopilot]
            [--failure-mode fail-open|fail-ask|fail-closed] [--yes] [--dry-run]
-      Show the plan, then install the hook for Claude Code. Observe by default.
+      Show the plan, then install the hook for each agent found (Claude Code,
+      Codex), or for --host. Observe by default.
   rfx mode [observe|assist|autopilot] [--failure-mode fail-open|fail-ask|fail-closed]
       Show or change what the hook does with a decision in this project.
   rfx provider [none|jev|local] [--model <id>] [--endpoint <url>] [--consent]
@@ -36,32 +40,32 @@ const write = (text: string): void => {
 
 async function hook(host: string | undefined): Promise<void> {
   // Observe: no stdout, no stderr, exit 0, whatever happens (see hook.ts).
-  // Assist and Autopilot: the same, plus one JSON answer on stdout for a
-  // `PreToolUse`, always, even when nothing can be reached (ADR-003 §4).
+  // Assist and Autopilot: the same, plus one JSON answer on stdout when the
+  // host has a channel for the decision, always, even when nothing can be
+  // reached (ADR-003 §4).
   let answer: string | undefined;
   try {
-    if (host !== "claude-code") {
+    if (host !== "claude-code" && host !== "codex") {
       return;
     }
-    const [{ readStdin, runClaudeCodeHook }, { ObservationLog }, state] =
-      await Promise.all([
-        import("./commands/hook.js"),
-        import("@reflex/telemetry"),
-        import("./state.js"),
-      ]);
+    const [hooks, { ObservationLog }, state] = await Promise.all([
+      import("./commands/hook.js"),
+      import("@reflex/telemetry"),
+      import("./state.js"),
+    ]);
     const env = environment(process.cwd());
     const home = state.reflexHome(env);
     const log = new ObservationLog({
       directory: state.statePaths(home).observe,
     });
-    const stdin = await readStdin(process.stdin);
-    const observed = await runClaudeCodeHook(stdin, {
+    const stdin = await hooks.readStdin(process.stdin);
+    const dependencies = {
       now: () => new Date(),
       log: {
         // `performance.now()` counts from process start, so at this point it
         // is how long the host has been waiting for this hook, as seen from
         // inside it.
-        append: (record) =>
+        append: (record: Parameters<typeof log.append>[0]) =>
           log.append(
             record.kind === "turn-ended"
               ? record
@@ -71,31 +75,80 @@ async function hook(host: string | undefined): Promise<void> {
                 },
           ),
       },
-    });
-    if (
-      observed.event?.kind !== "tool" ||
-      observed.event.event !== "PreToolUse"
-    ) {
-      return;
-    }
-    // RFX-043: the project's mode, from the registry, by the payload's own
-    // working directory. Observe answers nothing.
+    };
+    // RFX-043, G8: the project's mode, from the registry, by the payload's
+    // own working directory. Observe answers nothing.
     const { readFile } = await import("node:fs/promises");
     const registry = state.parseRegistry(
       await readFile(state.statePaths(home).installs, "utf8").catch(
         () => undefined,
       ),
     );
-    const projectDir = observed.event.cwd ?? env.projectDir;
-    const install = registry.installs.find(
-      (entry) => entry.projectDir === projectDir,
+    const { installedProjectFor } = await import("./hosts.js");
+
+    if (host === "claude-code") {
+      const observed = await hooks.runClaudeCodeHook(stdin, dependencies);
+      if (
+        observed.event?.kind !== "tool" ||
+        observed.event.event !== "PreToolUse"
+      ) {
+        return;
+      }
+      const projectDir = observed.event.cwd ?? env.projectDir;
+      const install = registry.installs.find(
+        (entry) =>
+          entry.host === "claude-code" && entry.projectDir === projectDir,
+      );
+      const mode = state.modeOf(install);
+      if (mode === "observe") {
+        return;
+      }
+      const { decideForHost } = await import("./commands/decide.js");
+      const outcome = await decideForHost(observed.event, {
+        home,
+        nodePath: env.nodePath,
+        mode,
+        failureMode: state.failureModeOf(install),
+        ...(install === undefined ? {} : { projectId: install.projectId }),
+        now: env.now,
+      });
+      answer = JSON.stringify(outcome.answer);
+      return;
+    }
+
+    // Codex: the user-scoped hook fires in every project and keeps to the
+    // ones REFLEX is installed in (RFX-050); it decides on PreToolUse and
+    // on PermissionRequest, each on its own channel (RFX-049).
+    const observed = await hooks.runObserveHook(
+      hooks.codexHook(
+        (event) =>
+          event.kind !== "tool" ||
+          installedProjectFor(
+            registry.installs,
+            "codex",
+            event.cwd ?? env.projectDir,
+          ) !== undefined,
+      ),
+      stdin,
+      dependencies,
+    );
+    if (
+      observed.event?.kind !== "tool" ||
+      observed.event.event === "PostToolUse"
+    ) {
+      return;
+    }
+    const install = installedProjectFor(
+      registry.installs,
+      "codex",
+      observed.event.cwd ?? env.projectDir,
     );
     const mode = state.modeOf(install);
     if (mode === "observe") {
       return;
     }
-    const { decideForHost } = await import("./commands/decide.js");
-    const outcome = await decideForHost(observed.event, {
+    const { decideForCodex } = await import("./commands/codex-hook.js");
+    const outcome = await decideForCodex(observed.event, {
       home,
       nodePath: env.nodePath,
       mode,
@@ -103,7 +156,9 @@ async function hook(host: string | undefined): Promise<void> {
       ...(install === undefined ? {} : { projectId: install.projectId }),
       now: env.now,
     });
-    answer = JSON.stringify(outcome.answer);
+    if (outcome.answer !== undefined) {
+      answer = JSON.stringify(outcome.answer);
+    }
   } catch {
     // Deliberately silent: in Observe nothing is owed to the host, and in
     // the other modes an answer was already computed or none can be.
@@ -144,8 +199,12 @@ function run(
 }
 
 const probes = {
-  hostVersion: async (): Promise<string | undefined> => {
-    const result = await run("claude", ["--version"]);
+  hostVersion: async (
+    host: "claude-code" | "codex",
+  ): Promise<string | undefined> => {
+    const result = await run(host === "codex" ? "codex" : "claude", [
+      "--version",
+    ]);
     return result?.code === 0 ? result.stdout.trim() : undefined;
   },
   isGitIgnored: async (path: string): Promise<boolean | undefined> => {
@@ -183,7 +242,8 @@ async function main(): Promise<number> {
   const { values, positionals } = parseArgs({
     allowPositionals: true,
     options: {
-      scope: { type: "string", default: "local" },
+      host: { type: "string" },
+      scope: { type: "string" },
       mode: { type: "string" },
       "failure-mode": { type: "string" },
       model: { type: "string" },
@@ -228,36 +288,76 @@ async function main(): Promise<number> {
 
   switch (command) {
     case "init": {
-      const { SETTINGS_SCOPES } = await import("@reflex/adapter-claude-code");
-      const scope = SETTINGS_SCOPES.find((known) => known === values.scope);
-      if (scope === undefined) {
-        write(`Unknown scope. Use one of: ${SETTINGS_SCOPES.join(", ")}.\n`);
+      const hosts = await import("./hosts.js");
+      const wantedHost = values.host;
+      if (wantedHost !== undefined && !hosts.isSupportedHost(wantedHost)) {
+        write(
+          `Unknown host. Use one of: ${hosts.SUPPORTED_HOSTS.join(", ")}.\n`,
+        );
         return 2;
       }
+      const scope = values.scope;
+      if (
+        scope !== undefined &&
+        !(["local", "project", "user"] as const).some(
+          (known) => known === scope,
+        )
+      ) {
+        write("Unknown scope. Use one of: local, project, user.\n");
+        return 2;
+      }
+      // Detect supported agents (CLAUDE.md, onboarding). None found: plan
+      // for Claude Code anyway, and the plan says the host was not found.
+      let chosen: SupportedHost[];
+      if (hosts.isSupportedHost(wantedHost)) {
+        chosen = [wantedHost];
+      } else {
+        const detected: SupportedHost[] = [];
+        for (const host of hosts.SUPPORTED_HOSTS) {
+          if ((await probes.hostVersion(host)) !== undefined) {
+            detected.push(host);
+          }
+        }
+        chosen = detected.length === 0 ? ["claude-code"] : detected;
+      }
       const { applyInit, planInit } = await import("./commands/init.js");
-      const plan = await planInit(env, scope, nodeFileSystem, probes, {
-        ...(modeOption === undefined ? {} : { mode: modeOption }),
-        ...(failureModeOption === undefined
-          ? {}
-          : { failureMode: failureModeOption }),
-      });
-      write(render.renderInitPlan(plan));
-      if (plan.kind === "blocked") {
-        return 1;
+      let failed = false;
+      for (const host of chosen) {
+        const plan = await planInit(
+          env,
+          host,
+          scope as HostScope | undefined,
+          nodeFileSystem,
+          probes,
+          {
+            ...(modeOption === undefined ? {} : { mode: modeOption }),
+            ...(failureModeOption === undefined
+              ? {}
+              : { failureMode: failureModeOption }),
+          },
+        );
+        write(render.renderInitPlan(plan));
+        if (plan.kind === "blocked") {
+          failed = true;
+          continue;
+        }
+        if (plan.kind === "already-installed" || values["dry-run"]) {
+          continue;
+        }
+        if (!(await confirm("Apply this plan?", values.yes))) {
+          continue;
+        }
+        const result = await applyInit(plan, nodeFileSystem, env.now);
+        write(
+          result.ok
+            ? render.renderInitDone(plan)
+            : render.renderTransactionFailure(result),
+        );
+        if (!result.ok) {
+          failed = true;
+        }
       }
-      if (plan.kind === "already-installed" || values["dry-run"]) {
-        return 0;
-      }
-      if (!(await confirm("Apply this plan?", values.yes))) {
-        return 0;
-      }
-      const result = await applyInit(plan, nodeFileSystem, env.now);
-      write(
-        result.ok
-          ? render.renderInitDone(plan.settingsPath)
-          : render.renderTransactionFailure(result),
-      );
-      return result.ok ? 0 : 1;
+      return failed ? 1 : 0;
     }
 
     case "mode": {

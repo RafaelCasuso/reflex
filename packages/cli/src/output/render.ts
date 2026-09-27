@@ -1,8 +1,13 @@
 import type { TransactionFailure } from "../backups/transaction.js";
-import type { InitPlan, InitWarning } from "../commands/init.js";
+import type {
+  InitPlan,
+  InitWarning,
+  InstallInitPlan,
+} from "../commands/init.js";
 import { describeProvider } from "../commands/provider.js";
 import type { StatusReport } from "../commands/status.js";
 import type { UninstallCommandPlan } from "../commands/uninstall.js";
+import type { SupportedHost } from "../hosts.js";
 
 /**
  * Everything `rfx` prints. Pure functions from results to text, so the exact
@@ -26,8 +31,14 @@ function warning(entry: InitWarning): string {
       return `${safe(entry.path)} is not ignored by git. It will contain a path that is specific to this machine, so do not commit it.`;
     case "shared-settings-file":
       return `${safe(entry.path)} is shared with everyone who clones this repository, and the hook points at a path on this machine. Prefer the default scope ("local") unless that is what you want.`;
+    case "scope-substituted":
+      return `--scope ${entry.scope} is not one of this host's scopes; its default is used.`;
+    case "hooks-feature-not-set":
+      return `Codex runs no hook until features.hooks = true is in ${safe(entry.path)}, and REFLEX could not set it there: ${entry.reason}. Set it yourself, or REFLEX would be installed and never run.`;
+    case "inline-hooks-table":
+      return `${safe(entry.path)} declares hooks in a [hooks] table; REFLEX leaves it as it is and installs into hooks.json, which Codex reads as well.`;
     case "host-not-found":
-      return `Claude Code was not found on PATH. The hook will be installed and will start working once Claude Code is.`;
+      return `${HOST_NAMES[entry.host]} was not found on PATH. The hook will be installed and will start working once ${HOST_NAMES[entry.host]} is.`;
   }
 }
 
@@ -43,17 +54,31 @@ export function renderInitPlan(plan: InitPlan): string {
 
     case "already-installed":
       lines.push(
-        `REFLEX is already installed in ${safe(plan.settingsPath)}. Nothing to do.`,
+        `REFLEX is already installed for ${HOST_NAMES[plan.host]} in ${safe(plan.settingsPath)}. Nothing to do.`,
       );
       break;
 
     case "install":
       lines.push(
-        "REFLEX will observe Claude Code in this project. Plan:",
+        `REFLEX will observe ${HOST_NAMES[plan.host]} in this project. Plan:`,
         "",
         `  ${plan.action === "create" ? "create" : "modify"}  ${safe(plan.settingsPath)}`,
         `          add one hook to each of: ${plan.events.join(", ")}`,
         `          command: ${safe(plan.command)}`,
+      );
+      if (plan.codex !== undefined) {
+        const { codex } = plan;
+        if (codex.feature === "set") {
+          lines.push(
+            `  ${codex.config.state === "absent" ? "create" : "modify"}  ${safe(codex.configPath)}`,
+            "          set features.hooks = true (Codex runs no hook without it); nothing else in it changes",
+          );
+        }
+        lines.push(
+          `  read    ${safe(codex.configPath)}: approval policy ${codex.config.approvalPolicy ?? "default"}, sandbox ${codex.config.sandboxMode ?? "default"}, this project ${codex.config.trustLevel ?? "not listed"}${codex.feature === "already-on" ? ", hooks already on" : ""}`,
+        );
+      }
+      lines.push(
         `  backup  every file it changes, under ${safe(plan.backupDir)}`,
       );
       if (plan.createsIdentity) {
@@ -80,15 +105,31 @@ export function renderInitPlan(plan: InitPlan): string {
   return lines.join("\n");
 }
 
-export function renderInitDone(settingsPath: string): string {
-  return [
-    `Installed. ${safe(settingsPath)} was backed up first.`,
+export const HOST_NAMES: Readonly<Record<SupportedHost, string>> = {
+  "claude-code": "Claude Code",
+  codex: "Codex",
+};
+
+export function renderInitDone(plan: InstallInitPlan): string {
+  const lines = [
+    `Installed. ${safe(plan.settingsPath)} was backed up first.`,
     "",
-    "Claude Code reads hooks when a session starts: restart any session that is",
-    'already running. Then use it as usual and run "rfx status".',
-    'To undo everything: "rfx uninstall".',
-    "",
-  ].join("\n");
+  ];
+  if (plan.host === "codex") {
+    lines.push(
+      "Codex reads hooks when a session starts, and asks you to trust a new hook",
+      "once: inside Codex, run /hooks and trust the REFLEX_MANAGED=1 entries. The",
+      "hook keeps to the projects REFLEX is installed in and does nothing elsewhere.",
+      'Then use it as usual and run "rfx status".',
+    );
+  } else {
+    lines.push(
+      "Claude Code reads hooks when a session starts: restart any session that is",
+      'already running. Then use it as usual and run "rfx status".',
+    );
+  }
+  lines.push('To undo everything: "rfx uninstall".', "");
+  return lines.join("\n");
 }
 
 export function renderTransactionFailure(failure: TransactionFailure): string {
@@ -140,7 +181,12 @@ export function renderUninstallPlan(plan: UninstallCommandPlan): string {
   }
   for (const path of plan.skipped) {
     lines.push(
-      `  skip     ${safe(path)}: not valid JSON, so REFLEX will not touch it. Remove the hooks that start with REFLEX_MANAGED=1 by hand.`,
+      `  skip     ${safe(path)}: REFLEX cannot read it, so it will not touch it. Remove the entries that start with REFLEX_MANAGED=1, or the hooks = true line, by hand.`,
+    );
+  }
+  for (const path of plan.kept) {
+    lines.push(
+      `  keep     ${safe(path)}: another project still uses it; only this project's entry goes`,
     );
   }
   lines.push("");
@@ -169,8 +215,6 @@ const HEALTH: Readonly<Record<string, string>> = {
   active: "active",
   missing:
     'HOOK MISSING: removed or edited since install. Run "rfx init" to repair.',
-  disabled:
-    'DISABLED by "disableAllHooks" in that file. REFLEX is not running.',
   altered:
     'HOOK ALTERED: it no longer runs the command this rfx installs. Run "rfx init" to repair.',
   unreadable: "UNREADABLE: that file is not valid JSON.",
@@ -189,7 +233,7 @@ export function renderStatus(report: StatusReport, now: Date): string {
   lines.push("Adapters");
   for (const adapter of report.adapters) {
     lines.push(
-      `  ${adapter.host}  ${HEALTH[adapter.health] ?? adapter.health}`,
+      `  ${adapter.host}  ${adapter.health === "disabled" ? `DISABLED by ${adapter.disabledBy ?? "the host"}. REFLEX is not running.` : (HEALTH[adapter.health] ?? adapter.health)}`,
       `              ${safe(adapter.settingsPath)}`,
     );
   }

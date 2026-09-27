@@ -68,6 +68,18 @@ function rfx(
 const fixture = (name: string): string =>
   readFileSync(join(FIXTURES, `${name}.json`), "utf8");
 
+const CODEX_FIXTURES = fileURLToPath(
+  new URL("../../adapter-codex/fixtures/codex-hooks-doc/", import.meta.url),
+);
+/** A documented Codex payload, addressed to a project of the test's choosing. */
+const codexFixture = (name: string, cwd: string): string =>
+  JSON.stringify({
+    ...(JSON.parse(
+      readFileSync(join(CODEX_FIXTURES, `${name}.json`), "utf8"),
+    ) as Record<string, unknown>),
+    cwd,
+  });
+
 let root: string;
 let reflexHome: string;
 
@@ -686,6 +698,241 @@ describe("rfx provider (RFX-123)", () => {
     expect(pinned.code).toBe(0);
     expect(pinned.stdout).toContain("provider: local, model rdm-0.1.0");
     expect(existsSync(join(home, "consent.json"))).toBe(false);
+  });
+});
+
+/**
+ * G8 — the Codex hook, against the real binary and the real daemon. Its
+ * payloads are the documented ones (`adapter-codex/fixtures`): nothing here
+ * was captured from a live Codex yet, and `docs/codex-hook.md` says so.
+ */
+describe("rfx hook codex (RFX-048, RFX-049, RFX-051, RFX-093)", () => {
+  let home: string;
+  const PROJECT = "/work/project";
+
+  beforeEach(() => {
+    home = join(root, "codex-home");
+  });
+
+  afterEach(async () => {
+    const { stopDaemon } = await import("./daemon/lifecycle.js");
+    await stopDaemon(home).catch(() => undefined);
+  });
+
+  async function codexInstalledIn(
+    mode: "observe" | "assist" | "autopilot",
+    failureMode: "fail-open" | "fail-ask" | "fail-closed" = "fail-ask",
+  ): Promise<void> {
+    await mkdir(home, { recursive: true, mode: 0o700 });
+    await writeFile(
+      join(home, "installs.json"),
+      JSON.stringify({
+        version: 1,
+        installs: [
+          {
+            host: "codex",
+            scope: "user",
+            settingsPath: join(root, "home", ".codex", "hooks.json"),
+            projectDir: PROJECT,
+            projectId: "prj_00000000000000000000000000000002",
+            manifestPath: join(home, "backups", "manifest.json"),
+            installedAt: "2026-09-27T10:00:00.000Z",
+            mode,
+            failureMode,
+          },
+        ],
+        projects: [],
+      }),
+    );
+    await writeFile(join(home, "policy.yaml"), POLICY_FOR_FIXTURES);
+  }
+
+  const hook = (name: string, cwd = PROJECT) =>
+    rfx(["hook", "codex"], {
+      stdin: codexFixture(name, cwd),
+      env: { REFLEX_HOME: home },
+    });
+
+  it("in Observe records the documented events silently, and outcomes come out of them", async () => {
+    await codexInstalledIn("observe");
+    for (const name of [
+      "pre-tool-use.bash",
+      "permission-request.bash",
+      "post-tool-use.bash",
+      "pre-tool-use.apply-patch",
+      "pre-tool-use.mcp",
+      "stop",
+      "session-start",
+    ]) {
+      expect(await hook(name), name).toEqual(SILENT_SUCCESS);
+    }
+    const log = await readFile(
+      join(home, "observe", "observations.jsonl"),
+      "utf8",
+    );
+    expect(log).toContain('"host":"codex"');
+    expect(log).not.toContain("marker.txt");
+    expect(log).not.toContain("src/app.ts");
+    const { assembleOutcomes } = await import("@reflex/telemetry");
+    const records = log
+      .trim()
+      .split("\n")
+      .map((line) => JSON.parse(line) as never);
+    const outcomes = assembleOutcomes(records);
+    expect(outcomes[0]).toMatchObject({
+      prompted: "yes",
+      executed: "yes",
+      humanResponse: "approved",
+    });
+    expect(outcomes[1]).toMatchObject({
+      prompted: "unknown",
+      executed: "unknown",
+    });
+  });
+
+  // RFX-050: the user-scoped hook fires everywhere and keeps to installed projects.
+  it("records nothing for a project REFLEX was not installed in", async () => {
+    await codexInstalledIn("autopilot");
+    expect(await hook("pre-tool-use.bash-remove", "/somewhere/else")).toEqual(
+      SILENT_SUCCESS,
+    );
+    expect(existsSync(join(home, "observe", "observations.jsonl"))).toBe(false);
+    // A subdirectory of the project is the project.
+    expect(await hook("pre-tool-use.bash", `${PROJECT}/src`)).toMatchObject({
+      code: 0,
+      stderr: "",
+    });
+  });
+
+  it("in Assist allows on PermissionRequest, asks on PreToolUse, and never denies", async () => {
+    await codexInstalledIn("assist");
+    // Allowed by rule: PreToolUse says nothing (Codex proceeds on its own),
+    // PermissionRequest approves, so the prompt is eliminated.
+    expect(await hook("pre-tool-use.bash")).toEqual(SILENT_SUCCESS);
+    expect(answerOf(await hook("permission-request.bash"))).toEqual({
+      hookSpecificOutput: {
+        hookEventName: "PermissionRequest",
+        decision: { behavior: "allow" },
+      },
+    });
+    // Denied by rule: in Assist that is ask. PreToolUse asks with the
+    // documented value; PermissionRequest abstains so the native prompt goes on.
+    const asked = answerOf(await hook("pre-tool-use.bash-remove")) as {
+      hookSpecificOutput: {
+        permissionDecision: string;
+        permissionDecisionReason: string;
+      };
+    };
+    expect(asked.hookSpecificOutput.permissionDecision).toBe("ask");
+    expect(asked.hookSpecificOutput.permissionDecisionReason).toMatch(
+      /^REFLEX: needs your approval, rule deny-rm \(destructive\)$/,
+    );
+    const request = JSON.parse(
+      codexFixture("permission-request.bash", PROJECT),
+    ) as Record<string, unknown>;
+    request.tool_input = { command: "rm -rf build" };
+    expect(
+      await rfx(["hook", "codex"], {
+        stdin: JSON.stringify(request),
+        env: { REFLEX_HOME: home },
+      }),
+    ).toEqual(SILENT_SUCCESS);
+  }, 20_000);
+
+  it("in Autopilot blocks on PreToolUse and denies on PermissionRequest", async () => {
+    await codexInstalledIn("autopilot");
+    const blocked = answerOf(await hook("pre-tool-use.bash-remove")) as {
+      hookSpecificOutput: {
+        permissionDecision: string;
+        permissionDecisionReason: string;
+      };
+    };
+    expect(blocked.hookSpecificOutput.permissionDecision).toBe("deny");
+    expect(blocked.hookSpecificOutput.permissionDecisionReason).toMatch(
+      /^REFLEX: denied by rule deny-rm \(destructive\)\. To let it through once, a human runs: rfx override dec_[0-9a-f]{32}$/,
+    );
+    const request = JSON.parse(
+      codexFixture("permission-request.bash", PROJECT),
+    ) as Record<string, unknown>;
+    request.tool_input = { command: "rm -rf build" };
+    const denied = answerOf(
+      await rfx(["hook", "codex"], {
+        stdin: JSON.stringify(request),
+        env: { REFLEX_HOME: home },
+      }),
+    ) as {
+      hookSpecificOutput: { decision: { behavior: string; message: string } };
+    };
+    expect(denied.hookSpecificOutput.decision.behavior).toBe("deny");
+    expect(denied.hookSpecificOutput.decision.message).toMatch(
+      /^REFLEX: denied by rule deny-rm/,
+    );
+  }, 20_000);
+
+  // ADR-003 §4 on Codex's two channels: PreToolUse asks (or blocks under
+  // fail-closed), PermissionRequest abstains (or denies).
+  it("answers by itself when the daemon cannot be started", async () => {
+    await codexInstalledIn("autopilot", "fail-closed");
+    await writeFile(
+      join(home, "config.json"),
+      JSON.stringify({ version: 1, semanticProvider: "jev" }),
+    );
+    await writeFile(
+      join(home, "consent.json"),
+      JSON.stringify(consentRecord("jev", new Date())),
+    );
+    const env = { REFLEX_HOME: home, TYPESAFE_API_KEY: "" };
+    const pre = answerOf(
+      await rfx(["hook", "codex"], {
+        stdin: codexFixture("pre-tool-use.bash", PROJECT),
+        env,
+      }),
+    ) as { hookSpecificOutput: { permissionDecision: string } };
+    expect(pre.hookSpecificOutput.permissionDecision).toBe("deny");
+    const request = answerOf(
+      await rfx(["hook", "codex"], {
+        stdin: codexFixture("permission-request.bash", PROJECT),
+        env,
+      }),
+    ) as { hookSpecificOutput: { decision: { behavior: string } } };
+    expect(request.hookSpecificOutput.decision.behavior).toBe("deny");
+  }, 20_000);
+});
+
+describe("rfx init for Codex, end to end", () => {
+  it("installs into the user's Codex files with --host codex, reports, and uninstalls back", async () => {
+    const project = join(root, "project");
+    const userHome = join(root, "home");
+    await mkdir(project, { recursive: true });
+    await mkdir(join(userHome, ".codex"), { recursive: true });
+    const original = 'model = "gpt-5.3-codex"\n';
+    await writeFile(join(userHome, ".codex", "config.toml"), original);
+    const env = { REFLEX_HOME: reflexHome, HOME: userHome };
+    const init = await rfx(["init", "--host", "codex", "--yes"], {
+      cwd: project,
+      env,
+    });
+    expect(init.code).toBe(0);
+    expect(init.stdout).toContain("REFLEX will observe Codex");
+    expect(init.stdout).toContain("run /hooks");
+    expect(
+      await readFile(join(userHome, ".codex", "hooks.json"), "utf8"),
+    ).toContain("hook codex");
+    expect(
+      await readFile(join(userHome, ".codex", "config.toml"), "utf8"),
+    ).toBe(`${original}\n[features]\nhooks = true\n`);
+    const status = await rfx(["status"], { cwd: project, env });
+    expect(status.stdout).toContain("codex  active");
+    expect(
+      (await rfx(["uninstall", "--yes"], { cwd: project, env })).code,
+    ).toBe(0);
+    expect(existsSync(join(userHome, ".codex", "hooks.json"))).toBe(false);
+    expect(
+      await readFile(join(userHome, ".codex", "config.toml"), "utf8"),
+    ).toBe(original);
+    expect(
+      (await rfx(["init", "--host", "nope"], { cwd: project, env })).code,
+    ).toBe(2);
   });
 });
 
