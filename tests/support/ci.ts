@@ -21,9 +21,16 @@ export interface WorkflowRequirements {
   readonly commands: readonly string[];
 }
 
+/** RFX-145: the private rdm/ module's tests run in the same job, published nowhere. */
+export const RDM_GATES = [
+  "pipx install uv==0.9.28",
+  "uv sync --locked",
+  "uv run pytest",
+] as const;
+
 export const CI_REQUIREMENTS: WorkflowRequirements = {
   install: FROZEN_INSTALL,
-  commands: REQUIRED_GATES,
+  commands: [...REQUIRED_GATES, ...RDM_GATES],
 };
 
 /** RFX-090. Exact strings: a softer flag is a different command. */

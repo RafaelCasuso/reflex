@@ -205,6 +205,14 @@ reflex/
 ├── python/
 │   └── reflex-sdk/
 │
+├── rdm/                     # private (ADR-015): the Reflex Decision Model, Python with uv; not a workspace package (RFX-145)
+│   ├── rdm/contracts.py     # reads the contracts' frozen fixtures: every closed set comes from there
+│   ├── rdm/schema/          # the dataset record, held to the frozen decision-record fixtures
+│   ├── rdm/dataset/         # label provenance sides and the split rule: benchmark and training share nothing
+│   ├── rdm/generators/      # scenario families; payment refunds first (RFX-146)
+│   ├── rdm/benchmark/       # run through packages/evals' runner against the real engine (RFX-146)
+│   └── tests/
+│
 ├── docs/
 │   ├── product.md
 │   ├── architecture.md

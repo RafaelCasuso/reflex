@@ -38,12 +38,12 @@ private below.
 
 ## Private (UNLICENSED, all rights reserved)
 
-| Package or area     | Path             | Why                                                        |
-| ------------------- | ---------------- | ---------------------------------------------------------- |
-| `@reflex/api`       | `apps/api`       | the control plane                                          |
-| `@reflex/dashboard` | `apps/dashboard` | the control plane's interface                              |
-| `@reflex/auth`      | `packages/auth`  | accounts, keys, tenancy                                    |
-| RDM                 | `rdm/`           | weights, training, generators, teacher labels (ADR-016 §5) |
+| Package or area     | Path             | Why                                                                                        |
+| ------------------- | ---------------- | ------------------------------------------------------------------------------------------ |
+| `@reflex/api`       | `apps/api`       | the control plane                                                                          |
+| `@reflex/dashboard` | `apps/dashboard` | the control plane's interface                                                              |
+| `@reflex/auth`      | `packages/auth`  | accounts, keys, tenancy                                                                    |
+| RDM                 | `rdm/`           | schema, splits, generators, and later weights and training (ADR-016 §5); its own `LICENSE` |
 
 Approval learning (G12), team and organization policies (G16), billing and
 metering (G15) and the hosted gateway configuration are private and will
