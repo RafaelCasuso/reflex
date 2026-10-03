@@ -137,7 +137,11 @@ export class RotatingJsonlLog<Record> {
     if (size < this.#maxBytes && !aged) {
       return;
     }
-    this.#activeSince = undefined;
+    // The append that follows creates the next active file, so its age
+    // starts now, on the log's own clock: never on the file system's birth
+    // time, which is the wall clock and is not this clock in a test (seen
+    // in CI on 2026-10-03, when the two had drifted a retention apart).
+    this.#activeSince = now;
 
     // Two processes may rotate at once. Every step is a rename or a forced
     // remove, so the worst case is one record landing in a rotated file.
