@@ -8,6 +8,8 @@ Ticket IDs are stable. Claude Code should reference them in commits/PRs.
 
 **Ticket template.** New tickets carry a Goal and a measurable Acceptance: it names the corpus, the threshold and the machine, so that two people would agree on whether it passed. Where they apply, a ticket also carries Depends on, Out of scope, Why, and the test layers it owes (unit, contract, adapter fixture, adversarial, latency, replay; see `CLAUDE.md`). Older tickets are brought up to the template when their gate starts, not before.
 
+**Order after G9 (ADR-017, 2026-10-03).** G9, G9.5, G10, G13, G11, G12, G14, G15, G16. Ticket IDs never change when a ticket moves; the gate that receives it says where it came from.
+
 **Gate exits.** Every gate keeps the common exit sentence. The "Specifically" clause after it names what has to be demonstrably true for that gate; it restates the gate's own acceptance criteria as one checkable list and adds nothing new.
 
 ## G0 — Repository foundation
@@ -1083,6 +1085,54 @@ RFX-052, RFX-053, RFX-056, RFX-057 and RFX-058 moved to G1.5. This gate complete
 
 **Gate exit:** all tickets above are green in CI and documented; no known dangerous false-allow regression. **Specifically:** a partial install failure rolls back completely; every `rfx doctor` failure names a remediation; an existing policy file is never overwritten without an explicit user action; the public repository's history holds no private path.
 
+## G9.5 — Team policy and the public door
+
+Added by ADR-017 (2026-10-03). The engine has carried the `organization` and `environment` policy sources since G2 (ADR-004); what a team lacks is a way to distribute them without an account, and the product lacks a public door. These tickets make one policy hold across Claude Code and Codex for a whole team, and open that door, before any persistence or billing exists. RFX-083 and RFX-084 moved here from G16, RFX-137 from G15; RFX-150 is new.
+
+### RFX-083 — Shared team policies, distributed without an account
+
+**Goal:** Team policy publishing and versioning: a policy set a team maintains in one place and every member's daemon applies as the `organization` source.
+
+**Acceptance:** A team publishes a policy document to a URL or a file of their own (a repository, an object store), signed with a key the team holds; `rfx policy subscribe <location> --key <public key>` records the subscription in the REFLEX home; the daemon fetches the snapshot at start and on a bounded interval, verifies the signature, compiles it as the `organization` source, keeps the last good snapshot when a fetch fails (ADR-003 §3) and reports the snapshot's version in `rfx status` and through every decision's `policySetHash`. Clients consume only immutable, signed snapshots; the payload is the canonical compiled set of RFX-014, which was designed for it. A snapshot that does not verify is refused and said, never applied. A local or project policy cannot weaken a mandatory rule of the subscribed snapshot: the precedence tests of RFX-014 run against a subscribed set. No account and no control plane are needed; the hosted control plane (G16) later publishes to the same format. Nothing about the subscribing machine is sent to the location beyond the fetch itself.
+
+**Why:** "one policy, every agent" is what nothing else sells (ADR-017), and the engine already knows how to apply it.
+
+**Depends on:** RFX-104, RFX-127 (the signing conventions).
+
+**Out of scope:** Editing the policy from a dashboard (G11), per-member exceptions (G16).
+
+### RFX-084 — Environment policies
+
+**Goal:** Distinct staging/production rules.
+
+**Acceptance:** Production policy cannot be weakened by local project policy. The environment of an action is `resource.environment` (ADR-001), resolved by the adapter from what the host exposes (working directory, branch, remote) and by the project's declared mapping in `.reflex/policy.yaml`; the `environment` source of a subscribed snapshot (RFX-083) applies only to the environment it names, and a production `deny` or mandatory `ask` holds against every lower source, shown by the precedence tests of RFX-014 with an environment source present.
+
+**Depends on:** RFX-083.
+
+### RFX-137 — Public documentation
+
+**Goal:** Publish the documentation a user needs to install, trust and operate REFLEX.
+
+**Acceptance:** A public documentation site built from files in this repository covers: quick start, how a decision is made, the policy language (RFX-100), modes, each supported host and what is verified for it (ADR-007), the threat model, what is stored and for how long (ADR-008), and troubleshooting that mirrors `rfx doctor` (RFX-055). Every command and every policy example on the site is executed as a test, as RFX-100 already requires for the policy reference, so that the documentation cannot drift from the product. Broken internal links fail CI.
+
+**Depends on:** RFX-100, RFX-055, RFX-101.
+
+**Out of scope:** API reference for SDKs (G14 owns it); video; localization.
+
+**Why:** The documents exist in `docs/` for the people building REFLEX. None of them is written for, or reachable by, the person deciding whether to let it govern their agent.
+
+### RFX-150 — Public landing and install page
+
+**Goal:** A public page that says what REFLEX is, shows it working against Claude Code and Codex, states what leaves the machine, and leads to `rfx init`, before pricing exists.
+
+**Acceptance:** A visitor goes from the landing page to a working `rfx init` without creating an account and without talking to anyone, and the install command on the page is tested in CI against the released CLI (RFX-127). The page states the positioning of ADR-017 in one paragraph (one policy for every agent, auditable; beside the host's own classifier and sandbox, never in their place), links the threat model (RFX-101) and quotes the consent statement of RFX-123 for what leaves the machine. Every number on the page comes from a file in this repository that a test checks: the hook cost of RFX-088, the decision latencies of RFX-024, the corpus sizes of G6. No third-party script runs before consent. Performance, accessibility and best-practice scores of 90 or more in Lighthouse, on the landing and the install page, run in CI. Design follows the brief of ADR-017: typography-led, real terminal captures, nothing generated that pretends to be a screenshot, no stock gradients, no claim that is not measured.
+
+**Depends on:** RFX-127, RFX-101. RFX-137 may ship after it.
+
+**Out of scope:** Pricing and anything needing an account (RFX-136), a blog, localization.
+
+**Gate exit:** all tickets above are green in CI and documented; no known dangerous false-allow regression. **Specifically:** a second machine that subscribes to the same snapshot applies the same organization policy to Claude Code and to Codex, and a local policy cannot weaken a mandatory rule of it; a snapshot that fails to verify is refused and reported; a visitor reaches a working `rfx init` from the public page without an account.
+
 ## G10 — Persistence and Observe product
 
 ### RFX-078 — API key/project auth
@@ -1144,6 +1194,30 @@ RFX-052, RFX-053, RFX-056, RFX-057 and RFX-058 moved to G1.5. This gate complete
 **Why:** `docs/architecture.md` §10 promises per-organization retention and nothing implemented it. Developers' commands and file paths are personal data in most jurisdictions.
 
 **Gate exit:** all tickets above are green in CI and documented; no known dangerous false-allow regression. **Specifically:** isolation tests cover every organization-scoped query; no fixture secret appears in a database dump; every migration reverses cleanly.
+
+## G13 — MCP proxy
+
+Moved ahead of G11 by ADR-017: "every agent" has to be true beyond two CLIs before a dashboard shows it.
+
+### RFX-073 — Build transparent MCP proxy skeleton
+
+**Goal:** Proxy tools/resources with schema preservation.
+
+**Acceptance:** Known test server works unchanged through proxy.
+
+### RFX-074 — Govern MCP tool calls
+
+**Goal:** Normalize MCP calls and enforce decision.
+
+**Acceptance:** Denied calls never reach upstream server.
+
+### RFX-075 — MCP config discovery/install
+
+**Goal:** Detect and optionally wrap configured servers.
+
+**Acceptance:** Install is reversible and does not expose server secrets.
+
+**Gate exit:** all tickets above are green in CI and documented; no known dangerous false-allow regression. **Specifically:** a denied call never reaches the upstream server; a known MCP server works unchanged through the proxy; installation is reversible and exposes no server secret.
 
 ## G11 — Dashboard and activation
 
@@ -1226,28 +1300,6 @@ RFX-052, RFX-053, RFX-056, RFX-057 and RFX-058 moved to G1.5. This gate complete
 **Acceptance:** Command displays exact generated rule before applying.
 
 **Gate exit:** all tickets above are green in CI and documented; no known dangerous false-allow regression. **Specifically:** no suggestion changes enforcement before a human accepts it; every accepted rule links to its suggestion and evidence; replay shows the impact before acceptance.
-
-## G13 — MCP proxy
-
-### RFX-073 — Build transparent MCP proxy skeleton
-
-**Goal:** Proxy tools/resources with schema preservation.
-
-**Acceptance:** Known test server works unchanged through proxy.
-
-### RFX-074 — Govern MCP tool calls
-
-**Goal:** Normalize MCP calls and enforce decision.
-
-**Acceptance:** Denied calls never reach upstream server.
-
-### RFX-075 — MCP config discovery/install
-
-**Goal:** Detect and optionally wrap configured servers.
-
-**Acceptance:** Install is reversible and does not expose server secrets.
-
-**Gate exit:** all tickets above are green in CI and documented; no known dangerous false-allow regression. **Specifically:** a denied call never reaches the upstream server; a known MCP server works unchanged through the proxy; installation is reversible and exposes no server secret.
 
 ## G14 — SDKs and public API
 
@@ -1375,35 +1427,23 @@ This gate opens with a decision (RFX-129): ADR-010 moved deterministic decisions
 
 **Why:** Five tiers and their limits were written before a single user saw the product. Everything in this gate implements them.
 
-### RFX-136 — Public website and pricing page
+### RFX-136 — Pricing page and the account-facing site
 
-**Goal:** A public site that says what REFLEX is, shows it working, states the prices and leads to `rfx init`.
+**Goal:** The pricing page and the parts of the public site that need an account or a plan, on the landing that RFX-150 (G9.5) already opened.
 
-**Acceptance:** A visitor can go from the landing page to a working `rfx init` without creating an account and without talking to anyone, and the install command on the page is tested in CI against the released CLI. The pricing page shows exactly the tiers and limits that RFX-080 enforces, from one shared source, so that the two cannot disagree. The site states plainly what leaves the user's machine and what does not (ADR-006, RFX-123), and that REFLEX is not a sandbox (`docs/security.md`). Performance, accessibility and best-practice scores of 90 or more in Lighthouse, on a named page set, run in CI. No third-party script runs before consent.
+**Acceptance:** The pricing page shows exactly the tiers and limits that RFX-080 enforces, from one shared source, so that the two cannot disagree; plan changes, sign-in and account pages are reachable from it and nowhere from the landing (RFX-150) that works without an account. No third-party script runs before consent. Performance, accessibility and best-practice scores of 90 or more in Lighthouse on the pricing and account pages, run in CI. The landing's claims and install command stay RFX-150's.
 
-**Depends on:** RFX-127, RFX-135.
+**Depends on:** RFX-150, RFX-135, RFX-080.
 
-**Out of scope:** A blog, a changelog site, localization.
+**Out of scope:** A blog, a changelog site, localization; the landing and install page (RFX-150).
 
-**Why:** "First value before account creation" (`CLAUDE.md`, UX rules) starts on a page that does not exist. A security product is judged by its first page on exactly the two claims this ticket makes it state.
-
-### RFX-137 — Public documentation
-
-**Goal:** Publish the documentation a user needs to install, trust and operate REFLEX.
-
-**Acceptance:** A public documentation site built from files in this repository covers: quick start, how a decision is made, the policy language (RFX-100), modes, each supported host and what is verified for it (ADR-007), the threat model, what is stored and for how long (ADR-008), and troubleshooting that mirrors `rfx doctor` (RFX-055). Every command and every policy example on the site is executed as a test, as RFX-100 already requires for the policy reference, so that the documentation cannot drift from the product. Broken internal links fail CI.
-
-**Depends on:** RFX-100, RFX-055, RFX-101.
-
-**Out of scope:** API reference for SDKs (G14 owns it); video; localization.
-
-**Why:** The documents exist in `docs/` for the people building REFLEX. None of them is written for, or reachable by, the person deciding whether to let it govern their agent.
+**Why:** A security product is judged by its first page; the first page is RFX-150's. This ticket makes the price and the plan as checkable as the install command: one source, tested, never a claim the meter does not enforce.
 
 **Gate exit:** all tickets above are green in CI and documented; no known dangerous false-allow regression. **Specifically:** ADR-014 is accepted and the meter is the one it names; a retried request is metered once; reaching a plan limit, a semantic budget or a failed payment never disables enforcement silently; every estimated figure is labelled as an estimate; a replayed webhook log changes nothing and no payment detail reaches a REFLEX service; the usage a user sees is the usage that is metered; the cost report runs from a command and states its units; excess load on the provider ends in the fallback and never in `allow`; the pricing in `docs/product.md` has met users; the public pricing page and the enforced entitlements come from one source; every command and example in the public documentation runs as a test.
 
 ## G16 — Team foundations
 
-RFX-085 moved to G10, ahead of the audited mode switch in G11.
+RFX-085 moved to G10, ahead of the audited mode switch in G11. RFX-083 and RFX-084 moved to G9.5 (ADR-017): a team shares one policy before it has an account.
 
 ### RFX-082 — Organizations and memberships
 
@@ -1411,16 +1451,4 @@ RFX-085 moved to G10, ahead of the audited mode switch in G11.
 
 **Acceptance:** Tenant isolation tests cover every org-scoped endpoint.
 
-### RFX-083 — Shared project policies
-
-**Goal:** Team policy publishing/versioning.
-
-**Acceptance:** Clients consume immutable signed config snapshot.
-
-### RFX-084 — Environment policies
-
-**Goal:** Distinct staging/production rules.
-
-**Acceptance:** Production policy cannot be weakened by local project policy.
-
-**Gate exit:** all tickets above are green in CI and documented; no known dangerous false-allow regression. **Specifically:** a production policy cannot be weakened by a project or local policy; clients consume only signed, immutable snapshots; membership changes are audited.
+**Gate exit:** all tickets above are green in CI and documented; no known dangerous false-allow regression. **Specifically:** membership changes are audited, and an organization's members receive the organization's policy snapshot (RFX-083) through their membership and nothing else.
