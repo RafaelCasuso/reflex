@@ -7,6 +7,7 @@ import {
   HOST_SCHEMA_REQUIREMENTS,
   MUTATION_REQUIREMENTS,
   PUBLIC_HISTORY_REQUIREMENTS,
+  RELEASE_PUBLISH,
   RELEASE_REQUIREMENTS,
   SECURITY_REQUIREMENTS,
 } from "./support/ci.js";
@@ -246,23 +247,78 @@ describe("RFX-127 signed releases", () => {
     expect(workflow).not.toMatch(/contents: write/);
   });
 
-  it("sets every publishable version from the tag after the gates and before publishing", () => {
+  // The version goes in after the tests (which hold the constant to the
+  // manifest at 0.0.0) and before the build, so that the dist that is packed
+  // says the version: the published 0.1.1 answered `rfx --version` from a
+  // constant the release had never touched.
+  it("sets every publishable version from the tag after the tests, before the build that is packed, before publishing", () => {
     expect(workflow).toContain(
       'node tools/release/set-version.mjs "${GITHUB_REF_NAME#v}"',
     );
-    const publish = workflow.indexOf("pnpm -r publish");
+    const publish = workflow.indexOf(RELEASE_PUBLISH);
+    const build = workflow.indexOf("run: pnpm build");
     const version = workflow.indexOf("set-version.mjs");
     const test = workflow.indexOf("run: pnpm test");
     expect(version).toBeGreaterThan(test);
-    expect(publish).toBeGreaterThan(version);
+    expect(build).toBeGreaterThan(version);
+    expect(publish).toBeGreaterThan(build);
+  });
+
+  it("writes the tag into the CLI's own constant too, which the CLI's test holds to the manifest", () => {
+    const script = readText("tools", "release", "set-version.mjs");
+    expect(script).toContain('"packages", "cli", "src", "version.ts"');
+    expect(script).toContain("CLI_VERSION");
+    expect(readText("packages", "cli", "src", "version.ts")).toMatch(
+      /^export const CLI_VERSION = "0\.0\.0";$/m,
+    );
+  });
+
+  // v0.1.1 attested the tarballs of `pnpm pack` and published those of
+  // `pnpm publish`, which packs again: different bytes, and the attestation
+  // named nothing that npm serves. The job must publish the files it attested.
+  it("publishes exactly the tarballs it attested: pack, attest, publish, one directory", () => {
+    const pack = workflow.indexOf("pnpm pack --pack-destination");
+    const attest = workflow.indexOf("actions/attest-build-provenance@");
+    const publish = workflow.indexOf(RELEASE_PUBLISH);
+    expect(pack).toBeGreaterThan(0);
+    expect(attest).toBeGreaterThan(pack);
+    expect(publish).toBeGreaterThan(attest);
+    expect(workflow).toContain('--pack-destination "${RUNNER_TEMP}/tarballs"');
+    expect(workflow).toContain(
+      "subject-path: ${{ runner.temp }}/tarballs/*.tgz",
+    );
+    // Comments may name what is forbidden; steps may not.
+    const steps = workflow
+      .split("\n")
+      .filter((line) => !line.trimStart().startsWith("#"))
+      .join("\n");
+    expect(steps).not.toContain("pnpm publish");
+    expect(steps).not.toContain("pnpm -r publish");
+    // The loop must stop at the first failure, so the step runs under -e.
+    const step = workflow.slice(
+      workflow.lastIndexOf("- name:", publish),
+      publish,
+    );
+    expect(step).toContain("shell: bash");
+    // No token: trusted publishing authenticates the job.
+    expect(steps).not.toContain("NODE_AUTH_TOKEN");
+    expect(steps).not.toContain("registry-url");
   });
 
   it.each([
     {
       label: "publish loses provenance",
       tamper: (text: string) => text.replace(" --provenance", ""),
-      expected:
-        'missing quality gate "pnpm -r publish --access public --provenance --no-git-checks"',
+      expected: `missing quality gate "${RELEASE_PUBLISH}"`,
+    },
+    {
+      label: "a failed publish is swallowed inside the loop",
+      tamper: (text: string) =>
+        text.replace(
+          "--access public --provenance; done",
+          "--access public --provenance || true; done",
+        ),
+      expected: `gate result can be swallowed: "${RELEASE_PUBLISH.replace("; done", " || true; done")}"`,
     },
     {
       label: "a gate is skipped before publishing",

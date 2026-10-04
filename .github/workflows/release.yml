@@ -2,12 +2,14 @@
 #
 # A release is a tag `vMAJOR.MINOR.PATCH` pushed to this repository, and
 # nothing else: no publish from a laptop. The job builds from the tagged
-# commit, runs every quality gate, sets the version from the tag, publishes
-# every publishable `@reflex-control/*` package to npm with provenance (Sigstore,
-# through npm's `--provenance`, which needs the OIDC token below), and
-# attaches a build-provenance attestation to the packed tarballs. A
-# published artifact can then be verified against the commit and workflow
-# that built it:
+# commit, runs lint, typecheck and test, sets the version from the tag
+# (every open manifest and the CLI's own constant), builds, packs
+# every publishable `@reflex-control/*` package once, attaches a
+# build-provenance attestation to those tarballs, and publishes those same
+# tarballs to npm with provenance (Sigstore, through npm's `--provenance`,
+# which needs the OIDC token below). The bytes attested are the bytes
+# published, so a published artifact can be verified against the commit and
+# workflow that built it:
 #
 #   npm audit signatures
 #   gh attestation verify <tarball> --repo RafaelCasuso/reflex
@@ -22,6 +24,8 @@
 # Rules guarded by tests/ci.test.ts:
 #   - install is lockfile-frozen
 #   - every gate runs before publish, and any can fail the job
+#   - what is published is what was attested: pack, attest, publish, in
+#     that order, on the same tarballs
 #   - no `continue-on-error`, no `|| true`
 #   - third-party actions are pinned to a full commit SHA
 #   - `id-token: write` for provenance; nothing else is writable
@@ -61,7 +65,6 @@ jobs:
         with:
           node-version-file: .nvmrc
           cache: pnpm
-          registry-url: https://registry.npmjs.org
 
       - name: Install (frozen lockfile)
         run: pnpm install --frozen-lockfile
@@ -75,11 +78,13 @@ jobs:
       - name: Test
         run: pnpm test
 
-      - name: Build
-        run: pnpm build
-
+      # Before the build, so that what is built carries the version: the
+      # manifests pnpm packs, and `rfx --version`.
       - name: Version from the tag
         run: node tools/release/set-version.mjs "${GITHUB_REF_NAME#v}"
+
+      - name: Build
+        run: pnpm build
 
       - name: Pack every publishable package
         run: pnpm -r --filter "./packages/*" --filter "./apps/decision-gateway" exec pnpm pack --pack-destination "${RUNNER_TEMP}/tarballs"
@@ -89,9 +94,16 @@ jobs:
         with:
           subject-path: ${{ runner.temp }}/tarballs/*.tgz
 
-      # No NODE_AUTH_TOKEN: with none, the npm CLI (11.5.1 or later; Node 24
-      # ships it) authenticates with the job's OIDC token (trusted publishing)
-      # and publishes provenance. The flag stays so that a missing trusted
-      # publisher fails loudly rather than publishing without provenance.
-      - name: Publish with provenance
-        run: pnpm -r publish --access public --provenance --no-git-checks
+      # The tarballs just attested are what is published, one `npm publish`
+      # each. `pnpm publish` would pack again, and those bytes differ from
+      # the attested ones (v0.1.1: `gh attestation verify` found nothing for
+      # the tarballs npm serves). `bash -e` stops at the first failure.
+      #
+      # No NODE_AUTH_TOKEN and no registry-url: with no token, the npm CLI
+      # (11.5.1 or later; Node 24 ships it) authenticates with the job's OIDC
+      # token (trusted publishing) and publishes provenance. The flag stays so
+      # that a missing trusted publisher fails loudly rather than publishing
+      # without provenance.
+      - name: Publish the attested tarballs with provenance
+        shell: bash
+        run: for tarball in "${RUNNER_TEMP}"/tarballs/*.tgz; do npm publish "$tarball" --access public --provenance; done

@@ -27,9 +27,10 @@ already in place for it, and what has to be true before it runs.
 
 1. `rfx init` gives first value (G9: RFX-050 to RFX-054). Done.
 2. A first version is published to npm (RFX-127), so that `reflex-cloud` can
-   depend on `@reflex-control/*` by version. **Not yet: the npm scope is not set up.**
+   depend on `@reflex-control/*` by version. Done: `0.1.0` by hand, `0.1.1`
+   from CI, on 2026-10-04.
 3. The security gate is green over the filtered history before the
-   repository is made public.
+   repository is made public. Done.
 
 ## Procedure
 
@@ -82,10 +83,18 @@ The private repository is now `RafaelCasuso/reflex-cloud`; this repository,
 and protects `main` with Quality gates, Security gates and Public history
 check. Its first runs on `main` are green, Public history included.
 
-Still to do, in this order: the maintainer makes this repository public
-(step 5) and adds `NPM_TOKEN`; the first tag publishes `@reflex-control/*`
-(`docs/releasing.md`); then `reflex-cloud` drops the open packages and
-depends on them by version, which closes RFX-149.
+Step 5 followed the same day: the repository is public since 2026-10-04.
+Tag `v0.1.0` ran the release job and failed at publish (npm no longer takes
+a CI token without a 2FA bypass, and those are deprecated); the maintainer
+published `0.1.0` by hand, a trusted publisher was set on each package, the
+`NPM_TOKEN` secret was deleted, and `v0.1.1` published the sixteen packages
+from CI with provenance (`docs/releasing.md`).
+
+Still to do: `reflex-cloud` drops the open packages and depends on them by
+version, which closes RFX-149. It needs `v0.1.2`, the first version whose
+`@reflex-control/contracts` ships `fixtures/`: `rdm/` reads the frozen
+contract fixtures, and in `reflex-cloud` it reads them from the installed
+package instead of the path `packages/contracts/fixtures`.
 
 Until that last step, open code and documentation are developed here first
 and mirrored into `reflex-cloud`; a change made there to an open path is

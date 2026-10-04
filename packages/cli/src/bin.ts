@@ -6,6 +6,7 @@ import { fileURLToPath } from "node:url";
 import { parseArgs } from "node:util";
 
 import type { HostScope, SupportedHost } from "./hosts.js";
+import { CLI_VERSION } from "./version.js";
 
 /**
  * `rfx` — entry point.
@@ -42,6 +43,8 @@ const USAGE = `rfx — REFLEX, the autonomy control layer for AI agents
       What REFLEX has observed and decided in this project. Local, offline.
   rfx uninstall [--yes] [--purge]
       Remove REFLEX from this project. --purge also deletes ~/.reflex.
+  rfx --version
+      Print the version of this installation.
 `;
 
 const write = (text: string): void => {
@@ -260,10 +263,12 @@ async function confirm(question: string, assumeYes: boolean): Promise<boolean> {
   }
 }
 
-async function main(): Promise<number> {
-  const { values, positionals } = parseArgs({
+function parseArguments(args: readonly string[]) {
+  return parseArgs({
+    args: [...args],
     allowPositionals: true,
     options: {
+      version: { type: "boolean", short: "v", default: false },
       host: { type: "string" },
       scope: { type: "string" },
       mode: { type: "string" },
@@ -284,10 +289,35 @@ async function main(): Promise<number> {
       help: { type: "boolean", default: false },
     },
   });
+}
+
+async function main(): Promise<number> {
+  let parsed: ReturnType<typeof parseArguments>;
+  try {
+    parsed = parseArguments(process.argv.slice(2));
+  } catch (error) {
+    // The hook path stays silent whatever it is given (see hook.ts): a
+    // hook that cannot parse its own arguments must never block the host.
+    if (process.argv[2] === "hook") {
+      return 0;
+    }
+    // For a human: an option rfx does not know, or a value missing after
+    // one. Not "unexpected"; say which, and show the usage.
+    process.stderr.write(
+      `rfx: ${error instanceof Error ? error.message : String(error)}\n`,
+    );
+    write(USAGE);
+    return 2;
+  }
+  const { values, positionals } = parsed;
   const [command, argument] = positionals;
 
   if (command === "hook") {
     await hook(argument);
+    return 0;
+  }
+  if (values.version) {
+    write(`rfx ${CLI_VERSION}\n`);
     return 0;
   }
   if (values.help || command === undefined) {
