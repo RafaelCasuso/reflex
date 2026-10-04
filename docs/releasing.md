@@ -60,20 +60,53 @@ verifies the build-provenance attestation the release job attached: the
 subject digest, the workflow (`.github/workflows/release.yml`), the commit
 and the tag.
 
-## What the maintainer sets up once
+## How publishing authenticates
 
-- The npm scope `@reflex-control` (`@reflex` and `rfx` were already taken by
-  other organizations, checked 2026-10-04) must be owned by the maintainer and the packages
-  configured for publishing from this repository: either npm trusted
-  publishing (OIDC, no token; the job already asks for `id-token: write`) or
-  an `NPM_TOKEN` repository secret with publish rights. Until one of these
-  exists the job fails at "Publish with provenance" and nothing is released,
-  which is the intended failure.
-- Branch protection on `main` already requires the quality gates; tags are
-  cut from `main`.
+Trusted publishing: the release job presents its OIDC token to npm, and npm
+accepts it because each package names this repository and `release.yml` as
+its trusted publisher. There is no token and no secret in the repository.
+Provenance is published with it. npm tokens that bypass two-factor
+authentication are deprecated, and a token that does not bypass it cannot
+publish from CI, which is what the first attempt (run of tag `v0.1.0`,
+2026-10-04) showed: `403 Two-factor authentication or granular access token
+with bypass 2fa enabled is required to publish packages`.
+
+Trusted publishing has one gap: it can only be configured on a package that
+already exists on npm. So the **first version of each package is published
+once by the maintainer, by hand, with their own 2FA**, and from the second
+version on CI does it. The first version therefore has no provenance; the
+first attested version is the next tag.
+
+## Bootstrapping a new package (done once per package)
+
+From a clean checkout of the tag to publish, on Node 24:
+
+```
+git clone --branch v0.1.0 https://github.com/RafaelCasuso/reflex.git reflex-0.1.0
+cd reflex-0.1.0
+corepack enable
+pnpm install --frozen-lockfile
+pnpm build
+node tools/release/set-version.mjs 0.1.0
+npm login
+pnpm -r publish --access public --no-git-checks
+```
+
+`pnpm -r publish` publishes every publishable package whose version is not on
+the registry yet, in dependency order, and asks for a one-time password when
+the registry requires it; `--otp <code>` can be given instead. A run that
+stops halfway can simply be repeated: what is already published is skipped.
+
+Then, for each package, on npmjs.com, `https://www.npmjs.com/package/@reflex-control/<name>/access`,
+"Trusted Publisher", GitHub Actions: owner `RafaelCasuso`, repository
+`reflex`, workflow filename `release.yml`, no environment. After that, the
+next tag publishes from CI with provenance, and any `NPM_TOKEN` secret can be
+deleted.
 
 ## Status
 
-The workflow, the manifests, the version script and the audits are in place.
-No version has been published yet: the npm scope is not set up. That is the
-one step a workflow cannot do.
+The workflow, the manifests, the version script and the audits are in place,
+and the repository is public. Tag `v0.1.0` ran the whole job and failed only
+at publish, for the reason above; nothing was published. The bootstrap of
+the sixteen packages and their trusted publishers is the maintainer's step;
+the first attested release is the tag after it.
