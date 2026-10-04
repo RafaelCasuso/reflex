@@ -70,14 +70,23 @@ gh repo edit RafaelCasuso/reflex --visibility public --accept-visibility-change-
 or subtree. The boundary test of ADR-015 stays in the public repository and
 still fails a new package that is in neither table of `docs/open-core.md`.
 
-## Dry run
+## Executed on 2026-10-04
 
-Steps 1 to 3 were run on 2026-10-04 against the branch of G9 into a scratch
-directory. The filtered history holds no private path and the check script
-passes on it; `pnpm install --frozen-lockfile` passes as it is (pnpm accepts
-a lockfile whose importers for the removed packages are simply unused, so
-no lockfile step is needed); lint, typecheck, build and the whole test suite
-pass there with the private packages absent, after one test learned to skip
-the private manifests when their directories are gone; gitleaks finds
-nothing in the filtered history. Steps 4 and 5 are the maintainer's call:
-they rename the private repository and, eventually, make source public.
+Steps 1 to 4 were run on 2026-10-04 from main `448dc67` of the private
+monorepo: the filtered history (97 commits) holds no private path, the check
+script passes on it, `pnpm install --frozen-lockfile` passes as it is (no
+lockfile step is needed), lint, typecheck, test and build pass with the
+private packages absent, and gitleaks finds nothing in the filtered history.
+The private repository is now `RafaelCasuso/reflex-cloud`; this repository,
+`RafaelCasuso/reflex`, holds the filtered history, has `REFLEX_PUBLIC=true`,
+and protects `main` with Quality gates, Security gates and Public history
+check. Its first runs on `main` are green, Public history included.
+
+Still to do, in this order: the maintainer makes this repository public
+(step 5) and adds `NPM_TOKEN`; the first tag publishes `@reflex-control/*`
+(`docs/releasing.md`); then `reflex-cloud` drops the open packages and
+depends on them by version, which closes RFX-149.
+
+Until that last step, open code and documentation are developed here first
+and mirrored into `reflex-cloud`; a change made there to an open path is
+cherry-picked here.
