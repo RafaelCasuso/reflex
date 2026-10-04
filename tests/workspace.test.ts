@@ -122,8 +122,9 @@ describe("RFX-002 workspace shape", () => {
           access: "public",
           provenance: true,
         });
-        // dist always; a package may ship data next to it (evals: corpus),
-        // never its sources.
+        // dist always; a package may ship data next to it (contracts: its
+        // frozen fixtures, which rdm/ reads from the installed package in the
+        // private repository; evals: corpus and benchmarks), never its sources.
         expect(raw.files).toContain("dist");
         expect(raw.files).not.toContain("src");
         expect(raw.license).toBe("Apache-2.0");

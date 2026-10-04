@@ -51,13 +51,17 @@ export const MUTATION_REQUIREMENTS: WorkflowRequirements = {
   commands: ["pnpm build", "pnpm mutation"],
 };
 
-/** RFX-127. Every gate, the build, then publish with provenance; tags only. */
+/**
+ * RFX-127. Every gate, the build, pack once, attest, then publish the attested
+ * tarballs with provenance; tags only. `bash -e` stops the loop at the first
+ * failed publish.
+ */
+export const RELEASE_PUBLISH =
+  'for tarball in "${RUNNER_TEMP}"/tarballs/*.tgz; do npm publish "$tarball" --access public --provenance; done';
+
 export const RELEASE_REQUIREMENTS: WorkflowRequirements = {
   install: FROZEN_INSTALL,
-  commands: [
-    ...REQUIRED_GATES,
-    "pnpm -r publish --access public --provenance --no-git-checks",
-  ],
+  commands: [...REQUIRED_GATES, RELEASE_PUBLISH],
   pullRequest: false,
 };
 

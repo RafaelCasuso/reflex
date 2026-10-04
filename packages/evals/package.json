@@ -13,7 +13,8 @@
   },
   "files": [
     "dist",
-    "corpus"
+    "corpus",
+    "benchmarks"
   ],
   "publishConfig": {
     "access": "public",

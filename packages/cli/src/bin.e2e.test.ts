@@ -319,6 +319,40 @@ describe("rfx: the command line", () => {
     expect((await rfx(["init", "--scope", "everywhere"], {})).code).toBe(2);
     expect((await rfx(["frobnicate"], {})).code).toBe(2);
   });
+
+  // The published 0.1.1 answered `rfx --version` with "unexpected error":
+  // an unknown option threw out of the argument parser into the last-resort
+  // handler. A version is a question with an answer, and an unknown option
+  // is the user's to fix, so both are told.
+  it("prints its version, and names an unknown option instead of calling it unexpected", async () => {
+    const manifest = JSON.parse(
+      readFileSync(
+        fileURLToPath(new URL("../package.json", import.meta.url)),
+        "utf8",
+      ),
+    ) as { version: string };
+    const version = await rfx(["--version"], {});
+    expect(version).toEqual({
+      code: 0,
+      stdout: `rfx ${manifest.version}\n`,
+      stderr: "",
+    });
+    expect(await rfx(["-v"], {})).toEqual(version);
+
+    const unknown = await rfx(["--frobnicate"], {});
+    expect(unknown.code).toBe(2);
+    expect(unknown.stderr).toContain("--frobnicate");
+    expect(unknown.stderr).not.toContain("unexpected error");
+    expect(unknown.stdout).toContain("rfx init");
+  });
+
+  // Adversarial: the same parse error on the hook path must stay silent, or
+  // a malformed hook command in a settings file would block every tool call.
+  it("keeps the hook silent when its own arguments do not parse", async () => {
+    expect(
+      await rfx(["hook", "claude-code", "--frobnicate"], { stdin: "{}" }),
+    ).toEqual({ code: 0, stdout: "", stderr: "" });
+  });
 });
 
 /**

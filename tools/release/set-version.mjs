@@ -4,11 +4,12 @@
  *
  *   node tools/release/set-version.mjs 0.1.0
  *
- * Writes `version` into every workspace manifest that is not private, and
- * into the root manifest, so that a release tag `v0.1.0` builds packages that
- * say 0.1.0 and depend on each other at `workspace:*`, which pnpm rewrites
- * to the published version on publish. Private packages keep 0.0.0: they
- * are never published.
+ * Writes `version` into every workspace manifest that is not private, into
+ * the root manifest, and into the CLI's own constant (`packages/cli/src/version.ts`,
+ * what `rfx --version` prints), so that a release tag `v0.1.0` builds
+ * packages that say 0.1.0 and depend on each other at `workspace:*`, which
+ * pnpm rewrites to the published version when it packs. It runs before the
+ * build that is packed. Private packages keep 0.0.0: they are never published.
  */
 import { readdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
@@ -57,4 +58,20 @@ if (root.version !== version) {
   );
   changed += 1;
 }
-process.stdout.write(`${String(changed)} manifest(s) set to ${version}\n`);
+
+const versionModule = join(ROOT, "packages", "cli", "src", "version.ts");
+const source = readFileSync(versionModule, "utf8");
+const constant = /^export const CLI_VERSION = "[^"]*";$/m;
+if (!constant.test(source)) {
+  process.stderr.write(`${versionModule}: CLI_VERSION constant not found\n`);
+  process.exit(1);
+}
+const rewritten = source.replace(
+  constant,
+  `export const CLI_VERSION = "${version}";`,
+);
+if (rewritten !== source) {
+  writeFileSync(versionModule, rewritten);
+  changed += 1;
+}
+process.stdout.write(`${String(changed)} file(s) set to ${version}\n`);

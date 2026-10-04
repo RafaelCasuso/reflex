@@ -7,9 +7,11 @@ the model itself, is private.**
 
 This page is the list. `tests/boundaries.test.ts` reads it: every workspace
 package must appear here, its manifest must declare the licence written
-here, and **no open package may depend on a private one**. Until the
-repositories are split (RFX-149), the boundary is enforced here rather than by
-distance.
+here, and **no open package may depend on a private one**. The repositories
+are split (RFX-149, 2026-10-04): this public repository holds the open side;
+`reflex-cloud` holds the private side and depends on the open packages by
+published version. The boundary test still runs here, and a new package that
+is in neither table fails it.
 
 The npm scope is `@reflex-control` (RFX-127, 2026-10-04): `@reflex` and `rfx`
 were already taken by other organizations on npm. Package names are
@@ -64,7 +66,7 @@ question is asked when the package is created, not after it ships.
   the product is the canonical one: a `SemanticDecisionRequest` in, a
   `SemanticAssessment` out, over `packages/provider-local` (RFX-144).
 - `rdm/` is not a workspace package (`pnpm-workspace.yaml`), so no
-  workspace-wide publish reaches it; when packages are published (RFX-127)
-  the publish step lists open packages by name, and the public repository
-  (RFX-149) never holds it.
+  workspace-wide pack or publish reaches it; the release job (RFX-127) packs
+  `packages/*` and `apps/decision-gateway`, and the public repository
+  (RFX-149) never holds `rdm/`.
 - A user's own provider key in the open daemon is allowed (ADR-015 §4).
