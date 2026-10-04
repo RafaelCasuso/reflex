@@ -1,5 +1,5 @@
 /**
- * @reflex/evals — Regression corpus and autonomy/safety evaluation harness.
+ * @reflex-control/evals — Regression corpus and autonomy/safety evaluation harness.
  *
  * RFX-105 seeds the corpus and a minimal replay runner, so that the policy
  * engine is built against them from its first ticket. RFX-038 and RFX-039

@@ -2,8 +2,12 @@ import { mkdtemp, readFile, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
-import { createFakeProvider } from "@reflex/semantic-provider";
-import { DecisionLog, decisionEventsOf, riskBucketOf } from "@reflex/telemetry";
+import { createFakeProvider } from "@reflex-control/semantic-provider";
+import {
+  DecisionLog,
+  decisionEventsOf,
+  riskBucketOf,
+} from "@reflex-control/telemetry";
 import { afterEach, describe, expect, it } from "vitest";
 
 import {

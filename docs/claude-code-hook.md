@@ -305,7 +305,7 @@ ticket that makes this routine.
 
 Wall clock from `spawn` to `exit` with a real payload on stdin: process start,
 module loading, payload parse, translation, record, exit. That is what the host
-waits for. Reproduce with `pnpm --filter @reflex/cli bench`.
+waits for. Reproduce with `pnpm --filter @reflex-control/cli bench`.
 
 Baseline, 2026-09-19. Apple M1 Max, macOS (darwin 25.6.0 arm64), Node 24.9.0.
 60 sequential runs per case after 5 warm-up runs.
@@ -336,12 +336,12 @@ before the tool runs.
 
 ### Where REFLEX's own ~17 ms go
 
-| Added on top of an empty process                               | p50       |
-| -------------------------------------------------------------- | --------- |
-| Node built-ins that `rfx` imports statically                   | +5.1 ms   |
-| `@reflex/telemetry` and the adapter's hook entry (~15 modules) | +8.5 ms   |
-| The settings editor (`jsonc-parser`), **avoided** on this path | (+7.6 ms) |
-| Reading stdin, translating, writing one record                 | ~3 ms     |
+| Added on top of an empty process                                       | p50       |
+| ---------------------------------------------------------------------- | --------- |
+| Node built-ins that `rfx` imports statically                           | +5.1 ms   |
+| `@reflex-control/telemetry` and the adapter's hook entry (~15 modules) | +8.5 ms   |
+| The settings editor (`jsonc-parser`), **avoided** on this path         | (+7.6 ms) |
+| Reading stdin, translating, writing one record                         | ~3 ms     |
 
 An event the hook ignores costs almost as much as one it records: the cost is
 loading modules, not doing work.

@@ -3,8 +3,8 @@ import { createServer, type Server } from "node:http";
 import { connect } from "node:net";
 import { dirname } from "node:path";
 
-import type { OverrideStore, ReflexDecisionEngine } from "@reflex/core";
-import type { TelemetrySink } from "@reflex/telemetry";
+import type { OverrideStore, ReflexDecisionEngine } from "@reflex-control/core";
+import type { TelemetrySink } from "@reflex-control/telemetry";
 
 import { createGatewayHandler } from "./http/handler.js";
 import {
@@ -15,7 +15,7 @@ import {
 import { RateLimiter, type RateLimitOptions } from "./http/limits.js";
 
 /**
- * @reflex/decision-gateway — the latency-sensitive runtime decision endpoint.
+ * @reflex-control/decision-gateway — the latency-sensitive runtime decision endpoint.
  *
  * One server, two ways to listen (ADR-010 implementation notes): a Unix
  * domain socket on the user's machine, private to the user, or TCP on the

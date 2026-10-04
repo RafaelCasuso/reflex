@@ -15,18 +15,18 @@ import type {
   ReflexDecision,
   SemanticAssessment,
   SemanticDecisionRequest,
-} from "@reflex/contracts";
+} from "@reflex-control/contracts";
 import {
   evaluatePolicy,
   mostRestrictive,
   type CompiledPolicySet,
   type PolicyEvaluationResult,
-} from "@reflex/policy-engine";
+} from "@reflex-control/policy-engine";
 import {
   fallbackReasonOf,
   providerError,
   type ProviderResult,
-} from "@reflex/semantic-provider";
+} from "@reflex-control/semantic-provider";
 
 import {
   DecisionCache,

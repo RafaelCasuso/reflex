@@ -5,12 +5,12 @@ import {
   parseSemanticAssessment,
   type ProviderErrorKind,
   type SemanticAssessment,
-} from "@reflex/contracts";
+} from "@reflex-control/contracts";
 import {
   providerError,
   type ProviderResult,
   type SemanticDecisionProvider,
-} from "@reflex/semantic-provider";
+} from "@reflex-control/semantic-provider";
 
 /**
  * RFX-144 — the local provider client.

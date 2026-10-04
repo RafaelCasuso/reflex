@@ -7,7 +7,7 @@ import type {
   IsoTimestamp,
   ProjectId,
   ReflexMode,
-} from "@reflex/contracts";
+} from "@reflex-control/contracts";
 
 import {
   isSupportedHost,

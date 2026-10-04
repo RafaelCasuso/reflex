@@ -3,16 +3,16 @@ import type {
   DecisionEffect,
   PolicyMatch,
   ReflexMode,
-} from "@reflex/contracts";
-import { effectiveEffectOf } from "@reflex/core";
-import type { ProjectPolicyReading } from "@reflex/decision-gateway/policy.js";
+} from "@reflex-control/contracts";
+import { effectiveEffectOf } from "@reflex-control/core";
+import type { ProjectPolicyReading } from "@reflex-control/decision-gateway/policy.js";
 import {
   evaluatePolicy,
   POLICY_SOURCES,
   precedenceOf,
   type PolicyEvaluationResult,
   type PolicySource,
-} from "@reflex/policy-engine";
+} from "@reflex-control/policy-engine";
 
 import type { FileSystemPort } from "../backups/file-system.js";
 import type { SupportedHost } from "../hosts.js";

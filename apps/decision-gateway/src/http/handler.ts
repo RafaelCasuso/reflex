@@ -6,14 +6,14 @@ import {
   parseDecisionRequest,
   type DecisionRequest,
   type ReflexDecision,
-} from "@reflex/contracts";
-import type { OverrideStore, ReflexDecisionEngine } from "@reflex/core";
+} from "@reflex-control/contracts";
+import type { OverrideStore, ReflexDecisionEngine } from "@reflex-control/core";
 import {
   decisionEventsOf,
   overrideEventOf,
   rejectedRequestEvent,
   type TelemetrySink,
-} from "@reflex/telemetry";
+} from "@reflex-control/telemetry";
 
 import { declaredLength, readBody } from "./body.js";
 import type { IdempotencyStore } from "./idempotency.js";

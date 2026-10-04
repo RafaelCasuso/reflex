@@ -17,7 +17,10 @@ import { writeFileSync } from "node:fs";
 import process from "node:process";
 import { URL, fileURLToPath } from "node:url";
 
-import { JEV_DEFAULT_MODEL, createJevProvider } from "@reflex/provider-jev";
+import {
+  JEV_DEFAULT_MODEL,
+  createJevProvider,
+} from "@reflex-control/provider-jev";
 
 import {
   calibrate,

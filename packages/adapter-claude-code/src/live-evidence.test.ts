@@ -2,7 +2,10 @@ import { readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { assembleOutcomes, type ObservationRecord } from "@reflex/telemetry";
+import {
+  assembleOutcomes,
+  type ObservationRecord,
+} from "@reflex-control/telemetry";
 import { describe, expect, it } from "vitest";
 
 import { readHookInput } from "./hook-input.js";

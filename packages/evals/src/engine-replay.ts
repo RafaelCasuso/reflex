@@ -4,28 +4,28 @@ import type {
   ReflexDecision,
   SemanticAssessment,
   SemanticDecisionRequest,
-} from "@reflex/contracts";
+} from "@reflex-control/contracts";
 import {
   createContextCompiler,
   createRedactor,
-} from "@reflex/context-compiler";
+} from "@reflex-control/context-compiler";
 import {
   createDecisionEngine,
   createRiskAggregator,
   type AggregatorConfig,
   type ReflexDecisionEngine,
-} from "@reflex/core";
+} from "@reflex-control/core";
 import {
   compilePolicySet,
   parsePolicy,
   type CompiledPolicySet,
   type PolicySourceDocument,
-} from "@reflex/policy-engine";
+} from "@reflex-control/policy-engine";
 import {
   assessmentForClass,
   createFakeProvider,
   type SemanticDecisionProvider,
-} from "@reflex/semantic-provider";
+} from "@reflex-control/semantic-provider";
 
 import {
   ASSESSMENT_LEVELS,

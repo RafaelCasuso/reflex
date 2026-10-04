@@ -2,7 +2,7 @@ import { randomBytes } from "node:crypto";
 import { chmod, mkdir, readFile, stat, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 
-import { REDACTION_KEY_BYTES } from "@reflex/context-compiler";
+import { REDACTION_KEY_BYTES } from "@reflex-control/context-compiler";
 
 /**
  * RFX-031 — the redaction key (ADR-006 §4).

@@ -1,5 +1,5 @@
 {
-  "name": "@reflex/provider-local",
+  "name": "@reflex-control/provider-local",
   "version": "0.0.0",
   "description": "A semantic provider that calls a local inference server speaking the canonical contract. RDM and Laya are checkpoints behind it; REFLEX does not know which.",
   "license": "Apache-2.0",
@@ -30,7 +30,7 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "@reflex/contracts": "workspace:*",
-    "@reflex/semantic-provider": "workspace:*"
+    "@reflex-control/contracts": "workspace:*",
+    "@reflex-control/semantic-provider": "workspace:*"
   }
 }

@@ -1,4 +1,4 @@
-import type { FailureMode, ReflexMode } from "@reflex/contracts";
+import type { FailureMode, ReflexMode } from "@reflex-control/contracts";
 
 import { sha256, type FileSystemPort } from "../backups/file-system.js";
 import {

@@ -7,7 +7,7 @@ import { classifyCommand } from "./classify.js";
 /**
  * RFX-096 — what parsing and classifying a command costs.
  *
- * Run with `pnpm --filter @reflex/command-classifier bench`. Not part of
+ * Run with `pnpm --filter @reflex-control/command-classifier bench`. Not part of
  * `pnpm test`: timing does not belong on shared CI runners. The assertion is a
  * loose tripwire against an accidental quadratic, not a target; the numbers
  * for the named benchmark machine are recorded in docs/backlog.md.

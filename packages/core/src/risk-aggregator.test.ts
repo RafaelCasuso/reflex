@@ -1,8 +1,8 @@
 import {
   SIDE_EFFECT_CLASSES,
   type SemanticAssessment,
-} from "@reflex/contracts";
-import { assessmentForClass } from "@reflex/semantic-provider";
+} from "@reflex-control/contracts";
+import { assessmentForClass } from "@reflex-control/semantic-provider";
 import { describe, expect, it } from "vitest";
 
 import { classed, shell } from "./engine.test-support.js";

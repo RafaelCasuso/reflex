@@ -143,7 +143,7 @@ node apps/decision-gateway/dist/main.js [--socket <path> | --tcp <host:port>]
   (effect, mode, risk, confidence, reason codes, matches, policy set hash,
   fallback; never the cache key or the clock), and a `deterministic_rule`
   label when a rule or a policy default decided. Outcomes and feedback are
-  joined later by id (`@reflex/telemetry`'s `withOutcome` and `withFeedback`),
+  joined later by id (`@reflex-control/telemetry`'s `withOutcome` and `withFeedback`),
   and each adds a `human` or `production_outcome` label; a record refuses an
   outcome of another action or feedback on another decision. The log rotates
   by size and by age, and keeps seven days (ADR-008 §4, the retention of
@@ -203,7 +203,7 @@ a few `stat` calls, cached by path, size and modification time; the compiled
 set is cached by the hashes it is made of; a project policy that does not
 parse is dropped, counted in health (`projectPolicyProblems`) and shown by
 `rfx doctor`. `rfx explain` composes the set the same way
-(`@reflex/decision-gateway/policy`).
+(`@reflex-control/decision-gateway/policy`).
 
 The daemon's configuration is the user's, `<REFLEX_HOME>/config.json`
 (`semanticProvider`, `semanticModel`, `semanticEndpoint`, `shadowProviders`,
@@ -245,7 +245,7 @@ requires. Milliseconds.
 
 "In-engine" is from a validated request in memory to a decision, inside the
 daemon; the engine reports it in whole milliseconds on every decision
-(`latency.totalMs`, which reads 0 or 1 here) and `pnpm --filter @reflex/core
+(`latency.totalMs`, which reads 0 or 1 here) and `pnpm --filter @reflex-control/core
 bench` measures it with sub-millisecond resolution, which is the row above.
 "Over the socket" is one warm client process, so it is the HTTP layer, the
 validation, the idempotency store and the socket on top of the engine. "End

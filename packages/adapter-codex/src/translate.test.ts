@@ -1,4 +1,4 @@
-import { parseCanonicalAction } from "@reflex/contracts";
+import { parseCanonicalAction } from "@reflex-control/contracts";
 import { describe, expect, it } from "vitest";
 
 import { FIXED_NOW, fixture } from "./fixtures.test-support.js";

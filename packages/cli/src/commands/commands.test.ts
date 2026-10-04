@@ -11,12 +11,12 @@ import {
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
-import { MANAGED_MARKER } from "@reflex/adapter-claude-code";
+import { MANAGED_MARKER } from "@reflex-control/adapter-claude-code";
 import {
   ObservationLog,
   RECORD_VERSION,
   type ObservationRecord,
-} from "@reflex/telemetry";
+} from "@reflex-control/telemetry";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 import { nodeFileSystem } from "../backups/file-system.js";

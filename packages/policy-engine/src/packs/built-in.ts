@@ -1,4 +1,4 @@
-import type { PolicyDocument } from "@reflex/contracts";
+import type { PolicyDocument } from "@reflex-control/contracts";
 
 import { parsePolicy } from "../parser.js";
 

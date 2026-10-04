@@ -1,5 +1,5 @@
 /**
- * Hot-path entry point: `@reflex/adapter-claude-code/hook`.
+ * Hot-path entry point: `@reflex-control/adapter-claude-code/hook`.
  *
  * The host starts a new process for every hook call. This entry exposes only
  * what that process needs, so it never loads the settings editor (and its

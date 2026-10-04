@@ -2,7 +2,7 @@ import { arch, cpus, platform, release } from "node:os";
 
 import { afterAll, describe, expect, test } from "vitest";
 
-import { createFakeProvider } from "@reflex/semantic-provider";
+import { createFakeProvider } from "@reflex-control/semantic-provider";
 
 import { DecisionCache } from "./cache.js";
 import { createDecisionEngine } from "./decision-engine.js";
@@ -26,7 +26,7 @@ import {
  *
  * In-engine means from a validated request in memory to a decision: the
  * fingerprint, the cache, policy evaluation, the risk table, the mode table,
- * ids and timestamps. Run with `pnpm --filter @reflex/core bench`. Not part of
+ * ids and timestamps. Run with `pnpm --filter @reflex-control/core bench`. Not part of
  * `pnpm test`: timing does not belong on shared CI runners.
  */
 const RUNS = 2_000;

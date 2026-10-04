@@ -1,4 +1,4 @@
-import { consentRecord } from "@reflex/semantic-provider";
+import { consentRecord } from "@reflex-control/semantic-provider";
 import { describe, expect, it } from "vitest";
 
 import {

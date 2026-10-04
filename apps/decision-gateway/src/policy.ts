@@ -1,5 +1,5 @@
 /**
- * `@reflex/decision-gateway/policy` — what the CLI shares with the daemon
+ * `@reflex-control/decision-gateway/policy` — what the CLI shares with the daemon
  * about policies: how a project's policy is found and trusted (RFX-104),
  * how the user's files are read, and how a set is composed, so that
  * `rfx explain` and `rfx doctor` see exactly what the daemon decides with.

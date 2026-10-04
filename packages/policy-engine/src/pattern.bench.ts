@@ -7,7 +7,7 @@ import { PATTERN_LIMITS, compilePattern } from "./pattern.js";
 /**
  * RFX-098 — what the worst pattern costs on the worst text.
  *
- * Run with `pnpm --filter @reflex/policy-engine bench`. Not part of
+ * Run with `pnpm --filter @reflex-control/policy-engine bench`. Not part of
  * `pnpm test`: timing does not belong on shared CI runners. The numbers for
  * the named benchmark machine are recorded in docs/backlog.md under RFX-098.
  *

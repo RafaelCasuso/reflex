@@ -1,4 +1,4 @@
-import type { SemanticDecisionRequest } from "@reflex/contracts";
+import type { SemanticDecisionRequest } from "@reflex-control/contracts";
 
 /**
  * RFX-034 — the token budget.

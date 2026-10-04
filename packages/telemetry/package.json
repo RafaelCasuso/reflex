@@ -1,5 +1,5 @@
 {
-  "name": "@reflex/telemetry",
+  "name": "@reflex-control/telemetry",
   "version": "0.0.0",
   "description": "Structured decision telemetry, emitted off the critical path.",
   "license": "Apache-2.0",
@@ -30,6 +30,6 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "@reflex/contracts": "workspace:*"
+    "@reflex-control/contracts": "workspace:*"
   }
 }

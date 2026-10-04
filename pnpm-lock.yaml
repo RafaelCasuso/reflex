@@ -35,49 +35,49 @@ importers:
 
   apps/api:
     dependencies:
-      '@reflex/contracts':
+      '@reflex-control/contracts':
         specifier: workspace:*
         version: link:../../packages/contracts
 
   apps/dashboard:
     dependencies:
-      '@reflex/contracts':
+      '@reflex-control/contracts':
         specifier: workspace:*
         version: link:../../packages/contracts
 
   apps/decision-gateway:
     dependencies:
-      '@reflex/context-compiler':
+      '@reflex-control/context-compiler':
         specifier: workspace:*
         version: link:../../packages/context-compiler
-      '@reflex/contracts':
+      '@reflex-control/contracts':
         specifier: workspace:*
         version: link:../../packages/contracts
-      '@reflex/core':
+      '@reflex-control/core':
         specifier: workspace:*
         version: link:../../packages/core
-      '@reflex/policy-engine':
+      '@reflex-control/policy-engine':
         specifier: workspace:*
         version: link:../../packages/policy-engine
-      '@reflex/provider-jev':
+      '@reflex-control/provider-jev':
         specifier: workspace:*
         version: link:../../packages/provider-jev
-      '@reflex/provider-local':
+      '@reflex-control/provider-local':
         specifier: workspace:*
         version: link:../../packages/provider-local
-      '@reflex/semantic-provider':
+      '@reflex-control/semantic-provider':
         specifier: workspace:*
         version: link:../../packages/semantic-provider
-      '@reflex/telemetry':
+      '@reflex-control/telemetry':
         specifier: workspace:*
         version: link:../../packages/telemetry
 
   packages/adapter-claude-code:
     dependencies:
-      '@reflex/contracts':
+      '@reflex-control/contracts':
         specifier: workspace:*
         version: link:../contracts
-      '@reflex/telemetry':
+      '@reflex-control/telemetry':
         specifier: workspace:*
         version: link:../telemetry
       jsonc-parser:
@@ -86,10 +86,10 @@ importers:
 
   packages/adapter-codex:
     dependencies:
-      '@reflex/contracts':
+      '@reflex-control/contracts':
         specifier: workspace:*
         version: link:../contracts
-      '@reflex/telemetry':
+      '@reflex-control/telemetry':
         specifier: workspace:*
         version: link:../telemetry
       jsonc-parser:
@@ -101,52 +101,52 @@ importers:
 
   packages/adapter-mcp:
     dependencies:
-      '@reflex/contracts':
+      '@reflex-control/contracts':
         specifier: workspace:*
         version: link:../contracts
 
   packages/auth:
     dependencies:
-      '@reflex/contracts':
+      '@reflex-control/contracts':
         specifier: workspace:*
         version: link:../contracts
 
   packages/cli:
     dependencies:
-      '@reflex/adapter-claude-code':
+      '@reflex-control/adapter-claude-code':
         specifier: workspace:*
         version: link:../adapter-claude-code
-      '@reflex/adapter-codex':
+      '@reflex-control/adapter-codex':
         specifier: workspace:*
         version: link:../adapter-codex
-      '@reflex/contracts':
+      '@reflex-control/contracts':
         specifier: workspace:*
         version: link:../contracts
-      '@reflex/core':
+      '@reflex-control/core':
         specifier: workspace:*
         version: link:../core
-      '@reflex/decision-gateway':
+      '@reflex-control/decision-gateway':
         specifier: workspace:*
         version: link:../../apps/decision-gateway
-      '@reflex/policy-engine':
+      '@reflex-control/policy-engine':
         specifier: workspace:*
         version: link:../policy-engine
-      '@reflex/semantic-provider':
+      '@reflex-control/semantic-provider':
         specifier: workspace:*
         version: link:../semantic-provider
-      '@reflex/telemetry':
+      '@reflex-control/telemetry':
         specifier: workspace:*
         version: link:../telemetry
 
   packages/command-classifier:
     dependencies:
-      '@reflex/contracts':
+      '@reflex-control/contracts':
         specifier: workspace:*
         version: link:../contracts
 
   packages/context-compiler:
     dependencies:
-      '@reflex/contracts':
+      '@reflex-control/contracts':
         specifier: workspace:*
         version: link:../contracts
 
@@ -158,35 +158,35 @@ importers:
 
   packages/core:
     dependencies:
-      '@reflex/contracts':
+      '@reflex-control/contracts':
         specifier: workspace:*
         version: link:../contracts
-      '@reflex/policy-engine':
+      '@reflex-control/policy-engine':
         specifier: workspace:*
         version: link:../policy-engine
-      '@reflex/semantic-provider':
+      '@reflex-control/semantic-provider':
         specifier: workspace:*
         version: link:../semantic-provider
 
   packages/evals:
     dependencies:
-      '@reflex/context-compiler':
+      '@reflex-control/context-compiler':
         specifier: workspace:*
         version: link:../context-compiler
-      '@reflex/contracts':
+      '@reflex-control/contracts':
         specifier: workspace:*
         version: link:../contracts
-      '@reflex/core':
+      '@reflex-control/core':
         specifier: workspace:*
         version: link:../core
-      '@reflex/policy-engine':
+      '@reflex-control/policy-engine':
         specifier: workspace:*
         version: link:../policy-engine
-      '@reflex/semantic-provider':
+      '@reflex-control/semantic-provider':
         specifier: workspace:*
         version: link:../semantic-provider
     devDependencies:
-      '@reflex/provider-jev':
+      '@reflex-control/provider-jev':
         specifier: workspace:*
         version: link:../provider-jev
       gpt-tokenizer:
@@ -195,10 +195,10 @@ importers:
 
   packages/policy-engine:
     dependencies:
-      '@reflex/command-classifier':
+      '@reflex-control/command-classifier':
         specifier: workspace:*
         version: link:../command-classifier
-      '@reflex/contracts':
+      '@reflex-control/contracts':
         specifier: workspace:*
         version: link:../contracts
       re2js:
@@ -210,37 +210,37 @@ importers:
 
   packages/provider-jev:
     dependencies:
-      '@reflex/contracts':
+      '@reflex-control/contracts':
         specifier: workspace:*
         version: link:../contracts
-      '@reflex/semantic-provider':
+      '@reflex-control/semantic-provider':
         specifier: workspace:*
         version: link:../semantic-provider
 
   packages/provider-local:
     dependencies:
-      '@reflex/contracts':
+      '@reflex-control/contracts':
         specifier: workspace:*
         version: link:../contracts
-      '@reflex/semantic-provider':
+      '@reflex-control/semantic-provider':
         specifier: workspace:*
         version: link:../semantic-provider
 
   packages/sdk-typescript:
     dependencies:
-      '@reflex/contracts':
+      '@reflex-control/contracts':
         specifier: workspace:*
         version: link:../contracts
 
   packages/semantic-provider:
     dependencies:
-      '@reflex/contracts':
+      '@reflex-control/contracts':
         specifier: workspace:*
         version: link:../contracts
 
   packages/telemetry:
     dependencies:
-      '@reflex/contracts':
+      '@reflex-control/contracts':
         specifier: workspace:*
         version: link:../contracts
 

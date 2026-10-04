@@ -53,62 +53,62 @@ const FORBIDDEN: readonly BoundaryCase[] = [
   {
     label: "contracts -> anything",
     packageDir: "packages/contracts",
-    code: 'import type {} from "@reflex/core";',
+    code: 'import type {} from "@reflex-control/core";',
   },
   {
     label: "core -> adapter-*",
     packageDir: "packages/core",
-    code: 'import "@reflex/adapter-claude-code";',
+    code: 'import "@reflex-control/adapter-claude-code";',
   },
   {
     label: "core -> provider-jev",
     packageDir: "packages/core",
-    code: 'import "@reflex/provider-jev";',
+    code: 'import "@reflex-control/provider-jev";',
   },
   {
     label: "policy-engine -> provider-*",
     packageDir: "packages/policy-engine",
-    code: 'import "@reflex/provider-jev";',
+    code: 'import "@reflex-control/provider-jev";',
   },
   {
     label: "adapter -> provider-jev",
     packageDir: "packages/adapter-codex",
-    code: 'import "@reflex/provider-jev";',
+    code: 'import "@reflex-control/provider-jev";',
   },
   {
     label: "core -> provider-local",
     packageDir: "packages/core",
-    code: 'import "@reflex/provider-local";',
+    code: 'import "@reflex-control/provider-local";',
   },
   {
     label: "adapter -> provider-local",
     packageDir: "packages/adapter-claude-code",
-    code: 'import "@reflex/provider-local";',
+    code: 'import "@reflex-control/provider-local";',
   },
   {
     label: "provider-local -> core",
     packageDir: "packages/provider-local",
-    code: 'import "@reflex/core";',
+    code: 'import "@reflex-control/core";',
   },
   {
     label: "provider-jev -> core",
     packageDir: "packages/provider-jev",
-    code: 'import "@reflex/core";',
+    code: 'import "@reflex-control/core";',
   },
   {
     label: "type-only imports are still dependencies",
     packageDir: "packages/core",
-    code: 'import type {} from "@reflex/adapter-mcp";',
+    code: 'import type {} from "@reflex-control/adapter-mcp";',
   },
   {
     label: "re-exports are still dependencies",
     packageDir: "packages/core",
-    code: 'export * from "@reflex/adapter-codex";',
+    code: 'export * from "@reflex-control/adapter-codex";',
   },
   {
     label: "deep subpath imports do not dodge the package pattern",
     packageDir: "packages/policy-engine",
-    code: 'import "@reflex/provider-jev/dist/client.js";',
+    code: 'import "@reflex-control/provider-jev/dist/client.js";',
   },
   {
     label: "relative path into another package's src/",
@@ -141,32 +141,32 @@ const ALLOWED: readonly BoundaryCase[] = [
   {
     label: "core -> contracts",
     packageDir: "packages/core",
-    code: 'import type {} from "@reflex/contracts";',
+    code: 'import type {} from "@reflex-control/contracts";',
   },
   {
     label: "core -> policy-engine",
     packageDir: "packages/core",
-    code: 'import "@reflex/policy-engine";',
+    code: 'import "@reflex-control/policy-engine";',
   },
   {
     label: "core -> semantic-provider",
     packageDir: "packages/core",
-    code: 'import "@reflex/semantic-provider";',
+    code: 'import "@reflex-control/semantic-provider";',
   },
   {
     label: "provider-jev -> semantic-provider",
     packageDir: "packages/provider-jev",
-    code: 'import "@reflex/semantic-provider";',
+    code: 'import "@reflex-control/semantic-provider";',
   },
   {
     label: "provider-local -> semantic-provider and contracts",
     packageDir: "packages/provider-local",
-    code: 'import "@reflex/semantic-provider"; import "@reflex/contracts";',
+    code: 'import "@reflex-control/semantic-provider"; import "@reflex-control/contracts";',
   },
   {
     label: "adapter -> sdk",
     packageDir: "packages/adapter-codex",
-    code: 'import "@reflex/sdk-typescript";',
+    code: 'import "@reflex-control/sdk-typescript";',
   },
   {
     label: "relative imports inside the same package",
@@ -189,7 +189,7 @@ describe("lint-enforced dependency direction", () => {
   it("explains a violation by pointing at CLAUDE.md", async () => {
     const [message] = await restrictedImportsIn(
       "packages/core",
-      'import "@reflex/adapter-codex";',
+      'import "@reflex-control/adapter-codex";',
     );
 
     expect(message).toContain("core -> adapter-* is forbidden");
@@ -220,7 +220,9 @@ function openCoreList(): readonly OpenCoreEntry[] {
       side = undefined;
     }
     const row =
-      /^\| `(@reflex\/[a-z-]+)`\s+\| `((?:apps|packages)\/[a-z-]+)`/.exec(line);
+      /^\| `(@reflex-control\/[a-z-]+)`\s+\| `((?:apps|packages)\/[a-z-]+)`/.exec(
+        line,
+      );
     if (side !== undefined && row?.[1] !== undefined && row[2] !== undefined) {
       entries.push({ name: row[1], path: row[2], side });
     }

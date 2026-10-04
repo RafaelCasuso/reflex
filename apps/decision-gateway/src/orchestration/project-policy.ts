@@ -2,13 +2,13 @@ import { createHash } from "node:crypto";
 import { readFileSync, statSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 
-import type { CanonicalAction, PolicyRule } from "@reflex/contracts";
+import type { CanonicalAction, PolicyRule } from "@reflex-control/contracts";
 import {
   compilePolicySet,
   parsePolicy,
   type CompiledPolicySet,
   type PolicySourceDocument,
-} from "@reflex/policy-engine";
+} from "@reflex-control/policy-engine";
 
 /**
  * RFX-104 / RFX-054 — one project's policy, served to that project.

@@ -1,4 +1,7 @@
-import { SIDE_EFFECT_CLASSES, type SideEffectClass } from "@reflex/contracts";
+import {
+  SIDE_EFFECT_CLASSES,
+  type SideEffectClass,
+} from "@reflex-control/contracts";
 import { describe, expect, it } from "vitest";
 
 import {

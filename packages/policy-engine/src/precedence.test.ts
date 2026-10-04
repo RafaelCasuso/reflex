@@ -1,4 +1,7 @@
-import { DECISION_EFFECTS, type DecisionEffect } from "@reflex/contracts";
+import {
+  DECISION_EFFECTS,
+  type DecisionEffect,
+} from "@reflex-control/contracts";
 import { describe, expect, it } from "vitest";
 
 import {

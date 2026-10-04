@@ -1,5 +1,5 @@
 {
-  "name": "@reflex/context-compiler",
+  "name": "@reflex-control/context-compiler",
   "version": "0.0.0",
   "description": "Minimal semantic context construction and local redaction pipeline.",
   "license": "Apache-2.0",
@@ -30,6 +30,6 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "@reflex/contracts": "workspace:*"
+    "@reflex-control/contracts": "workspace:*"
   }
 }

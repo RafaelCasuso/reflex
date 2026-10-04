@@ -1,5 +1,8 @@
-import { parseActionOutcome } from "@reflex/contracts";
-import { assembleOutcomes, type ObservationRecord } from "@reflex/telemetry";
+import { parseActionOutcome } from "@reflex-control/contracts";
+import {
+  assembleOutcomes,
+  type ObservationRecord,
+} from "@reflex-control/telemetry";
 import { describe, expect, it } from "vitest";
 
 import { fixtureEvent, tampered } from "./fixtures.test-support.js";

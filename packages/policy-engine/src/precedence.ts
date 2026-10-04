@@ -3,7 +3,7 @@ import type {
   PolicyId,
   PolicyMatch,
   PolicyRule,
-} from "@reflex/contracts";
+} from "@reflex-control/contracts";
 
 /**
  * RFX-014 — policy precedence (ADR-004).

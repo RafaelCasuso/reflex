@@ -1,6 +1,6 @@
 import { readFile } from "node:fs/promises";
 
-import type { CanonicalAction, FailureMode } from "@reflex/contracts";
+import type { CanonicalAction, FailureMode } from "@reflex-control/contracts";
 import {
   DecisionCache,
   createDecisionEngine,
@@ -9,13 +9,13 @@ import {
   type SemanticStage,
   type ShadowObserver,
   type OverrideStore,
-} from "@reflex/core";
+} from "@reflex-control/core";
 import {
   compilePolicySet,
   parsePolicy,
   type CompiledPolicySet,
   type PolicySourceDocument,
-} from "@reflex/policy-engine";
+} from "@reflex-control/policy-engine";
 
 /**
  * The policy set the daemon serves, and how it changes.

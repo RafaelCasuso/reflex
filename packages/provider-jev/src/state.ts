@@ -1,4 +1,4 @@
-import type { SemanticDecisionRequest } from "@reflex/contracts";
+import type { SemanticDecisionRequest } from "@reflex-control/contracts";
 
 /**
  * RFX-027 — what the provider is given as `state`.

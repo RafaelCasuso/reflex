@@ -1,8 +1,8 @@
 /**
- * @reflex/semantic-provider — the provider interface (ADR-005).
+ * @reflex-control/semantic-provider — the provider interface (ADR-005).
  *
  * Behavior lives here; the shapes an assessment is made of stay in
- * `@reflex/contracts`, because an assessment is part of a decision and
+ * `@reflex-control/contracts`, because an assessment is part of a decision and
  * crosses the wire. Jev, a local inference server and the hosted gateway
  * are providers behind this interface; core depends on nothing else.
  */

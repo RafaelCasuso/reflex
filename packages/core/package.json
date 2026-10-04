@@ -1,5 +1,5 @@
 {
-  "name": "@reflex/core",
+  "name": "@reflex-control/core",
   "version": "0.0.0",
   "description": "Decision orchestration and domain logic.",
   "license": "Apache-2.0",
@@ -31,8 +31,8 @@
     "bench": "vitest bench --run"
   },
   "dependencies": {
-    "@reflex/contracts": "workspace:*",
-    "@reflex/policy-engine": "workspace:*",
-    "@reflex/semantic-provider": "workspace:*"
+    "@reflex-control/contracts": "workspace:*",
+    "@reflex-control/policy-engine": "workspace:*",
+    "@reflex-control/semantic-provider": "workspace:*"
   }
 }

@@ -4,7 +4,7 @@ import {
   SIDE_EFFECT_CLASSES,
   type FailureMode,
   type SideEffectClass,
-} from "@reflex/contracts";
+} from "@reflex-control/contracts";
 import { describe, expect, it } from "vitest";
 
 import {

@@ -1,5 +1,5 @@
 /**
- * @reflex/telemetry — what REFLEX observed and decided, kept locally.
+ * @reflex-control/telemetry — what REFLEX observed and decided, kept locally.
  *
  * The local observation log (G1.5), the argument shape (keys, types and
  * sizes, never values), the pure assembly of `ActionOutcome`s from host

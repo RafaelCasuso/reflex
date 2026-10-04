@@ -1,4 +1,4 @@
-import type { DecisionId } from "@reflex/contracts";
+import type { DecisionId } from "@reflex-control/contracts";
 
 import { requestOverSocket } from "../daemon/client.js";
 import { daemonPaths, ensureDaemon } from "../daemon/lifecycle.js";

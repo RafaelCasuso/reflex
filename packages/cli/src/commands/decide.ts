@@ -1,8 +1,8 @@
 import type {
   ClaudeToolEvent,
   TranslationContext,
-} from "@reflex/adapter-claude-code/hook";
-import { toCanonicalAction } from "@reflex/adapter-claude-code/hook";
+} from "@reflex-control/adapter-claude-code/hook";
+import { toCanonicalAction } from "@reflex-control/adapter-claude-code/hook";
 import type {
   CanonicalAction,
   DecisionEffect,
@@ -10,7 +10,7 @@ import type {
   ProjectId,
   ReflexDecision,
   ReflexMode,
-} from "@reflex/contracts";
+} from "@reflex-control/contracts";
 
 import { requestOverSocket } from "../daemon/client.js";
 import { daemonPaths, ensureDaemon } from "../daemon/lifecycle.js";

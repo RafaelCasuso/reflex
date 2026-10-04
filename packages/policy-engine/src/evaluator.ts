@@ -7,8 +7,8 @@ import type {
   PolicyId,
   PolicyUnresolvedDefault,
   SideEffectClass,
-} from "@reflex/contracts";
-import { SIDE_EFFECT_CLASSES } from "@reflex/contracts";
+} from "@reflex-control/contracts";
+import { SIDE_EFFECT_CLASSES } from "@reflex-control/contracts";
 
 import { canonicalizePolicySet } from "./canonical.js";
 import { ruleMatches, type MatchContext } from "./matcher.js";

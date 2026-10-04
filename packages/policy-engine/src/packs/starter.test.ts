@@ -1,4 +1,4 @@
-import { classifyCommand } from "@reflex/command-classifier";
+import { classifyCommand } from "@reflex-control/command-classifier";
 import { describe, expect, it } from "vitest";
 
 import {

@@ -1,4 +1,4 @@
-import type { ActionId, ReflexDecision } from "@reflex/contracts";
+import type { ActionId, ReflexDecision } from "@reflex-control/contracts";
 
 /**
  * RFX-120 — a retried request is decided once.

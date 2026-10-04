@@ -16,7 +16,7 @@ repository: it checks out the tagged commit, installs with the frozen
 lockfile, runs lint, typecheck, test and build, sets every publishable
 package's `version` from the tag (`tools/release/set-version.mjs`), packs the
 tarballs, attaches a build-provenance attestation to them, and publishes
-every publishable `@reflex/*` package to npm with provenance. There is no
+every publishable `@reflex-control/*` package to npm with provenance. There is no
 `workflow_dispatch` and no publish step on a branch; a laptop cannot publish,
 and `tests/ci.test.ts` holds the workflow to that.
 
@@ -24,15 +24,15 @@ and `tests/ci.test.ts` holds the workflow to that.
 
 The open packages of `docs/open-core.md`, each with `publishConfig.access:
 public`, `publishConfig.provenance: true` and `files: ["dist"]`:
-`@reflex/contracts`, `policy-engine`, `command-classifier`, `core`,
+`@reflex-control/contracts`, `policy-engine`, `command-classifier`, `core`,
 `context-compiler`, `semantic-provider`, `provider-jev`, `provider-local`,
 `adapter-claude-code`, `adapter-codex`, `adapter-mcp`, `cli`,
 `decision-gateway`, `telemetry`, `evals`, `sdk-typescript`. The private
-packages (`@reflex/api`, `@reflex/dashboard`, `@reflex/auth`) are
+packages (`@reflex-control/api`, `@reflex-control/dashboard`, `@reflex-control/auth`) are
 `private: true` and can never be published; `tests/workspace.test.ts` holds
 both halves. Workspace dependencies are declared `workspace:*` and rewritten
-to the released version by pnpm at publish time, so the published `@reflex/cli`
-depends on the published `@reflex/decision-gateway` of the same version.
+to the released version by pnpm at publish time, so the published `@reflex-control/cli`
+depends on the published `@reflex-control/decision-gateway` of the same version.
 
 Every package is `0.0.0` in the repository. The tag is the version; the
 script writes it into the manifests inside the job and nothing is committed
@@ -62,7 +62,8 @@ and the tag.
 
 ## What the maintainer sets up once
 
-- The npm scope `@reflex` must be owned by the maintainer and the packages
+- The npm scope `@reflex-control` (`@reflex` and `rfx` were already taken by
+  other organizations, checked 2026-10-04) must be owned by the maintainer and the packages
   configured for publishing from this repository: either npm trusted
   publishing (OIDC, no token; the job already asks for `id-token: write`) or
   an `NPM_TOKEN` repository secret with publish rights. Until one of these

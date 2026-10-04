@@ -1,9 +1,12 @@
 import { homedir } from "node:os";
 import { join } from "node:path";
 
-import { FAILURE_MODES, type FailureMode } from "@reflex/contracts";
-import type { ShadowSample } from "@reflex/core";
-import { isProviderId, type ProviderId } from "@reflex/semantic-provider";
+import { FAILURE_MODES, type FailureMode } from "@reflex-control/contracts";
+import type { ShadowSample } from "@reflex-control/core";
+import {
+  isProviderId,
+  type ProviderId,
+} from "@reflex-control/semantic-provider";
 
 import type { RateLimitOptions } from "../http/limits.js";
 import type { ListenTarget } from "../server.js";

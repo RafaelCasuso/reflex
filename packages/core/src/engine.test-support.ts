@@ -5,18 +5,18 @@ import type {
   ReflexMode,
   SemanticAssessment,
   SideEffectClass,
-} from "@reflex/contracts";
+} from "@reflex-control/contracts";
 import {
   compilePolicySet,
   parsePolicy,
   type CompiledPolicySet,
   type PolicySourceDocument,
-} from "@reflex/policy-engine";
+} from "@reflex-control/policy-engine";
 import {
   createFakeProvider,
   type FakeBehavior,
   type FakeProvider,
-} from "@reflex/semantic-provider";
+} from "@reflex-control/semantic-provider";
 
 import type {
   Aggregation,

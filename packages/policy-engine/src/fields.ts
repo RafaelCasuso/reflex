@@ -1,9 +1,9 @@
-import { NOT_UNDERSTOOD_REASONS } from "@reflex/command-classifier";
+import { NOT_UNDERSTOOD_REASONS } from "@reflex-control/command-classifier";
 import {
   ENVIRONMENT_KINDS,
   HOST_KINDS,
   SIDE_EFFECT_CLASSES,
-} from "@reflex/contracts";
+} from "@reflex-control/contracts";
 
 /**
  * What a policy rule can be written about (ADR-011).

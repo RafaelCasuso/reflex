@@ -1,4 +1,4 @@
-import type { SemanticAssessment } from "@reflex/contracts";
+import type { SemanticAssessment } from "@reflex-control/contracts";
 
 /**
  * RFX-027 — one question per dimension of `SemanticAssessment`.

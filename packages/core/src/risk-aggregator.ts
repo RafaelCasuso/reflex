@@ -5,8 +5,8 @@ import type {
   RiskScore,
   SemanticAssessment,
   SideEffectClass,
-} from "@reflex/contracts";
-import { mostRestrictive } from "@reflex/policy-engine";
+} from "@reflex-control/contracts";
+import { mostRestrictive } from "@reflex-control/policy-engine";
 
 import { reasonForClass, riskOf } from "./risk.js";
 import type {

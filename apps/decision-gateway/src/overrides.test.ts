@@ -1,5 +1,8 @@
-import { parseReflexDecision, type ReflexDecision } from "@reflex/contracts";
-import { OverrideStore } from "@reflex/core";
+import {
+  parseReflexDecision,
+  type ReflexDecision,
+} from "@reflex-control/contracts";
+import { OverrideStore } from "@reflex-control/core";
 import { afterEach, describe, expect, it } from "vitest";
 
 import {

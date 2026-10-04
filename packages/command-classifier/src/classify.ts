@@ -1,4 +1,4 @@
-import type { SideEffectClass } from "@reflex/contracts";
+import type { SideEffectClass } from "@reflex-control/contracts";
 
 import {
   parseShellCommand,

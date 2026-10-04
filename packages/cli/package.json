@@ -1,5 +1,5 @@
 {
-  "name": "@reflex/cli",
+  "name": "@reflex-control/cli",
   "version": "0.0.0",
   "description": "Installation, detection, configuration and diagnostics (rfx).",
   "license": "Apache-2.0",
@@ -34,13 +34,13 @@
     "bench": "vitest bench --run"
   },
   "dependencies": {
-    "@reflex/adapter-claude-code": "workspace:*",
-    "@reflex/adapter-codex": "workspace:*",
-    "@reflex/contracts": "workspace:*",
-    "@reflex/core": "workspace:*",
-    "@reflex/decision-gateway": "workspace:*",
-    "@reflex/policy-engine": "workspace:*",
-    "@reflex/semantic-provider": "workspace:*",
-    "@reflex/telemetry": "workspace:*"
+    "@reflex-control/adapter-claude-code": "workspace:*",
+    "@reflex-control/adapter-codex": "workspace:*",
+    "@reflex-control/contracts": "workspace:*",
+    "@reflex-control/core": "workspace:*",
+    "@reflex-control/decision-gateway": "workspace:*",
+    "@reflex-control/policy-engine": "workspace:*",
+    "@reflex-control/semantic-provider": "workspace:*",
+    "@reflex-control/telemetry": "workspace:*"
   }
 }

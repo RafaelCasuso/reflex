@@ -5,7 +5,7 @@ import {
   type ProviderErrorKind,
   type SemanticAssessment,
   type SemanticDecisionRequest,
-} from "@reflex/contracts";
+} from "@reflex-control/contracts";
 
 /**
  * RFX-025 — the provider interface (ADR-005).

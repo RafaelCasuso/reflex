@@ -1,4 +1,4 @@
-import type { DecisionEffect } from "@reflex/contracts";
+import type { DecisionEffect } from "@reflex-control/contracts";
 import { describe, expect, it } from "vitest";
 
 import { loadCorpus, type CorpusCase } from "./corpus.js";

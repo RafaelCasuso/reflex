@@ -3,7 +3,7 @@ import type {
   CanonicalAction,
   PriorActionSummary,
   SessionId,
-} from "@reflex/contracts";
+} from "@reflex-control/contracts";
 
 /**
  * RFX-032 — the relevant-history selector, and a bounded memory to select

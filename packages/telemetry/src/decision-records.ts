@@ -15,7 +15,7 @@ import {
   type ReflexDecision,
   type SemanticAssessment,
   type SemanticDecisionRequest,
-} from "@reflex/contracts";
+} from "@reflex-control/contracts";
 
 import {
   RotatingJsonlLog,

@@ -16,7 +16,7 @@ import {
  * path has a p95 budget of 10 ms end to end, so validation has to stay far
  * below that for ordinary requests and bounded for hostile ones.
  *
- * Run with `pnpm --filter @reflex/contracts bench`. It is not part of
+ * Run with `pnpm --filter @reflex-control/contracts bench`. It is not part of
  * `pnpm test`: timing assertions do not belong on shared CI runners. The
  * budgets below are deliberately loose tripwires against an algorithmic
  * regression (an accidental quadratic, a recursive validator), not

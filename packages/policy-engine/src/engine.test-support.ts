@@ -1,4 +1,7 @@
-import type { CanonicalAction, PolicyDocument } from "@reflex/contracts";
+import type {
+  CanonicalAction,
+  PolicyDocument,
+} from "@reflex-control/contracts";
 
 import {
   compilePolicySet,

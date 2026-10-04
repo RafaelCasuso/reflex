@@ -6,7 +6,7 @@ import {
   type ActionId,
   type CanonicalAction,
   type DecisionEffect,
-} from "@reflex/contracts";
+} from "@reflex-control/contracts";
 
 /**
  * RFX-105 — the golden corpus: actions, and what REFLEX may decide about them.

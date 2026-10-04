@@ -1,5 +1,5 @@
 {
-  "name": "@reflex/sdk-typescript",
+  "name": "@reflex-control/sdk-typescript",
   "version": "0.0.0",
   "description": "TypeScript SDK for guarding tool collections.",
   "license": "Apache-2.0",
@@ -30,6 +30,6 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "@reflex/contracts": "workspace:*"
+    "@reflex-control/contracts": "workspace:*"
   }
 }

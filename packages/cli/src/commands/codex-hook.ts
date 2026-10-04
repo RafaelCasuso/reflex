@@ -2,8 +2,8 @@ import {
   toCanonicalAction,
   type CodexToolEvent,
   type TranslationContext,
-} from "@reflex/adapter-codex/hook";
-import type { DecisionEffect } from "@reflex/contracts";
+} from "@reflex-control/adapter-codex/hook";
+import type { DecisionEffect } from "@reflex-control/contracts";
 
 import {
   decideAction,

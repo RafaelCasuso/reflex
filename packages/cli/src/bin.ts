@@ -60,7 +60,7 @@ async function hook(host: string | undefined): Promise<void> {
     }
     const [hooks, { ObservationLog }, state] = await Promise.all([
       import("./commands/hook.js"),
-      import("@reflex/telemetry"),
+      import("@reflex-control/telemetry"),
       import("./state.js"),
     ]);
     const env = environment(process.cwd());
@@ -301,7 +301,8 @@ async function main(): Promise<number> {
     import("./output/render.js"),
   ]);
 
-  const { FAILURE_MODES, REFLEX_MODES } = await import("@reflex/contracts");
+  const { FAILURE_MODES, REFLEX_MODES } =
+    await import("@reflex-control/contracts");
   const modeOption = REFLEX_MODES.find((known) => known === values.mode);
   const failureModeOption = FAILURE_MODES.find(
     (known) => known === values["failure-mode"],
@@ -444,7 +445,8 @@ async function main(): Promise<number> {
       // RFX-123: a remote provider shows the statement and needs a yes to it,
       // typed here or given with --consent. Nothing is written before.
       let consented = false;
-      const { isRemoteProvider } = await import("@reflex/semantic-provider");
+      const { isRemoteProvider } =
+        await import("@reflex-control/semantic-provider");
       if (isRemoteProvider(wanted)) {
         write(`${provider.consentStatement(wanted)}\n\n`);
         consented = values.consent
@@ -499,7 +501,7 @@ async function main(): Promise<number> {
     case "override": {
       // RFX-125: a human's yes to one denied decision, from a terminal. When
       // the agent runs this through a tool, REFLEX's own rule asks first.
-      const { isOpaqueId } = await import("@reflex/contracts");
+      const { isOpaqueId } = await import("@reflex-control/contracts");
       if (!isOpaqueId("dec", argument)) {
         write(
           'Give the decision id from the deny\'s reason line: "rfx override dec_...".\n',

@@ -6,7 +6,7 @@ import {
   createRedactor,
   estimateTokens,
   stateOf,
-} from "@reflex/context-compiler";
+} from "@reflex-control/context-compiler";
 import { countTokens } from "gpt-tokenizer/encoding/o200k_base";
 import { describe, expect, it } from "vitest";
 

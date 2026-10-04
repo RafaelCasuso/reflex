@@ -1,4 +1,4 @@
-import { SIDE_EFFECT_CLASSES } from "@reflex/contracts";
+import { SIDE_EFFECT_CLASSES } from "@reflex-control/contracts";
 import { describe, expect, it } from "vitest";
 
 import {

@@ -6,8 +6,8 @@ import {
   PROJECT_POLICY_RELATIVE,
   trustFilePath,
   withTrust,
-} from "@reflex/decision-gateway/policy.js";
-import { STARTER_POLICY_YAML } from "@reflex/policy-engine";
+} from "@reflex-control/decision-gateway/policy.js";
+import { STARTER_POLICY_YAML } from "@reflex-control/policy-engine";
 
 import type { FileSystemPort } from "../backups/file-system.js";
 import {

@@ -1,4 +1,7 @@
-import type { CanonicalAction, DecisionEffect } from "@reflex/contracts";
+import type {
+  CanonicalAction,
+  DecisionEffect,
+} from "@reflex-control/contracts";
 
 import type { CorpusCase } from "./corpus.js";
 

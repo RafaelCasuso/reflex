@@ -7,14 +7,14 @@ import type {
   ActionId,
   CanonicalAction,
   DecisionRequest,
-} from "@reflex/contracts";
+} from "@reflex-control/contracts";
 import {
   createDecisionEngine,
   DecisionCache,
   type DecisionEngineOptions,
-} from "@reflex/core";
-import { compilePolicySet, parsePolicy } from "@reflex/policy-engine";
-import type { TelemetryEvent, TelemetrySink } from "@reflex/telemetry";
+} from "@reflex-control/core";
+import { compilePolicySet, parsePolicy } from "@reflex-control/policy-engine";
+import type { TelemetryEvent, TelemetrySink } from "@reflex-control/telemetry";
 
 import {
   createGatewayServer,

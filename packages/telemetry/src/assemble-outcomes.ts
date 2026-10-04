@@ -2,7 +2,7 @@ import type {
   ActionOutcome,
   HumanResponse,
   ObservationState,
-} from "@reflex/contracts";
+} from "@reflex-control/contracts";
 
 import type {
   ObservationRecord,

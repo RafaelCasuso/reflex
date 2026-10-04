@@ -4,7 +4,7 @@ import type {
   FallbackReason,
   ReasonCode,
   SideEffectClass,
-} from "@reflex/contracts";
+} from "@reflex-control/contracts";
 
 /**
  * RFX-020 — the failure-mode engine (ADR-003).

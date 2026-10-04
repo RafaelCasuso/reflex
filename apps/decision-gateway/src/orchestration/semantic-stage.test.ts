@@ -2,7 +2,7 @@ import {
   consentRecord,
   createProviderRegistry,
   type ConsentRecord,
-} from "@reflex/semantic-provider";
+} from "@reflex-control/semantic-provider";
 import { describe, expect, it } from "vitest";
 
 import {

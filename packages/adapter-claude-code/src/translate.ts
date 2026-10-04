@@ -1,10 +1,10 @@
-import { CONTRACT_LIMITS } from "@reflex/contracts";
+import { CONTRACT_LIMITS } from "@reflex-control/contracts";
 import type {
   ActionOperands,
   ActionTool,
   CanonicalAction,
   SideEffectClass,
-} from "@reflex/contracts";
+} from "@reflex-control/contracts";
 
 import type { ClaudeToolEvent } from "./hook-input.js";
 import { deriveActionId, deriveSessionId, randomActionId } from "./identity.js";

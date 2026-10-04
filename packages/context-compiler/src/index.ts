@@ -1,5 +1,5 @@
 /**
- * @reflex/context-compiler — minimal semantic context, redacted locally.
+ * @reflex-control/context-compiler — minimal semantic context, redacted locally.
  *
  * The redactor (ADR-006), the relevant-history selector, the token budget
  * and the compiler that puts them together. Raw values enter; only a

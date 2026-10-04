@@ -1,4 +1,7 @@
-import type { SemanticAssessment, SemanticSignal } from "@reflex/contracts";
+import type {
+  SemanticAssessment,
+  SemanticSignal,
+} from "@reflex-control/contracts";
 
 import {
   DIMENSIONS,

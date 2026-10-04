@@ -1,5 +1,5 @@
 {
-  "name": "@reflex/semantic-provider",
+  "name": "@reflex-control/semantic-provider",
   "version": "0.0.0",
   "description": "Semantic decision provider interface.",
   "license": "Apache-2.0",
@@ -30,6 +30,6 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "@reflex/contracts": "workspace:*"
+    "@reflex-control/contracts": "workspace:*"
   }
 }

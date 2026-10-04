@@ -3,7 +3,7 @@ import {
   RECORD_VERSION,
   type ObservationRecord,
   type OutcomeSignal,
-} from "@reflex/telemetry";
+} from "@reflex-control/telemetry";
 
 import type { CodexHookEvent, ToolEventName } from "./hook-input.js";
 import { deriveActionId, deriveSessionId } from "./identity.js";

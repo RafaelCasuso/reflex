@@ -3,7 +3,7 @@ import type {
   SemanticDecisionRequest,
   SemanticSignal,
   SideEffectClass,
-} from "@reflex/contracts";
+} from "@reflex-control/contracts";
 
 import {
   providerError,

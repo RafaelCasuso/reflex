@@ -7,7 +7,7 @@ import type {
   RiskScore,
   SemanticAssessment,
   SideEffectClass,
-} from "@reflex/contracts";
+} from "@reflex-control/contracts";
 
 /**
  * RFX-106 — the deterministic decision cache.

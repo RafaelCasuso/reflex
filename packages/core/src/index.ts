@@ -1,5 +1,5 @@
 /**
- * @reflex/core — Decision orchestration and domain logic.
+ * @reflex-control/core — Decision orchestration and domain logic.
  *
  * The engine orders the stages of a decision (ADR-002), applies the failure
  * modes (ADR-003) and keeps the deterministic cache (RFX-106). It depends on

@@ -10,7 +10,7 @@ import { evaluatePolicy } from "./evaluator.js";
  *
  * In-engine means from a validated action in memory to a resolution: shell
  * grammar, classification, path normalization, every rule of every source,
- * precedence. Run with `pnpm --filter @reflex/policy-engine bench`. Not part of
+ * precedence. Run with `pnpm --filter @reflex-control/policy-engine bench`. Not part of
  * `pnpm test`: timing does not belong on shared CI runners.
  *
  * The policy is larger than a real one on purpose: 200 rules, a quarter of

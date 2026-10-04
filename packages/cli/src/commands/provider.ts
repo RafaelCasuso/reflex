@@ -4,7 +4,7 @@ import {
   isRemoteProvider,
   parseConsentRecord,
   type ConsentRecord,
-} from "@reflex/semantic-provider";
+} from "@reflex-control/semantic-provider";
 
 import type { FileSystemPort } from "../backups/file-system.js";
 import {

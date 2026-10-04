@@ -2,11 +2,11 @@ import type {
   DecisionEffect,
   SemanticAssessment,
   SemanticDecisionRequest,
-} from "@reflex/contracts";
+} from "@reflex-control/contracts";
 import {
   createFakeProvider,
   type SemanticDecisionProvider,
-} from "@reflex/semantic-provider";
+} from "@reflex-control/semantic-provider";
 
 import {
   ASSESSMENT_LEVELS,

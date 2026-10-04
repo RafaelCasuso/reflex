@@ -4,7 +4,7 @@ import type {
   IsoTimestamp,
   SessionId,
   SideEffectClass,
-} from "@reflex/contracts";
+} from "@reflex-control/contracts";
 
 import type { ArgumentShape } from "./argument-shape.js";
 

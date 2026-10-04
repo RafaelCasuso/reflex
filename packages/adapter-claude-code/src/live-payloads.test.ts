@@ -2,7 +2,7 @@ import { readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { parseCanonicalAction } from "@reflex/contracts";
+import { parseCanonicalAction } from "@reflex-control/contracts";
 import { describe, expect, it } from "vitest";
 
 import { readHookInput } from "./hook-input.js";

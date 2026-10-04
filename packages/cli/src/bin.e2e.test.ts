@@ -13,7 +13,10 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { consentDigest, consentRecord } from "@reflex/semantic-provider";
+import {
+  consentDigest,
+  consentRecord,
+} from "@reflex-control/semantic-provider";
 import { afterEach, beforeAll, beforeEach, describe, expect, it } from "vitest";
 
 /**
@@ -773,7 +776,7 @@ describe("rfx hook codex (RFX-048, RFX-049, RFX-051, RFX-093)", () => {
     expect(log).toContain('"host":"codex"');
     expect(log).not.toContain("marker.txt");
     expect(log).not.toContain("src/app.ts");
-    const { assembleOutcomes } = await import("@reflex/telemetry");
+    const { assembleOutcomes } = await import("@reflex-control/telemetry");
     const records = log
       .trim()
       .split("\n")

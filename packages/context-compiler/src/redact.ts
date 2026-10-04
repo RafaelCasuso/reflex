@@ -8,7 +8,7 @@ import type {
   CanonicalAction,
   PriorActionSummary,
   SideEffectClass,
-} from "@reflex/contracts";
+} from "@reflex-control/contracts";
 
 import {
   PLACEHOLDER_ANYWHERE,

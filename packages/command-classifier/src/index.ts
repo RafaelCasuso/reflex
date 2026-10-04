@@ -1,5 +1,5 @@
 /**
- * @reflex/command-classifier — shell command normalization and side-effect
+ * @reflex-control/command-classifier — shell command normalization and side-effect
  * classification, shared by every host (ADR-011).
  *
  * Pure: no I/O, never throws. Depends on the contracts and on nothing else.

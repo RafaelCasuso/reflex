@@ -1,5 +1,5 @@
-import * as claude from "@reflex/adapter-claude-code";
-import * as codex from "@reflex/adapter-codex";
+import * as claude from "@reflex-control/adapter-claude-code";
+import * as codex from "@reflex-control/adapter-codex";
 
 /**
  * G8 — the hosts `rfx` installs into, behind one shape.

@@ -7,7 +7,7 @@
 //   in-engine       inside the daemon, from a validated request in memory to
 //                   a decision (reported by the engine itself in the decision's
 //                   `latency.totalMs`, whole milliseconds, and measured with
-//                   sub-millisecond resolution by `pnpm --filter @reflex/core
+//                   sub-millisecond resolution by `pnpm --filter @reflex-control/core
 //                   bench`);
 //   over the socket from a warm client that keeps one process: what the HTTP
 //                   layer, validation, idempotency and the socket add;

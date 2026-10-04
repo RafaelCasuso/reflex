@@ -7,8 +7,11 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { CONTRACT_VERSION, parseDecisionRecord } from "@reflex/contracts";
-import { consentRecord } from "@reflex/semantic-provider";
+import {
+  CONTRACT_VERSION,
+  parseDecisionRecord,
+} from "@reflex-control/contracts";
+import { consentRecord } from "@reflex-control/semantic-provider";
 import { afterEach, beforeAll, describe, expect, it } from "vitest";
 
 import {

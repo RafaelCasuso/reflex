@@ -1,19 +1,22 @@
 import {
   createContextCompiler,
   createRedactor,
-} from "@reflex/context-compiler";
+} from "@reflex-control/context-compiler";
 import {
   createRiskAggregator,
   type SemanticStage,
   type ShadowProvider,
   type ShadowSample,
-} from "@reflex/core";
-import { JEV_DEFAULT_MODEL, createJevProvider } from "@reflex/provider-jev";
+} from "@reflex-control/core";
+import {
+  JEV_DEFAULT_MODEL,
+  createJevProvider,
+} from "@reflex-control/provider-jev";
 import {
   LOCAL_DEFAULT_ENDPOINT,
   createLocalProvider,
   isLoopbackEndpoint,
-} from "@reflex/provider-local";
+} from "@reflex-control/provider-local";
 import {
   consentCovers,
   createProviderRegistry,
@@ -22,7 +25,7 @@ import {
   type ConsentRecord,
   type ProviderId,
   type ProviderRegistry,
-} from "@reflex/semantic-provider";
+} from "@reflex-control/semantic-provider";
 
 /**
  * RFX-141 — the semantic stage the daemon runs, built from configuration

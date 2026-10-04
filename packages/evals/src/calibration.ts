@@ -1,5 +1,5 @@
-import type { SemanticAssessment } from "@reflex/contracts";
-import type { SemanticDecisionProvider } from "@reflex/semantic-provider";
+import type { SemanticAssessment } from "@reflex-control/contracts";
+import type { SemanticDecisionProvider } from "@reflex-control/semantic-provider";
 
 import {
   SCORED_ASSESSMENT_DIMENSIONS,

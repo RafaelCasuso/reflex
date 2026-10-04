@@ -2,8 +2,8 @@ import { mkdir, mkdtemp, rm, utimes, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
-import type { CanonicalAction } from "@reflex/contracts";
-import { evaluatePolicy, parsePolicy } from "@reflex/policy-engine";
+import type { CanonicalAction } from "@reflex-control/contracts";
+import { evaluatePolicy, parsePolicy } from "@reflex-control/policy-engine";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 import {

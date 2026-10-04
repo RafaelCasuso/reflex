@@ -3,7 +3,7 @@ import {
   compilePolicySet,
   evaluatePolicy,
   parsePolicy,
-} from "@reflex/policy-engine";
+} from "@reflex-control/policy-engine";
 import { describe, expect, it } from "vitest";
 
 import { SEED_CORPUS_DIRECTORY, readCorpusDirectory } from "./corpus-files.js";

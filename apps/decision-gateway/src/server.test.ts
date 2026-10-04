@@ -2,7 +2,10 @@ import { mkdtemp, rm, stat, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 
-import { parseReflexDecision, type ReflexDecision } from "@reflex/contracts";
+import {
+  parseReflexDecision,
+  type ReflexDecision,
+} from "@reflex-control/contracts";
 import { afterEach, describe, expect, it } from "vitest";
 
 import {

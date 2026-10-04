@@ -1,5 +1,5 @@
 {
-  "name": "@reflex/command-classifier",
+  "name": "@reflex-control/command-classifier",
   "version": "0.0.0",
   "description": "Shell command normalization and side-effect classification, shared by every host (ADR-011).",
   "license": "Apache-2.0",
@@ -31,6 +31,6 @@
     "bench": "vitest bench --run"
   },
   "dependencies": {
-    "@reflex/contracts": "workspace:*"
+    "@reflex-control/contracts": "workspace:*"
   }
 }

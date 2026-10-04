@@ -1,7 +1,7 @@
 import type {
   SemanticAssessment,
   SemanticDecisionRequest,
-} from "@reflex/contracts";
+} from "@reflex-control/contracts";
 import { describe, expect, it } from "vitest";
 
 import {

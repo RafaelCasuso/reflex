@@ -1,4 +1,4 @@
-# @reflex/contracts
+# @reflex-control/contracts
 
 The canonical contracts. The single source of truth for every shape that
 crosses a REFLEX boundary. Nothing in here is host- or provider-specific
@@ -40,7 +40,7 @@ at runtime.
 At a boundary (HTTP body, hook stdin, provider response), parse:
 
 ```ts
-import { parseDecisionRequest } from "@reflex/contracts";
+import { parseDecisionRequest } from "@reflex-control/contracts";
 
 const result = parseDecisionRequest(body);
 if (!result.ok) {
@@ -71,8 +71,8 @@ and a contradiction between `environment` and `isProduction` toward
 - **Do not put an input value in an issue message.** Inputs carry secrets.
 - **Shapes only.** `SemanticDecisionProvider` and `DecisionEngine` left this
   package in RFX-025 (ADR-005 §1): the provider interface and its typed
-  result live in `@reflex/semantic-provider`, the engine interface in
-  `@reflex/core`. No serialized shape changed, so the contract version did
+  result live in `@reflex-control/semantic-provider`, the engine interface in
+  `@reflex-control/core`. No serialized shape changed, so the contract version did
   not move.
 - **`action.id` is an idempotency key.** A decision gateway decides an id
   once (RFX-120): the same id with the same content returns the same decision
@@ -82,7 +82,7 @@ and a contradiction between `environment` and `isProduction` toward
 ## Latency
 
 Validation runs in front of every decision, against a deterministic-path budget
-of p95 < 10 ms. Reproduce with `pnpm --filter @reflex/contracts bench`.
+of p95 < 10 ms. Reproduce with `pnpm --filter @reflex-control/contracts bench`.
 
 Baseline, 2026-09-18, Apple Silicon laptop, Node 24.9, Zod 4.6:
 

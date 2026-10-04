@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 
-import type { SemanticDecisionRequest } from "@reflex/contracts";
+import type { SemanticDecisionRequest } from "@reflex-control/contracts";
 
 /** The request and the answer the real provider gave in RFX-107, as recorded. */
 interface Recorded {

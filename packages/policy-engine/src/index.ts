@@ -1,5 +1,5 @@
 /**
- * @reflex/policy-engine — Pure deterministic policy evaluation.
+ * @reflex-control/policy-engine — Pure deterministic policy evaluation.
  *
  * No I/O anywhere in this package: strings and values in, results out.
  */

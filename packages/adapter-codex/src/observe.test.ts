@@ -1,4 +1,7 @@
-import { assembleOutcomes, type ObservationRecord } from "@reflex/telemetry";
+import {
+  assembleOutcomes,
+  type ObservationRecord,
+} from "@reflex-control/telemetry";
 import { describe, expect, it } from "vitest";
 
 import { FIXED_NOW, fixture } from "./fixtures.test-support.js";

@@ -1,5 +1,5 @@
 {
-  "name": "@reflex/evals",
+  "name": "@reflex-control/evals",
   "version": "0.0.0",
   "description": "Regression corpus and autonomy/safety evaluation harness.",
   "license": "Apache-2.0",
@@ -31,14 +31,14 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "@reflex/context-compiler": "workspace:*",
-    "@reflex/contracts": "workspace:*",
-    "@reflex/core": "workspace:*",
-    "@reflex/policy-engine": "workspace:*",
-    "@reflex/semantic-provider": "workspace:*"
+    "@reflex-control/context-compiler": "workspace:*",
+    "@reflex-control/contracts": "workspace:*",
+    "@reflex-control/core": "workspace:*",
+    "@reflex-control/policy-engine": "workspace:*",
+    "@reflex-control/semantic-provider": "workspace:*"
   },
   "devDependencies": {
-    "@reflex/provider-jev": "workspace:*",
+    "@reflex-control/provider-jev": "workspace:*",
     "gpt-tokenizer": "4.0.0"
   }
 }

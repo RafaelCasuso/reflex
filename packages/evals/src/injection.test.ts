@@ -4,11 +4,11 @@ import { fileURLToPath } from "node:url";
 import type {
   SemanticAssessment,
   SemanticDecisionRequest,
-} from "@reflex/contracts";
+} from "@reflex-control/contracts";
 import {
   assessmentForClass,
   createFakeProvider,
-} from "@reflex/semantic-provider";
+} from "@reflex-control/semantic-provider";
 import { describe, expect, it } from "vitest";
 
 import {

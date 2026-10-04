@@ -11,26 +11,30 @@ here, and **no open package may depend on a private one**. Until the
 repositories are split (RFX-149), the boundary is enforced here rather than by
 distance.
 
+The npm scope is `@reflex-control` (RFX-127, 2026-10-04): `@reflex` and `rfx`
+were already taken by other organizations on npm. Package names are
+`@reflex-control/<directory>`; the command is still `rfx`.
+
 ## Open (Apache-2.0)
 
-| Package                       | Path                           |
-| ----------------------------- | ------------------------------ |
-| `@reflex/contracts`           | `packages/contracts`           |
-| `@reflex/policy-engine`       | `packages/policy-engine`       |
-| `@reflex/command-classifier`  | `packages/command-classifier`  |
-| `@reflex/core`                | `packages/core`                |
-| `@reflex/context-compiler`    | `packages/context-compiler`    |
-| `@reflex/semantic-provider`   | `packages/semantic-provider`   |
-| `@reflex/provider-jev`        | `packages/provider-jev`        |
-| `@reflex/provider-local`      | `packages/provider-local`      |
-| `@reflex/adapter-claude-code` | `packages/adapter-claude-code` |
-| `@reflex/adapter-codex`       | `packages/adapter-codex`       |
-| `@reflex/adapter-mcp`         | `packages/adapter-mcp`         |
-| `@reflex/cli`                 | `packages/cli`                 |
-| `@reflex/decision-gateway`    | `apps/decision-gateway`        |
-| `@reflex/telemetry`           | `packages/telemetry`           |
-| `@reflex/evals`               | `packages/evals`               |
-| `@reflex/sdk-typescript`      | `packages/sdk-typescript`      |
+| Package                               | Path                           |
+| ------------------------------------- | ------------------------------ |
+| `@reflex-control/contracts`           | `packages/contracts`           |
+| `@reflex-control/policy-engine`       | `packages/policy-engine`       |
+| `@reflex-control/command-classifier`  | `packages/command-classifier`  |
+| `@reflex-control/core`                | `packages/core`                |
+| `@reflex-control/context-compiler`    | `packages/context-compiler`    |
+| `@reflex-control/semantic-provider`   | `packages/semantic-provider`   |
+| `@reflex-control/provider-jev`        | `packages/provider-jev`        |
+| `@reflex-control/provider-local`      | `packages/provider-local`      |
+| `@reflex-control/adapter-claude-code` | `packages/adapter-claude-code` |
+| `@reflex-control/adapter-codex`       | `packages/adapter-codex`       |
+| `@reflex-control/adapter-mcp`         | `packages/adapter-mcp`         |
+| `@reflex-control/cli`                 | `packages/cli`                 |
+| `@reflex-control/decision-gateway`    | `apps/decision-gateway`        |
+| `@reflex-control/telemetry`           | `packages/telemetry`           |
+| `@reflex-control/evals`               | `packages/evals`               |
+| `@reflex-control/sdk-typescript`      | `packages/sdk-typescript`      |
 
 Also open: `python/reflex-sdk`, `docs/`, the root tooling. The `LICENSE` at
 the root is the Apache License 2.0 and applies to everything not listed as
@@ -38,12 +42,12 @@ private below.
 
 ## Private (UNLICENSED, all rights reserved)
 
-| Package or area     | Path             | Why                                                                                        |
-| ------------------- | ---------------- | ------------------------------------------------------------------------------------------ |
-| `@reflex/api`       | `apps/api`       | the control plane                                                                          |
-| `@reflex/dashboard` | `apps/dashboard` | the control plane's interface                                                              |
-| `@reflex/auth`      | `packages/auth`  | accounts, keys, tenancy                                                                    |
-| RDM                 | `rdm/`           | schema, splits, generators, and later weights and training (ADR-016 §5); its own `LICENSE` |
+| Package or area             | Path             | Why                                                                                        |
+| --------------------------- | ---------------- | ------------------------------------------------------------------------------------------ |
+| `@reflex-control/api`       | `apps/api`       | the control plane                                                                          |
+| `@reflex-control/dashboard` | `apps/dashboard` | the control plane's interface                                                              |
+| `@reflex-control/auth`      | `packages/auth`  | accounts, keys, tenancy                                                                    |
+| RDM                         | `rdm/`           | schema, splits, generators, and later weights and training (ADR-016 §5); its own `LICENSE` |
 
 Approval learning (G12), team and organization policies (G16), billing and
 metering (G15) and the hosted gateway configuration are private and will

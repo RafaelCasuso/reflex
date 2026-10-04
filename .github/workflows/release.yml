@@ -3,7 +3,7 @@
 # A release is a tag `vMAJOR.MINOR.PATCH` pushed to this repository, and
 # nothing else: no publish from a laptop. The job builds from the tagged
 # commit, runs every quality gate, sets the version from the tag, publishes
-# every publishable `@reflex/*` package to npm with provenance (Sigstore,
+# every publishable `@reflex-control/*` package to npm with provenance (Sigstore,
 # through npm's `--provenance`, which needs the OIDC token below), and
 # attaches a build-provenance attestation to the packed tarballs. A
 # published artifact can then be verified against the commit and workflow

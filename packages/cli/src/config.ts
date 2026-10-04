@@ -4,7 +4,7 @@ import {
   consentCovers,
   isRemoteProvider,
   type ConsentRecord,
-} from "@reflex/semantic-provider";
+} from "@reflex-control/semantic-provider";
 
 /**
  * RFX-138 — the user's daemon configuration, `<REFLEX_HOME>/config.json`.

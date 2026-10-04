@@ -1,8 +1,8 @@
-import type { ReflexDecision } from "@reflex/contracts";
+import type { ReflexDecision } from "@reflex-control/contracts";
 import {
   createFakeProvider,
   type FakeBehavior,
-} from "@reflex/semantic-provider";
+} from "@reflex-control/semantic-provider";
 import { describe, expect, it, vi } from "vitest";
 
 import { DecisionCache } from "./cache.js";

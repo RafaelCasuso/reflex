@@ -1,6 +1,6 @@
 import { join } from "node:path";
 
-import { planDisableHooks } from "@reflex/adapter-codex";
+import { planDisableHooks } from "@reflex-control/adapter-codex";
 
 import { sha256, type FileSystemPort } from "../backups/file-system.js";
 import {

@@ -12,7 +12,7 @@ import { chmod, mkdir, unlink } from "node:fs/promises";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { parseConsentRecord } from "@reflex/semantic-provider";
+import { parseConsentRecord } from "@reflex-control/semantic-provider";
 
 import {
   configPath,
@@ -158,7 +158,9 @@ export function readDaemonState(paths: DaemonPaths): DaemonState | undefined {
 
 /** Where the daemon's entry point is: the gateway this installation ships. */
 export function daemonEntry(): string {
-  return fileURLToPath(import.meta.resolve("@reflex/decision-gateway/main.js"));
+  return fileURLToPath(
+    import.meta.resolve("@reflex-control/decision-gateway/main.js"),
+  );
 }
 
 /** The version the gateway this installation ships declares in its manifest. */
@@ -166,7 +168,7 @@ export function shippedDaemonVersion(): string {
   const manifest: unknown = JSON.parse(
     readFileSync(
       fileURLToPath(
-        import.meta.resolve("@reflex/decision-gateway/package.json"),
+        import.meta.resolve("@reflex-control/decision-gateway/package.json"),
       ),
       "utf8",
     ),

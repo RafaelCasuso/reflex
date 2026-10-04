@@ -1,10 +1,10 @@
-import type { SemanticDecisionRequest } from "@reflex/contracts";
+import type { SemanticDecisionRequest } from "@reflex-control/contracts";
 import {
   providerError,
   type ProviderErrorKind,
   type ProviderResult,
   type SemanticDecisionProvider,
-} from "@reflex/semantic-provider";
+} from "@reflex-control/semantic-provider";
 
 import {
   questionsFor,

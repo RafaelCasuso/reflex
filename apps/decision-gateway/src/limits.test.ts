@@ -1,4 +1,4 @@
-import type { ActionId } from "@reflex/contracts";
+import type { ActionId } from "@reflex-control/contracts";
 import { afterEach, describe, expect, it } from "vitest";
 
 import {

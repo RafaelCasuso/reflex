@@ -1,4 +1,4 @@
-import { parseSemanticAssessment } from "@reflex/contracts";
+import { parseSemanticAssessment } from "@reflex-control/contracts";
 import { describe, expect, it } from "vitest";
 
 import { DIMENSIONS } from "./questions.js";

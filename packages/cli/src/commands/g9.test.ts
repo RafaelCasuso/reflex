@@ -2,7 +2,7 @@ import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
-import { STARTER_POLICY_YAML } from "@reflex/policy-engine";
+import { STARTER_POLICY_YAML } from "@reflex-control/policy-engine";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 import { nodeFileSystem } from "../backups/file-system.js";

@@ -1,5 +1,5 @@
 /**
- * @reflex/provider-local — the local inference server behind the provider
+ * @reflex-control/provider-local — the local inference server behind the provider
  * interface (ADR-016 §1).
  *
  * The server speaks the canonical contract: `POST /v1/assess` with a

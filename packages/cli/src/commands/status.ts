@@ -1,10 +1,10 @@
-import { configFilePath, inspectConfig } from "@reflex/adapter-codex";
-import type { ActionOutcome } from "@reflex/contracts";
+import { configFilePath, inspectConfig } from "@reflex-control/adapter-codex";
+import type { ActionOutcome } from "@reflex-control/contracts";
 import {
   assembleOutcomes,
   ObservationLog,
   type ObservedActionRecord,
-} from "@reflex/telemetry";
+} from "@reflex-control/telemetry";
 
 import type { FileSystemPort } from "../backups/file-system.js";
 import { daemonStatus, type DaemonStatus } from "../daemon/lifecycle.js";

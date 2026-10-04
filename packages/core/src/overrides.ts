@@ -1,4 +1,4 @@
-import type { DecisionEffect, DecisionId } from "@reflex/contracts";
+import type { DecisionEffect, DecisionId } from "@reflex-control/contracts";
 
 /**
  * RFX-125 — the override path for a `deny` in Autopilot.

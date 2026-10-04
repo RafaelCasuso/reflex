@@ -1,5 +1,5 @@
 /**
- * @reflex/adapter-codex — Codex host translation only.
+ * @reflex-control/adapter-codex — Codex host translation only.
  *
  * Pure: host events in, canonical contracts and edit plans out. This package
  * performs no I/O and makes no decision. What it knows of the host comes from

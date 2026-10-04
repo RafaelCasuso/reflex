@@ -12,7 +12,7 @@ import type {
  * G0 smoke test only: proves the toolchain compiles, lints and runs this
  * package. Contract behaviour (IDs, validation, round-trips) is Gate G1.
  */
-describe("@reflex/contracts", () => {
+describe("@reflex-control/contracts", () => {
   it("loads as an ES module", async () => {
     await expect(import("./index.js")).resolves.toBeTypeOf("object");
   });

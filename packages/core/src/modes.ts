@@ -1,4 +1,4 @@
-import type { DecisionEffect, ReflexMode } from "@reflex/contracts";
+import type { DecisionEffect, ReflexMode } from "@reflex-control/contracts";
 
 /**
  * ADR-002 §2 — what the adapter enforces under each mode.

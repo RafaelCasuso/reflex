@@ -2,8 +2,8 @@ import {
   parseSemanticAssessment,
   type SemanticAssessment,
   type SemanticDecisionRequest,
-} from "@reflex/contracts";
-import type { SemanticDecisionProvider } from "@reflex/semantic-provider";
+} from "@reflex-control/contracts";
+import type { SemanticDecisionProvider } from "@reflex-control/semantic-provider";
 
 /**
  * RFX-108 — the prompt-injection corpus for the semantic path.

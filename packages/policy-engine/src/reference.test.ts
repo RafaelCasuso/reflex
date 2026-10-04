@@ -8,7 +8,7 @@ import {
   type CanonicalAction,
   type EnvironmentKind,
   type HostKind,
-} from "@reflex/contracts";
+} from "@reflex-control/contracts";
 import { describe, expect, it } from "vitest";
 
 import { CONTEXT, fileTool, mcp, shell } from "./engine.test-support.js";

@@ -2,7 +2,10 @@ import { mkdtemp, readFile, rm, stat, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
-import { REDACTION_KEY_BYTES, createRedactor } from "@reflex/context-compiler";
+import {
+  REDACTION_KEY_BYTES,
+  createRedactor,
+} from "@reflex-control/context-compiler";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 import { readOrCreateRedactionKey, redactionKeyPath } from "./redaction-key.js";

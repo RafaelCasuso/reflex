@@ -1,5 +1,5 @@
 {
-  "name": "@reflex/decision-gateway",
+  "name": "@reflex-control/decision-gateway",
   "version": "0.0.0",
   "description": "Latency-sensitive runtime decision endpoint. Deployable independently of dashboard/control-plane concerns.",
   "license": "Apache-2.0",
@@ -32,13 +32,13 @@
     "bench": "vitest bench --run"
   },
   "dependencies": {
-    "@reflex/context-compiler": "workspace:*",
-    "@reflex/contracts": "workspace:*",
-    "@reflex/core": "workspace:*",
-    "@reflex/policy-engine": "workspace:*",
-    "@reflex/provider-jev": "workspace:*",
-    "@reflex/provider-local": "workspace:*",
-    "@reflex/semantic-provider": "workspace:*",
-    "@reflex/telemetry": "workspace:*"
+    "@reflex-control/context-compiler": "workspace:*",
+    "@reflex-control/contracts": "workspace:*",
+    "@reflex-control/core": "workspace:*",
+    "@reflex-control/policy-engine": "workspace:*",
+    "@reflex-control/provider-jev": "workspace:*",
+    "@reflex-control/provider-local": "workspace:*",
+    "@reflex-control/semantic-provider": "workspace:*",
+    "@reflex-control/telemetry": "workspace:*"
   }
 }

@@ -1,10 +1,10 @@
 import { readFile } from "node:fs/promises";
 
-import { OverrideStore, type DecisionObservation } from "@reflex/core";
+import { OverrideStore, type DecisionObservation } from "@reflex-control/core";
 import {
   parseConsentRecord,
   type ConsentRecord,
-} from "@reflex/semantic-provider";
+} from "@reflex-control/semantic-provider";
 import {
   DecisionLog,
   DecisionRecordLog,
@@ -12,7 +12,7 @@ import {
   defaultDecisionLogDirectory,
   defaultDecisionRecordDirectory,
   shadowEventOf,
-} from "@reflex/telemetry";
+} from "@reflex-control/telemetry";
 
 import {
   readOrCreateRedactionKey,

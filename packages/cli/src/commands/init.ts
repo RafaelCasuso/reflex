@@ -1,21 +1,21 @@
 import { join } from "node:path";
 
-import { managedSettingsPaths } from "@reflex/adapter-claude-code";
+import { managedSettingsPaths } from "@reflex-control/adapter-claude-code";
 import {
   configFilePath,
   inspectConfig,
   planEnableHooks,
   type CodexConfigInspection,
-} from "@reflex/adapter-codex";
-import type { FailureMode, ReflexMode } from "@reflex/contracts";
+} from "@reflex-control/adapter-codex";
+import type { FailureMode, ReflexMode } from "@reflex-control/contracts";
 import {
   parseTrustRecord,
   policyHashOf,
   PROJECT_POLICY_RELATIVE,
   trustFilePath,
   withTrust,
-} from "@reflex/decision-gateway/policy.js";
-import { STARTER_POLICY_YAML } from "@reflex/policy-engine";
+} from "@reflex-control/decision-gateway/policy.js";
+import { STARTER_POLICY_YAML } from "@reflex-control/policy-engine";
 
 import {
   sha256,

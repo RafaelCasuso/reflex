@@ -12,7 +12,7 @@ import type {
   ReflexDecision,
   ReflexMode,
   RiskScore,
-} from "@reflex/contracts";
+} from "@reflex-control/contracts";
 
 /**
  * RFX-023 — structured decision telemetry (`docs/architecture.md` §13).

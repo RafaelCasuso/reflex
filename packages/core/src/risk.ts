@@ -1,4 +1,8 @@
-import type { ReasonCode, RiskScore, SideEffectClass } from "@reflex/contracts";
+import type {
+  ReasonCode,
+  RiskScore,
+  SideEffectClass,
+} from "@reflex-control/contracts";
 
 /**
  * ADR-002 §3 — `risk` when no model was involved.

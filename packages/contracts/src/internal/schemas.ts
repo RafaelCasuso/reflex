@@ -8,7 +8,7 @@ import { findJsonViolation, type JsonViolationReason } from "./json.js";
 /**
  * Zod building blocks shared by the contract schemas.
  *
- * Zod stays inside `@reflex/contracts`: nothing from this file is part of the
+ * Zod stays inside `@reflex-control/contracts`: nothing from this file is part of the
  * public surface (see index.ts). Every custom check attaches `ReflexIssueParams`
  * so that issue mapping relies on structured data this package wrote, never on
  * a third party's message text.

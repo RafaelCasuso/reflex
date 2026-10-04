@@ -1,6 +1,6 @@
 import { createHash, randomBytes } from "node:crypto";
 
-import type { ActionId, SessionId } from "@reflex/contracts";
+import type { ActionId, SessionId } from "@reflex-control/contracts";
 
 /**
  * Canonical IDs for Claude Code events.

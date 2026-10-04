@@ -19,7 +19,7 @@ import { performance } from "node:perf_hooks";
 import process from "node:process";
 import { URL, fileURLToPath } from "node:url";
 
-import { parseSemanticAssessment } from "@reflex/contracts";
+import { parseSemanticAssessment } from "@reflex-control/contracts";
 
 import {
   buildJevRequest,

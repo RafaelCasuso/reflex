@@ -1,6 +1,6 @@
 # The local provider and its wire contract
 
-`@reflex/provider-local` (RFX-144, ADR-016 §1) is the provider behind
+`@reflex-control/provider-local` (RFX-144, ADR-016 §1) is the provider behind
 `--semantic-provider local`: a client for an inference server on this
 machine that speaks the canonical contract. RDM and Laya are checkpoints
 behind such a server; REFLEX does not know which, and does not need to.
@@ -18,7 +18,7 @@ accept: application/json
 <SemanticDecisionRequest as JSON>
 ```
 
-The body is the `SemanticDecisionRequest` of `@reflex/contracts`, as the
+The body is the `SemanticDecisionRequest` of `@reflex-control/contracts`, as the
 context compiler produced it: the fields a provider is given, selected by
 name, redacted and under the token budget (ADR-006). It carries no
 identity, no working directory, no adapter metadata, and no raw argument

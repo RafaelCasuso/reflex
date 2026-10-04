@@ -7,7 +7,7 @@ import {
   type PolicyOperator,
   type PolicyRule,
   type PolicyUnresolvedDefault,
-} from "@reflex/contracts";
+} from "@reflex-control/contracts";
 import {
   LineCounter,
   isAlias,

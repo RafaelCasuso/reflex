@@ -1,5 +1,5 @@
 {
-  "name": "@reflex/adapter-mcp",
+  "name": "@reflex-control/adapter-mcp",
   "version": "0.0.0",
   "description": "MCP proxy host translation only.",
   "license": "Apache-2.0",
@@ -30,6 +30,6 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "@reflex/contracts": "workspace:*"
+    "@reflex-control/contracts": "workspace:*"
   }
 }

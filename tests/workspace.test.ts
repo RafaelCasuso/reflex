@@ -96,8 +96,8 @@ describe("RFX-002 workspace shape", () => {
   describe.each(workspaces)("$parent/$name", ({ parent, name }) => {
     const manifest = readManifest(parent, name);
 
-    it("is named after its directory under the @reflex scope", () => {
-      expect(manifest.name).toBe(`@reflex/${name}`);
+    it("is named after its directory under the @reflex-control scope", () => {
+      expect(manifest.name).toBe(`@reflex-control/${name}`);
     });
 
     // RFX-127: an open package publishes from CI with provenance and ships
@@ -141,7 +141,7 @@ describe("RFX-002 workspace shape", () => {
     it.skipIf(name === "contracts")(
       "depends on the canonical contracts through the workspace protocol",
       () => {
-        expect(manifest.allDependencies["@reflex/contracts"]).toBe(
+        expect(manifest.allDependencies["@reflex-control/contracts"]).toBe(
           "workspace:*",
         );
       },
@@ -157,7 +157,7 @@ describe("architectural dependency direction (CLAUDE.md)", () => {
   it("keeps contracts free of workspace dependencies", () => {
     const contracts = readManifest("packages", "contracts");
     const workspaceDependencies = Object.keys(contracts.allDependencies).filter(
-      (dependency) => dependency.startsWith("@reflex/"),
+      (dependency) => dependency.startsWith("@reflex-control/"),
     );
 
     expect(workspaceDependencies).toEqual([]);
@@ -177,21 +177,39 @@ describe("architectural dependency direction (CLAUDE.md)", () => {
     });
 
     const violations = findForbiddenEdges([
-      fabricate("@reflex/core", "@reflex/adapter-codex"),
-      fabricate("@reflex/core", "@reflex/provider-jev"),
-      fabricate("@reflex/policy-engine", "@reflex/provider-jev"),
-      fabricate("@reflex/contracts", "@reflex/core"),
-      fabricate("@reflex/adapter-mcp", "@reflex/provider-jev"),
-      fabricate("@reflex/provider-jev", "@reflex/core"),
-      fabricate("@reflex/core", "@reflex/provider-local"),
-      fabricate("@reflex/adapter-codex", "@reflex/provider-local"),
-      fabricate("@reflex/provider-local", "@reflex/core"),
+      fabricate("@reflex-control/core", "@reflex-control/adapter-codex"),
+      fabricate("@reflex-control/core", "@reflex-control/provider-jev"),
+      fabricate(
+        "@reflex-control/policy-engine",
+        "@reflex-control/provider-jev",
+      ),
+      fabricate("@reflex-control/contracts", "@reflex-control/core"),
+      fabricate("@reflex-control/adapter-mcp", "@reflex-control/provider-jev"),
+      fabricate("@reflex-control/provider-jev", "@reflex-control/core"),
+      fabricate("@reflex-control/core", "@reflex-control/provider-local"),
+      fabricate(
+        "@reflex-control/adapter-codex",
+        "@reflex-control/provider-local",
+      ),
+      fabricate("@reflex-control/provider-local", "@reflex-control/core"),
       // Allowed edges must stay allowed: no false positives.
-      fabricate("@reflex/core", "@reflex/policy-engine"),
-      fabricate("@reflex/provider-jev", "@reflex/semantic-provider"),
-      fabricate("@reflex/provider-local", "@reflex/semantic-provider"),
-      fabricate("@reflex/decision-gateway", "@reflex/provider-jev"),
-      fabricate("@reflex/decision-gateway", "@reflex/provider-local"),
+      fabricate("@reflex-control/core", "@reflex-control/policy-engine"),
+      fabricate(
+        "@reflex-control/provider-jev",
+        "@reflex-control/semantic-provider",
+      ),
+      fabricate(
+        "@reflex-control/provider-local",
+        "@reflex-control/semantic-provider",
+      ),
+      fabricate(
+        "@reflex-control/decision-gateway",
+        "@reflex-control/provider-jev",
+      ),
+      fabricate(
+        "@reflex-control/decision-gateway",
+        "@reflex-control/provider-local",
+      ),
     ]);
 
     expect(violations.map(({ from, to }) => `${from} -> ${to}`)).toEqual([
@@ -218,9 +236,9 @@ describe("architectural dependency direction (CLAUDE.md)", () => {
   ])("finds a forbidden edge hidden in %s", (field) => {
     const manifest = parseManifest(
       {
-        name: "@reflex/core",
-        dependencies: { "@reflex/contracts": "workspace:*" },
-        [field]: { "@reflex/adapter-claude-code": "workspace:*" },
+        name: "@reflex-control/core",
+        dependencies: { "@reflex-control/contracts": "workspace:*" },
+        [field]: { "@reflex-control/adapter-claude-code": "workspace:*" },
       },
       `fabricated(${field})`,
     );

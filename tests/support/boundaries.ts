@@ -6,7 +6,7 @@ import type { PackageManifest } from "./repo.js";
  * must not also weaken the test that guards it.
  *
  * A trailing `*` matches any suffix. Names are workspace package names
- * without the `@reflex/` scope.
+ * without the `@reflex-control/` scope.
  */
 export interface ForbiddenEdge {
   readonly from: string;
@@ -56,7 +56,7 @@ export interface BoundaryViolation {
   readonly rule: string;
 }
 
-const SCOPE = "@reflex/";
+const SCOPE = "@reflex-control/";
 
 function matches(pattern: string, name: string): boolean {
   return pattern.endsWith("*")

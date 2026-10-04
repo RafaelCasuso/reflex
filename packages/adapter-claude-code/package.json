@@ -1,5 +1,5 @@
 {
-  "name": "@reflex/adapter-claude-code",
+  "name": "@reflex-control/adapter-claude-code",
   "version": "0.0.0",
   "description": "Claude Code host translation only.",
   "license": "Apache-2.0",
@@ -34,8 +34,8 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "@reflex/contracts": "workspace:*",
-    "@reflex/telemetry": "workspace:*",
+    "@reflex-control/contracts": "workspace:*",
+    "@reflex-control/telemetry": "workspace:*",
     "jsonc-parser": "^3.3.1"
   }
 }

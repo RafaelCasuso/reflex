@@ -2,7 +2,7 @@ import { mkdtemp, readFile, rm, stat } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
-import { consentDigest } from "@reflex/semantic-provider";
+import { consentDigest } from "@reflex-control/semantic-provider";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 import { nodeFileSystem } from "../backups/file-system.js";

@@ -4,12 +4,12 @@ import {
   classifyPath,
   escalate,
   type ClassifiedCommand,
-} from "@reflex/command-classifier";
+} from "@reflex-control/command-classifier";
 import {
   resolveEnvironment,
   type CanonicalAction,
   type SideEffectClass,
-} from "@reflex/contracts";
+} from "@reflex-control/contracts";
 
 import { RAW_ARGUMENTS_PREFIX } from "./fields.js";
 import { normalizePath, type PathContext } from "./paths.js";

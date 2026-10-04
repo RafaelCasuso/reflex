@@ -1,4 +1,4 @@
-import type { DecisionEffect, ReflexMode } from "@reflex/contracts";
+import type { DecisionEffect, ReflexMode } from "@reflex-control/contracts";
 import { describe, expect, it } from "vitest";
 
 import { effectiveEffectOf } from "./modes.js";

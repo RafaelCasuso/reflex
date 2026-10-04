@@ -1,7 +1,7 @@
 import {
   SIDE_EFFECT_CLASSES,
   parseSemanticAssessment,
-} from "@reflex/contracts";
+} from "@reflex-control/contracts";
 import { describe, expect, it } from "vitest";
 
 import {

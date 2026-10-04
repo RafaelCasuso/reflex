@@ -1,6 +1,6 @@
 import { randomBytes } from "node:crypto";
 
-import type { CanonicalAction } from "@reflex/contracts";
+import type { CanonicalAction } from "@reflex-control/contracts";
 import { describe, expect, it } from "vitest";
 
 import { PROJECT, shell } from "./engine.test-support.js";

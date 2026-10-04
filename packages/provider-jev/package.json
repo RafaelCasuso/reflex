@@ -1,5 +1,5 @@
 {
-  "name": "@reflex/provider-jev",
+  "name": "@reflex-control/provider-jev",
   "version": "0.0.0",
   "description": "Jev implementation of the semantic provider interface. Jev-specific types never leave this package.",
   "license": "Apache-2.0",
@@ -30,7 +30,7 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "@reflex/contracts": "workspace:*",
-    "@reflex/semantic-provider": "workspace:*"
+    "@reflex-control/contracts": "workspace:*",
+    "@reflex-control/semantic-provider": "workspace:*"
   }
 }

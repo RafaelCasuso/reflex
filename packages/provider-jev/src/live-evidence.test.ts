@@ -2,7 +2,7 @@ import { readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 
-import type { SemanticAssessment } from "@reflex/contracts";
+import type { SemanticAssessment } from "@reflex-control/contracts";
 import { describe, expect, expectTypeOf, it } from "vitest";
 
 /**

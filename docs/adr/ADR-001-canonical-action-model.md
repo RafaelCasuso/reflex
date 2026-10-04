@@ -37,7 +37,7 @@ do.
 
 ## Decision
 
-REFLEX has exactly one action model, `CanonicalAction` in `@reflex/contracts`.
+REFLEX has exactly one action model, `CanonicalAction` in `@reflex-control/contracts`.
 Adapters are the only code that sees host-native events, and the canonical
 action is the only representation that crosses into domain logic.
 
@@ -209,7 +209,7 @@ remain open.
 - **Severity order for `sideEffectClass`:** define it alongside the command
   classifier (G2), or make the field multi-valued through a superseding ADR.
 - **ADR-005 (planned):** `SemanticDecisionProvider` and `DecisionEngine`
-  currently live in `@reflex/contracts`, while `packages/semantic-provider` is
+  currently live in `@reflex-control/contracts`, while `packages/semantic-provider` is
   described as owning the provider interface. Decide the home before G4.
 - **Review against real payloads (RFX-089, done 2026-09-21):**
   `docs/canonical-action-review.md`. The model held. One source was wrong:

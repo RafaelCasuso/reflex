@@ -27,7 +27,7 @@ already in place for it, and what has to be true before it runs.
 
 1. `rfx init` gives first value (G9: RFX-050 to RFX-054). Done.
 2. A first version is published to npm (RFX-127), so that `reflex-cloud` can
-   depend on `@reflex/*` by version. **Not yet: the npm scope is not set up.**
+   depend on `@reflex-control/*` by version. **Not yet: the npm scope is not set up.**
 3. The security gate is green over the filtered history before the
    repository is made public.
 
@@ -66,7 +66,7 @@ gh repo edit RafaelCasuso/reflex --visibility public --accept-visibility-change-
 ```
 
 `reflex-cloud` then removes the open packages from its tree and depends on
-`@reflex/*` by published version in its lockfile, never by path, submodule
+`@reflex-control/*` by published version in its lockfile, never by path, submodule
 or subtree. The boundary test of ADR-015 stays in the public repository and
 still fails a new package that is in neither table of `docs/open-core.md`.
 

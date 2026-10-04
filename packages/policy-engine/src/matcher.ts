@@ -2,7 +2,7 @@ import type {
   PolicyCondition,
   PolicyFieldCondition,
   PolicyRule,
-} from "@reflex/contracts";
+} from "@reflex-control/contracts";
 
 import { fieldSpec } from "./fields.js";
 import { isWithin, resolveRoot, type PathContext } from "./paths.js";

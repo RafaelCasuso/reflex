@@ -4,7 +4,7 @@ import {
   type ActionTool,
   type CanonicalAction,
   type SideEffectClass,
-} from "@reflex/contracts";
+} from "@reflex-control/contracts";
 
 import type { CodexToolEvent } from "./hook-input.js";
 import { deriveActionId, deriveSessionId, randomActionId } from "./identity.js";

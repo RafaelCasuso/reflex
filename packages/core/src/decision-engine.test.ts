@@ -4,14 +4,14 @@ import {
   type DecisionRequest,
   type FailureMode,
   type ReflexDecision,
-} from "@reflex/contracts";
+} from "@reflex-control/contracts";
 import type {
   CompiledPolicySet,
   PolicySourceDocument,
-} from "@reflex/policy-engine";
+} from "@reflex-control/policy-engine";
 import { describe, expect, it } from "vitest";
 
-import { createFakeProvider } from "@reflex/semantic-provider";
+import { createFakeProvider } from "@reflex-control/semantic-provider";
 
 import { DecisionCache } from "./cache.js";
 import {

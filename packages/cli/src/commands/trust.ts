@@ -12,8 +12,8 @@ import {
   type ProjectPolicyComposer,
   type ProjectPolicyReading,
   type TrustRecord,
-} from "@reflex/decision-gateway/policy.js";
-import type { PolicyCondition, PolicyRule } from "@reflex/contracts";
+} from "@reflex-control/decision-gateway/policy.js";
+import type { PolicyCondition, PolicyRule } from "@reflex-control/contracts";
 
 import type { FileSystemPort } from "../backups/file-system.js";
 import {

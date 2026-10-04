@@ -1,6 +1,9 @@
-import * as claude from "@reflex/adapter-claude-code/hook";
-import * as codex from "@reflex/adapter-codex/hook";
-import type { ObservationLog, ObservationRecord } from "@reflex/telemetry";
+import * as claude from "@reflex-control/adapter-claude-code/hook";
+import * as codex from "@reflex-control/adapter-codex/hook";
+import type {
+  ObservationLog,
+  ObservationRecord,
+} from "@reflex-control/telemetry";
 
 /**
  * RFX-086 — the Observe hook for Claude Code.

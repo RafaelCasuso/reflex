@@ -1,6 +1,6 @@
-import type { ValidationIssue } from "@reflex/contracts";
-import type { OverrideRefusal } from "@reflex/core";
-import type { RejectionCode } from "@reflex/telemetry";
+import type { ValidationIssue } from "@reflex-control/contracts";
+import type { OverrideRefusal } from "@reflex-control/core";
+import type { RejectionCode } from "@reflex-control/telemetry";
 
 /**
  * A typed rejection. Never a stack trace, never a value from the request.

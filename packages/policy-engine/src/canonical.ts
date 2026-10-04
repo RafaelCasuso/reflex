@@ -4,7 +4,7 @@ import type {
   PolicyCondition,
   PolicyRule,
   PolicyUnresolvedDefault,
-} from "@reflex/contracts";
+} from "@reflex-control/contracts";
 
 import type { PolicySource } from "./precedence.js";
 

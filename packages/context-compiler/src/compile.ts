@@ -2,7 +2,7 @@ import type {
   CanonicalAction,
   DurationMs,
   SemanticDecisionRequest,
-} from "@reflex/contracts";
+} from "@reflex-control/contracts";
 
 import {
   DEFAULT_HISTORY_LIMITS,

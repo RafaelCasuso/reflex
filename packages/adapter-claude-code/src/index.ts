@@ -1,5 +1,5 @@
 /**
- * @reflex/adapter-claude-code — Claude Code host translation only.
+ * @reflex-control/adapter-claude-code — Claude Code host translation only.
  *
  * Pure: host events in, canonical contracts and edit plans out. This package
  * performs no I/O and makes no decision. In Gate G1.5 it observes; it never

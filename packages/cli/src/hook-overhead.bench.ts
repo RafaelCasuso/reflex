@@ -14,7 +14,7 @@ import { afterAll, beforeAll, describe, expect, test } from "vitest";
  * clock from "spawn" to "exit", with a real payload on stdin: process start,
  * module loading, payload parse, translation, record, exit.
  *
- * Run with `pnpm --filter @reflex/cli bench`. Not part of `pnpm test`: timing
+ * Run with `pnpm --filter @reflex-control/cli bench`. Not part of `pnpm test`: timing
  * does not belong on shared CI runners. The single assertion is a loose
  * tripwire (an accidental heavy import on the hook path), not a target.
  * Baseline numbers and their reading against the budgets in `CLAUDE.md` are in

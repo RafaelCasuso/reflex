@@ -16,46 +16,46 @@ import tseslint from "typescript-eslint";
 const FORBIDDEN_DEPENDENCIES = [
   {
     files: ["packages/contracts/**"],
-    forbidden: ["@reflex/*"],
+    forbidden: ["@reflex-control/*"],
     reason: "contracts -> anything is forbidden: contracts is the root.",
   },
   {
     files: ["packages/core/**"],
-    forbidden: ["@reflex/adapter-*", "@reflex/provider-*"],
+    forbidden: ["@reflex-control/adapter-*", "@reflex-control/provider-*"],
     reason:
       "core -> adapter-* is forbidden, and core must depend on the SemanticDecisionProvider interface, never on a provider.",
   },
   {
     files: ["packages/policy-engine/**"],
-    forbidden: ["@reflex/provider-*"],
+    forbidden: ["@reflex-control/provider-*"],
     reason:
       "policy-engine -> provider-* is forbidden: deterministic policy never touches a semantic provider.",
   },
   {
     files: ["packages/adapter-*/**"],
-    forbidden: ["@reflex/provider-*"],
+    forbidden: ["@reflex-control/provider-*"],
     reason: "adapter -> provider-* is forbidden.",
   },
   {
     files: ["packages/provider-*/**"],
-    forbidden: ["@reflex/core"],
+    forbidden: ["@reflex-control/core"],
     reason:
       "provider-* -> core is forbidden: a provider assesses, it never decides.",
   },
   {
     files: ["packages/command-classifier/**"],
     forbidden: [
-      "@reflex/core",
-      "@reflex/policy-engine",
-      "@reflex/context-compiler",
-      "@reflex/semantic-provider",
-      "@reflex/provider-*",
-      "@reflex/adapter-*",
-      "@reflex/telemetry",
-      "@reflex/cli",
-      "@reflex/auth",
-      "@reflex/evals",
-      "@reflex/sdk-*",
+      "@reflex-control/core",
+      "@reflex-control/policy-engine",
+      "@reflex-control/context-compiler",
+      "@reflex-control/semantic-provider",
+      "@reflex-control/provider-*",
+      "@reflex-control/adapter-*",
+      "@reflex-control/telemetry",
+      "@reflex-control/cli",
+      "@reflex-control/auth",
+      "@reflex-control/evals",
+      "@reflex-control/sdk-*",
     ],
     reason:
       "command-classifier -> contracts only (ADR-011): it is shared by adapters and by the engine, so it may depend on neither.",
@@ -66,15 +66,15 @@ const FORBIDDEN_DEPENDENCIES = [
 const CROSS_PACKAGE_RELATIVE_IMPORT = {
   regex: "^(\\.\\./)+.*/(src|dist)(/|$)",
   message:
-    "Import other workspace packages by name (@reflex/*), never by relative path.",
+    "Import other workspace packages by name (@reflex-control/*), never by relative path.",
 };
 
 // ADR-015, ADR-016 §5: RDM is a private Python module whose only contract
-// with the product is the canonical one, over @reflex/provider-local.
+// with the product is the canonical one, over @reflex-control/provider-local.
 const RDM_RELATIVE_IMPORT = {
   regex: "^(\\.\\./)+rdm(/|$)",
   message:
-    "Nothing in packages/ or apps/ imports from rdm/. RDM is reached through @reflex/provider-local (ADR-016).",
+    "Nothing in packages/ or apps/ imports from rdm/. RDM is reached through @reflex-control/provider-local (ADR-016).",
 };
 
 /**

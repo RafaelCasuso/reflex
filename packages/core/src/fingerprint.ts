@@ -1,6 +1,9 @@
 import { createHash, createHmac } from "node:crypto";
 
-import type { CanonicalAction, EnvironmentKind } from "@reflex/contracts";
+import type {
+  CanonicalAction,
+  EnvironmentKind,
+} from "@reflex-control/contracts";
 
 /**
  * RFX-106 — the canonical action fingerprint.

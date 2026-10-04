@@ -45,7 +45,7 @@ export type LabelSource = (typeof LABEL_SOURCES)[number];
 export const EVALUATION_ROLES = ["primary", "shadow"] as const;
 export type EvaluationRole = (typeof EVALUATION_ROLES)[number];
 
-/** ADR-005 §2: how a provider fails. Shared with `@reflex/semantic-provider`. */
+/** ADR-005 §2: how a provider fails. Shared with `@reflex-control/semantic-provider`. */
 export const PROVIDER_ERROR_KINDS = [
   "timeout",
   "aborted",

@@ -1,5 +1,5 @@
 /**
- * @reflex/provider-jev — the Jev implementation of the provider interface.
+ * @reflex-control/provider-jev — the Jev implementation of the provider interface.
  *
  * Jev-specific types never leave this package: what goes out is a
  * `SemanticDecisionProvider` and, for tests and the live harness, the

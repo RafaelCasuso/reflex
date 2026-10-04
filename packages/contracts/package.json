@@ -1,5 +1,5 @@
 {
-  "name": "@reflex/contracts",
+  "name": "@reflex-control/contracts",
   "version": "0.0.0",
   "description": "Canonical public/internal schemas. The single source of truth for REFLEX contracts.",
   "license": "Apache-2.0",

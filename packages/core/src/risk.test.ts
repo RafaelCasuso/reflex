@@ -1,7 +1,10 @@
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 
-import { SIDE_EFFECT_CLASSES, type SideEffectClass } from "@reflex/contracts";
+import {
+  SIDE_EFFECT_CLASSES,
+  type SideEffectClass,
+} from "@reflex-control/contracts";
 import { describe, expect, it } from "vitest";
 
 import { DETERMINISTIC_RISK, reasonForClass, riskOf } from "./risk.js";

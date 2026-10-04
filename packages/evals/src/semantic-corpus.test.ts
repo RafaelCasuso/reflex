@@ -1,10 +1,10 @@
 import { fileURLToPath } from "node:url";
 
-import { STARTER_POLICY_YAML } from "@reflex/policy-engine";
+import { STARTER_POLICY_YAML } from "@reflex-control/policy-engine";
 import {
   createFakeProvider,
   type SemanticDecisionProvider,
-} from "@reflex/semantic-provider";
+} from "@reflex-control/semantic-provider";
 import { describe, expect, it } from "vitest";
 
 import { calibrate, describeCalibration } from "./calibration.js";

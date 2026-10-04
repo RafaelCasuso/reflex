@@ -17,10 +17,10 @@ Two facts do not fit that picture as drawn.
 **Hosts run a hook as a new process per tool call.** Measured on 2026-09-18
 (Apple Silicon laptop, Node 24.9, 25 runs each):
 
-| Per-call Node process                            | p50     | p95      |
-| ------------------------------------------------ | ------- | -------- |
-| Empty process                                    | 29.5 ms | 37.5 ms  |
-| Loads `@reflex/contracts`, validates one request | 70.5 ms | 102.4 ms |
+| Per-call Node process                                    | p50     | p95      |
+| -------------------------------------------------------- | ------- | -------- |
+| Empty process                                            | 29.5 ms | 37.5 ms  |
+| Loads `@reflex-control/contracts`, validates one request | 70.5 ms | 102.4 ms |
 
 Validation itself costs about 4 microseconds (see
 `packages/contracts/README.md`). The budget is spent before any REFLEX code

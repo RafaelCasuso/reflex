@@ -1,4 +1,4 @@
-import type { ReflexDecision } from "@reflex/contracts";
+import type { ReflexDecision } from "@reflex-control/contracts";
 import { describe, expect, it } from "vitest";
 
 import { DecisionCache } from "./cache.js";

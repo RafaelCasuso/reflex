@@ -4,7 +4,7 @@ import type { AddressInfo } from "node:net";
 import {
   parseSemanticAssessment,
   type SemanticDecisionRequest,
-} from "@reflex/contracts";
+} from "@reflex-control/contracts";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
 import { createLocalProvider } from "./client.js";

@@ -33,12 +33,12 @@ symmetric, so the rule cannot be either.
 
 ### 1. One version, two numbers
 
-`CONTRACT_VERSION = { major, minor }` in `@reflex/contracts`.
+`CONTRACT_VERSION = { major, minor }` in `@reflex-control/contracts`.
 
 - `major` changes on a breaking change. It is the `v1` in `/v1/decisions`.
 - `minor` changes on every additive change.
 
-The npm version of `@reflex/contracts` is a packaging concern and is not the
+The npm version of `@reflex-control/contracts` is a packaging concern and is not the
 wire version: the package is released for reasons that do not touch the wire.
 
 ### 2. Direction of tolerance

@@ -1,7 +1,7 @@
 import { existsSync, statSync } from "node:fs";
 
-import { configFilePath, inspectConfig } from "@reflex/adapter-codex";
-import { isRemoteProvider } from "@reflex/semantic-provider";
+import { configFilePath, inspectConfig } from "@reflex-control/adapter-codex";
+import { isRemoteProvider } from "@reflex-control/semantic-provider";
 
 import type { FileSystemPort } from "../backups/file-system.js";
 import {
@@ -361,7 +361,7 @@ export async function runDoctor(
     );
   } else {
     const { readPolicyFiles } =
-      await import("@reflex/decision-gateway/policy.js");
+      await import("@reflex-control/decision-gateway/policy.js");
     const read = await readPolicyFiles([userPolicy]);
     checks.push(
       read.ok
