@@ -12,9 +12,12 @@
 #   npm audit signatures
 #   gh attestation verify <tarball> --repo RafaelCasuso/reflex
 #
-# Publishing needs the npm scope configured for trusted publishing (or an
-# NPM_TOKEN secret with publish rights); until the maintainer sets that up
-# the job stops at "publish" and nothing is released.
+# Publishing authenticates by npm trusted publishing: the job's OIDC token,
+# accepted because each package names this repository and this workflow as
+# its trusted publisher on npmjs.com. No token, no secret. A package that
+# has no trusted publisher yet (a new one, before its first version) cannot
+# be published here: its first version is published once by the maintainer
+# with their own 2FA (docs/releasing.md), then the trusted publisher is set.
 #
 # Rules guarded by tests/ci.test.ts:
 #   - install is lockfile-frozen
@@ -86,7 +89,9 @@ jobs:
         with:
           subject-path: ${{ runner.temp }}/tarballs/*.tgz
 
+      # No NODE_AUTH_TOKEN: with none, the npm CLI (11.5.1 or later; Node 24
+      # ships it) authenticates with the job's OIDC token (trusted publishing)
+      # and publishes provenance. The flag stays so that a missing trusted
+      # publisher fails loudly rather than publishing without provenance.
       - name: Publish with provenance
         run: pnpm -r publish --access public --provenance --no-git-checks
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
