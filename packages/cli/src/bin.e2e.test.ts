@@ -936,6 +936,222 @@ describe("rfx init for Codex, end to end", () => {
   });
 });
 
+/**
+ * G9 — the starter policy, trust, explain, pause and doctor through the
+ * real binary and the real daemon (RFX-054, RFX-104, RFX-099, RFX-126,
+ * RFX-055).
+ */
+describe("G9: policy, trust, pause and doctor, end to end", () => {
+  const REPO_POLICY = `version: 1
+rules:
+  - id: repo.allow-touch
+    name: The repository allows touch
+    effect: allow
+    conditions:
+      - { field: command.name, operator: equals, value: touch }
+  - id: repo.deny-ls
+    name: The repository denies ls
+    effect: deny
+    conditions:
+      - { field: command.name, operator: equals, value: ls }
+`;
+
+  it("init writes the starter policy, trusts it, and never overwrites a file the user has", async () => {
+    const project = join(root, "project");
+    await mkdir(project, { recursive: true });
+    const env = { REFLEX_HOME: reflexHome, HOME: join(root, "home") };
+    const init = await rfx(["init", "--host", "claude-code", "--yes"], {
+      cwd: project,
+      env,
+    });
+    expect(init.code).toBe(0);
+    expect(init.stdout).toContain("a conservative starter policy");
+    const policy = await readFile(
+      join(project, ".reflex", "policy.yaml"),
+      "utf8",
+    );
+    expect(policy).toContain("starter.allow-reads");
+    const status = await rfx(["status"], { cwd: project, env });
+    expect(status.stdout).toMatch(/Policy\s+.*policy\.yaml, trusted/);
+
+    await writeFile(join(project, ".reflex", "policy.yaml"), REPO_POLICY);
+    expect(
+      (
+        await rfx(["init", "--host", "claude-code", "--yes"], {
+          cwd: project,
+          env,
+        })
+      ).code,
+    ).toBe(0);
+    expect(
+      await readFile(join(project, ".reflex", "policy.yaml"), "utf8"),
+    ).toBe(REPO_POLICY);
+    const starter = await rfx(["policy", "starter"], { cwd: project, env });
+    expect(starter.code).toBe(1);
+    expect(starter.stdout).toContain("was not touched");
+    expect(
+      await readFile(join(project, ".reflex", "policy.yaml"), "utf8"),
+    ).toBe(REPO_POLICY);
+  });
+
+  // RFX-104 adversarial, through the real daemon: a repository policy the
+  // user never trusted. Its deny applies; its allow does not, until
+  // `rfx trust`, and not after the file changes.
+  it("applies an untrusted project policy's deny and ignores its allow until the user trusts it", async () => {
+    const home = join(root, "trust-home");
+    const project = await realpath(
+      await (async () => {
+        const dir = join(root, "home", "work", "repo");
+        await mkdir(join(dir, ".reflex"), { recursive: true });
+        return dir;
+      })(),
+    );
+    await writeFile(join(project, ".reflex", "policy.yaml"), REPO_POLICY);
+    await mkdir(home, { recursive: true, mode: 0o700 });
+    await writeFile(
+      join(home, "installs.json"),
+      JSON.stringify({
+        version: 1,
+        installs: [
+          {
+            host: "claude-code",
+            scope: "local",
+            settingsPath: join(project, ".claude", "settings.local.json"),
+            projectDir: project,
+            projectId: "prj_00000000000000000000000000000003",
+            manifestPath: join(home, "backups", "manifest.json"),
+            installedAt: "2026-10-04T10:00:00.000Z",
+            mode: "autopilot",
+            failureMode: "fail-ask",
+          },
+        ],
+        projects: [],
+      }),
+    );
+    // A user policy that asks for everything unresolved, so that the
+    // project's allow is the only way to an allow.
+    await writeFile(
+      join(home, "policy.yaml"),
+      "version: 1\ndefaults:\n  unresolved: ask\nrules: []\n",
+    );
+    const env = { REFLEX_HOME: home, HOME: join(root, "home") };
+    const inProject = (name: string, toolUseId: string): string =>
+      JSON.stringify({
+        ...(JSON.parse(fixture(name)) as Record<string, unknown>),
+        cwd: project,
+        tool_use_id: toolUseId,
+      });
+    const hook = (name: string, id: string) =>
+      rfx(["hook", "claude-code"], { stdin: inProject(name, id), env });
+    const decisionOf = (run: Run): string =>
+      (answerOf(run) as { hookSpecificOutput: { permissionDecision: string } })
+        .hookSpecificOutput.permissionDecision;
+    try {
+      // touch: the repository allows it, but nobody trusted the repository.
+      expect(decisionOf(await hook("pre-tool-use.bash", "toolu_trust_1"))).toBe(
+        "ask",
+      );
+      const explain = await rfx(["explain", "touch", "marker.txt"], {
+        cwd: project,
+        env,
+      });
+      expect(explain.stdout).toContain(
+        "untrusted: its 1 allow rule(s) are ignored",
+      );
+
+      const trusted = await rfx(["trust", "--yes"], { cwd: project, env });
+      expect(trusted.code).toBe(0);
+      expect(trusted.stdout).toContain("allow  repo.allow-touch");
+      expect(decisionOf(await hook("pre-tool-use.bash", "toolu_trust_2"))).toBe(
+        "allow",
+      );
+
+      // The repository changes its policy: trust is gone with the content.
+      await writeFile(
+        join(project, ".reflex", "policy.yaml"),
+        REPO_POLICY.replace("allows touch", "allows touch, edited"),
+      );
+      expect(decisionOf(await hook("pre-tool-use.bash", "toolu_trust_3"))).toBe(
+        "ask",
+      );
+      const status = await rfx(["status"], { cwd: project, env });
+      expect(status.stdout).toContain("UNTRUSTED");
+    } finally {
+      const { stopDaemon } = await import("./daemon/lifecycle.js");
+      await stopDaemon(home).catch(() => undefined);
+    }
+  }, 30_000);
+
+  it("pauses enforcement for a bounded time: the hook observes and answers nothing, status says so, resume ends it", async () => {
+    const home = join(root, "pause-home");
+    await installedIn(home, "autopilot");
+    const env = { REFLEX_HOME: home };
+    const hook = () =>
+      rfx(["hook", "claude-code"], {
+        stdin: fixture("pre-tool-use.bash-remove"),
+        env,
+      });
+    try {
+      expect(answerOf(await hook())).toMatchObject({
+        hookSpecificOutput: { permissionDecision: "deny" },
+      });
+      expect((await rfx(["pause"], { env })).code).toBe(2);
+      const paused = await rfx(
+        ["pause", "--for", "15m", "--reason", "upgrading"],
+        { env },
+      );
+      expect(paused.code).toBe(0);
+      expect(await hook()).toEqual(SILENT_SUCCESS);
+      const status = await rfx(["status"], { env, cwd: "/work/project" }).catch(
+        () => undefined,
+      );
+      if (status !== undefined) {
+        expect(status.stdout).toContain("PAUSED");
+      }
+      const observed = await readFile(
+        join(home, "observe", "observations.jsonl"),
+        "utf8",
+      );
+      expect(
+        observed.split("\n").filter(Boolean).length,
+      ).toBeGreaterThanOrEqual(2);
+      expect((await rfx(["resume"], { env })).code).toBe(0);
+      expect(answerOf(await hook())).toMatchObject({
+        hookSpecificOutput: { permissionDecision: "deny" },
+      });
+      const audit = await readFile(join(home, "audit.jsonl"), "utf8");
+      expect(audit).toContain('"kind":"pause"');
+      expect(audit).toContain('"kind":"resume"');
+    } finally {
+      const { stopDaemon } = await import("./daemon/lifecycle.js");
+      await stopDaemon(home).catch(() => undefined);
+    }
+  }, 30_000);
+
+  it("doctor exits 1 with remediations where nothing is installed, and 0 on a healthy install", async () => {
+    const project = join(root, "project");
+    await mkdir(project, { recursive: true });
+    const env = { REFLEX_HOME: reflexHome, HOME: join(root, "home") };
+    const sick = await rfx(["doctor"], { cwd: project, env });
+    expect(sick.code).toBe(1);
+    expect(sick.stdout).toContain("FAIL");
+    expect(sick.stdout).toContain('-> Run "rfx init" here.');
+    expect(
+      (
+        await rfx(["init", "--host", "claude-code", "--yes"], {
+          cwd: project,
+          env,
+        })
+      ).code,
+    ).toBe(0);
+    const healthy = await rfx(["doctor"], { cwd: project, env });
+    expect(healthy.code).toBe(0);
+    expect(healthy.stdout).toContain("claude-code hooks");
+    const json = await rfx(["doctor", "--json"], { cwd: project, env });
+    expect((JSON.parse(json.stdout) as { failures: number }).failures).toBe(0);
+  });
+});
+
 describe("rfx mode", () => {
   it("shows, changes and refuses an unknown mode", async () => {
     const home = join(root, "mode-home");

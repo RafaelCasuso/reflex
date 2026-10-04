@@ -9,7 +9,14 @@ import {
 import type { FileSystemPort } from "../backups/file-system.js";
 import { daemonStatus, type DaemonStatus } from "../daemon/lifecycle.js";
 import { hostProfile, type SupportedHost } from "../hosts.js";
+import {
+  activePause,
+  parsePause,
+  pausePath,
+  type PauseRecord,
+} from "../pause.js";
 import { readProvider, type ProviderReport } from "./provider.js";
+import { readProjectPolicy, type ProjectPolicyStatus } from "./trust.js";
 import {
   parseIdentity,
   parseRegistry,
@@ -71,6 +78,10 @@ export interface StatusReport {
   readonly daemon: DaemonStatus;
   /** RFX-123: the configured provider and whether consent covers it. */
   readonly provider: ProviderReport;
+  /** RFX-126: the pause in force, if any. */
+  readonly pause: PauseRecord | undefined;
+  /** RFX-104: the project's own policy and whether it is trusted. */
+  readonly projectPolicy: ProjectPolicyStatus;
   readonly adapters: readonly AdapterStatus[];
   readonly lastAction: ObservedActionRecord | undefined;
   readonly summary: OutcomeSummary;
@@ -111,6 +122,15 @@ export async function collectStatus(
   const paths = statePaths(reflexHome(environment));
   const daemon = await probe(reflexHome(environment));
   const provider = await readProvider(environment, fileSystem);
+  const pause = activePause(
+    parsePause(
+      (
+        await fileSystem.read(pausePath(reflexHome(environment)))
+      )?.content.toString("utf8"),
+    ),
+    environment.now(),
+  );
+  const projectPolicy = await readProjectPolicy(environment, fileSystem);
   const registry = parseRegistry(
     (await fileSystem.read(paths.installs))?.content.toString("utf8"),
   );
@@ -187,6 +207,8 @@ export async function collectStatus(
     identity,
     daemon,
     provider,
+    pause,
+    projectPolicy,
     adapters,
     lastAction: actions.at(-1),
     summary: summarize(assembleOutcomes(records)),

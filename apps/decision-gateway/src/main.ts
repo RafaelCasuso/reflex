@@ -25,6 +25,10 @@ import {
   createPolicyHolder,
   readPolicyFiles,
 } from "./orchestration/policy-source.js";
+import {
+  createProjectPolicyComposer,
+  trustFilePath,
+} from "./orchestration/project-policy.js";
 import { buildSemanticStage } from "./orchestration/semantic-stage.js";
 import { createGatewayServer } from "./server.js";
 
@@ -113,8 +117,17 @@ async function main(argv: readonly string[]): Promise<number> {
   // the engine remembers every decision in it and takes the grants; the
   // server turns a human's `rfx override` into a grant.
   const overrides = new OverrideStore();
+  // RFX-104: a project's `.reflex/policy.yaml`, found from the action's
+  // working directory and trusted only by the user's record, joins the
+  // user's own sources per action.
+  const projects = createProjectPolicyComposer({
+    home: process.env.HOME,
+    trustFile: trustFilePath(config.reflexHome),
+    userSources: policies.sources,
+  });
   const engine = buildEngine({
     policies,
+    setFor: projects.setFor,
     failureMode: config.failureMode,
     cache: config.cache,
     home: process.env.HOME,
@@ -184,6 +197,8 @@ async function main(argv: readonly string[]): Promise<number> {
       policySetHash: policies.state().current.hash,
       policyLoadedAt: policies.state().loadedAt ?? null,
       policyProblems: policies.state().lastProblems.length,
+      // RFX-104: project policies that could not be used since start.
+      projectPolicyProblems: projects.problems().length,
       telemetryDropped: telemetry?.dropped ?? 0,
       recordsDropped: records?.dropped ?? 0,
       redactionKey: redactionKey.created ? "created" : "present",

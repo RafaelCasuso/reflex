@@ -106,6 +106,12 @@ denied fixture; Assist `allow` for `touch marker.txt` under a rule,
 Autopilot `deny` for the same `rm`; and the client's own `deny` under
 `fail-closed` when the daemon cannot start, in time.
 
+`docs/cli.md` lists every `rfx` command. Two of them change what the hook
+does without changing the mode: `rfx pause --for <duration>` makes every
+hook observe and answer nothing until the pause ends or `rfx resume`
+(RFX-126), and `rfx trust` decides whether the project's own policy may
+allow anything (RFX-104).
+
 ## 2c. Consent before action content leaves the machine (RFX-123)
 
 With no provider, nothing the hook sees leaves the machine: the daemon

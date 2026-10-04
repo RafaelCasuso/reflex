@@ -1,7 +1,6 @@
 {
   "name": "@reflex/policy-engine",
   "version": "0.0.0",
-  "private": true,
   "description": "Pure deterministic policy evaluation.",
   "license": "Apache-2.0",
   "type": "module",
@@ -15,6 +14,15 @@
   "files": [
     "dist"
   ],
+  "publishConfig": {
+    "access": "public",
+    "provenance": true
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/RafaelCasuso/reflex.git",
+    "directory": "packages/policy-engine"
+  },
   "scripts": {
     "build": "tsc -p tsconfig.build.json",
     "typecheck": "tsc -p tsconfig.json",

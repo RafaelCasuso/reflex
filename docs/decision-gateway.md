@@ -192,6 +192,19 @@ manages a process. `packages/cli/src/daemon/lifecycle.ts`:
   removed; `SIGKILL` after the grace period if it does not exit. `rfx
 status` shows whether it runs, its version, pid and uptime.
 
+**The project's policy (RFX-104, RFX-054).** For every action the daemon
+looks for `.reflex/policy.yaml` from the action's working directory upward,
+stopping before the user's home directory, and adds it to the user's sources
+as the `project` source of ADR-004. It is trusted only when
+`<REFLEX_HOME>/trust.json`, written by `rfx trust` or by `rfx init` for the
+starter it wrote, holds that path at that content hash; otherwise its deny
+and ask rules apply and its allow rules are ignored (ADR-012). The lookup is
+a few `stat` calls, cached by path, size and modification time; the compiled
+set is cached by the hashes it is made of; a project policy that does not
+parse is dropped, counted in health (`projectPolicyProblems`) and shown by
+`rfx doctor`. `rfx explain` composes the set the same way
+(`@reflex/decision-gateway/policy`).
+
 The daemon's configuration is the user's, `<REFLEX_HOME>/config.json`
 (`semanticProvider`, `semanticModel`, `semanticEndpoint`, `shadowProviders`,
 `shadowSample`, `shadowDeadlineMs`), written by `rfx provider`; absent or

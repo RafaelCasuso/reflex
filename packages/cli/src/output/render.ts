@@ -78,6 +78,12 @@ export function renderInitPlan(plan: InitPlan): string {
           `  read    ${safe(codex.configPath)}: approval policy ${codex.config.approvalPolicy ?? "default"}, sandbox ${codex.config.sandboxMode ?? "default"}, this project ${codex.config.trustLevel ?? "not listed"}${codex.feature === "already-on" ? ", hooks already on" : ""}`,
         );
       }
+      if (plan.starterPolicyPath !== undefined) {
+        lines.push(
+          `  create  ${safe(plan.starterPolicyPath)}`,
+          "          a conservative starter policy, yours to edit; trusted as written",
+        );
+      }
       lines.push(
         `  backup  every file it changes, under ${safe(plan.backupDir)}`,
       );
@@ -223,8 +229,13 @@ const HEALTH: Readonly<Record<string, string>> = {
 export function renderStatus(report: StatusReport, now: Date): string {
   const lines = [
     `REFLEX  mode: ${report.mode}  (records only, never interferes)`,
-    "",
   ];
+  if (report.pause !== undefined) {
+    lines.push(
+      `PAUSED  until ${report.pause.until}${report.pause.reason === undefined ? "" : ` (${safe(report.pause.reason)})`}: observing, enforcing nothing. "rfx resume" ends it early.`,
+    );
+  }
+  lines.push("");
 
   if (report.adapters.length === 0) {
     lines.push('Not installed in this project. Run "rfx init".', "");
@@ -276,6 +287,7 @@ export function renderStatus(report: StatusReport, now: Date): string {
       ? `Daemon       running, v${report.daemon.version ?? "?"}${report.daemon.pid === undefined ? "" : `, pid ${String(report.daemon.pid)}`}, up ${duration(report.daemon.uptimeMs ?? 0)}`
       : "Daemon       not running (starts on the first decision it is asked for)",
     `Provider     ${describeProvider(report.provider)}`,
+    `Policy       ${describeProjectPolicy(report.projectPolicy)}`,
     `Identity     ${report.identity?.agentId ?? "none"}  (local, anonymous)`,
     `Log          ${safe(report.logFile)}`,
     "",
@@ -296,4 +308,17 @@ function duration(ms: number): string {
   return hours < 48
     ? `${String(hours)}h`
     : `${String(Math.round(hours / 24))}d`;
+}
+
+function describeProjectPolicy(status: StatusReport["projectPolicy"]): string {
+  const { reading } = status;
+  if (reading === undefined) {
+    return 'no project policy ("rfx policy starter" writes one)';
+  }
+  if (reading.problems.length > 0) {
+    return `${safe(reading.path)} does not load and is ignored ("rfx doctor")`;
+  }
+  return reading.trusted
+    ? `${safe(reading.path)}, trusted`
+    : `${safe(reading.path)}, UNTRUSTED: its ${String(reading.allowRules.length)} allow rule(s) are ignored ("rfx trust")`;
 }

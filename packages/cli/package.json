@@ -1,7 +1,6 @@
 {
   "name": "@reflex/cli",
   "version": "0.0.0",
-  "private": true,
   "description": "Installation, detection, configuration and diagnostics (rfx).",
   "license": "Apache-2.0",
   "type": "module",
@@ -18,6 +17,15 @@
   "files": [
     "dist"
   ],
+  "publishConfig": {
+    "access": "public",
+    "provenance": true
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/RafaelCasuso/reflex.git",
+    "directory": "packages/cli"
+  },
   "scripts": {
     "build": "tsc -p tsconfig.build.json",
     "typecheck": "tsc -p tsconfig.json",
@@ -29,7 +37,9 @@
     "@reflex/adapter-claude-code": "workspace:*",
     "@reflex/adapter-codex": "workspace:*",
     "@reflex/contracts": "workspace:*",
+    "@reflex/core": "workspace:*",
     "@reflex/decision-gateway": "workspace:*",
+    "@reflex/policy-engine": "workspace:*",
     "@reflex/semantic-provider": "workspace:*",
     "@reflex/telemetry": "workspace:*"
   }

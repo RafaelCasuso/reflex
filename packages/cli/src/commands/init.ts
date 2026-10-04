@@ -8,6 +8,14 @@ import {
   type CodexConfigInspection,
 } from "@reflex/adapter-codex";
 import type { FailureMode, ReflexMode } from "@reflex/contracts";
+import {
+  parseTrustRecord,
+  policyHashOf,
+  PROJECT_POLICY_RELATIVE,
+  trustFilePath,
+  withTrust,
+} from "@reflex/decision-gateway/policy.js";
+import { STARTER_POLICY_YAML } from "@reflex/policy-engine";
 
 import {
   sha256,
@@ -88,6 +96,12 @@ export interface CodexReport {
 export interface InstallInitPlan {
   readonly kind: "install";
   readonly host: SupportedHost;
+  /**
+   * RFX-054: the starter `.reflex/policy.yaml` this plan writes, trusted
+   * at its content (RFX-104), or `undefined` when the project has one.
+   * An existing file is never overwritten here.
+   */
+  readonly starterPolicyPath?: string;
   readonly scope: HostScope;
   readonly settingsPath: string;
   readonly action: "create" | "modify";
@@ -260,10 +274,15 @@ export async function planInit(
   // Already installed means: the file carries the hooks, the flag is on,
   // and this project is registered. A second project behind the same user
   // file (Codex's default scope) still gets its registry entry.
+  const starterMissing =
+    (await fileSystem.read(
+      join(environment.projectDir, PROJECT_POLICY_RELATIVE),
+    )) === undefined;
   if (
     install.kind === "already-installed" &&
     configWrite === undefined &&
-    previous !== undefined
+    previous !== undefined &&
+    !starterMissing
   ) {
     return {
       kind: "already-installed",
@@ -329,6 +348,36 @@ export async function planInit(
   if (configWrite !== undefined) {
     writes.push(configWrite);
   }
+  // RFX-054, RFX-104: a conservative starter policy for the project when it
+  // has none, trusted at the content REFLEX wrote (the user asked for it).
+  // A file that exists is left exactly as it is.
+  const starterPath = join(environment.projectDir, PROJECT_POLICY_RELATIVE);
+  const existingStarter = await fileSystem.read(starterPath);
+  let starterPolicyPath: string | undefined;
+  if (existingStarter === undefined) {
+    starterPolicyPath = starterPath;
+    writes.push({
+      path: starterPath,
+      content: Buffer.from(STARTER_POLICY_YAML, "utf8"),
+      expectedSha256: undefined,
+      createMode: 0o644,
+    });
+    const trustFile = trustFilePath(home);
+    const trustFileSnapshot = await fileSystem.read(trustFile);
+    writes.push({
+      path: trustFile,
+      content: serialize(
+        withTrust(
+          parseTrustRecord(text(trustFileSnapshot)),
+          starterPath,
+          policyHashOf(STARTER_POLICY_YAML),
+          now,
+        ),
+      ),
+      expectedSha256: digest(trustFileSnapshot),
+      createMode: STATE_FILE_MODE,
+    });
+  }
   writes.push({
     path: paths.installs,
     content: serialize({
@@ -375,6 +424,7 @@ export async function planInit(
     reports,
     warnings,
     ...(codex === undefined ? {} : { codex }),
+    ...(starterPolicyPath === undefined ? {} : { starterPolicyPath }),
   };
 }
 

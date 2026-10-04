@@ -122,9 +122,15 @@ importers:
       '@reflex/contracts':
         specifier: workspace:*
         version: link:../contracts
+      '@reflex/core':
+        specifier: workspace:*
+        version: link:../core
       '@reflex/decision-gateway':
         specifier: workspace:*
         version: link:../../apps/decision-gateway
+      '@reflex/policy-engine':
+        specifier: workspace:*
+        version: link:../policy-engine
       '@reflex/semantic-provider':
         specifier: workspace:*
         version: link:../semantic-provider

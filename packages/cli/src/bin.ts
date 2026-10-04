@@ -28,6 +28,16 @@ const USAGE = `rfx — REFLEX, the autonomy control layer for AI agents
       provider shows what leaves this machine and asks for your consent first.
   rfx override <decisionId>
       Let one denied action through, once: the id is in the deny's reason line.
+  rfx explain <command...> | rfx explain --tool Read|Write|Edit --path <file>
+      Why an action would be allowed, asked or denied here: rules, precedence, effect.
+  rfx trust [--yes] [--revoke]
+      Review what this project's .reflex/policy.yaml would allow, and trust that version.
+  rfx policy starter [--force]
+      Write the conservative starter policy to .reflex/policy.yaml.
+  rfx pause --for <30m|2h|1d> [--reason <text>]  |  rfx resume
+      Suspend enforcement for a bounded time; REFLEX keeps observing.
+  rfx doctor [--json]
+      Check hooks, daemon, policy, provider and host switches; each failure says what to do.
   rfx status
       What REFLEX has observed and decided in this project. Local, offline.
   rfx uninstall [--yes] [--purge]
@@ -85,6 +95,18 @@ async function hook(host: string | undefined): Promise<void> {
       ),
     );
     const { installedProjectFor } = await import("./hosts.js");
+    // RFX-126: paused means Observe, for every host and project, until the
+    // pause ends by itself or `rfx resume` ends it.
+    const pauseModule = await import("./pause.js");
+    const paused =
+      pauseModule.activePause(
+        pauseModule.parsePause(
+          await readFile(pauseModule.pausePath(home), "utf8").catch(
+            () => undefined,
+          ),
+        ),
+        env.now(),
+      ) !== undefined;
 
     if (host === "claude-code") {
       const observed = await hooks.runClaudeCodeHook(stdin, dependencies);
@@ -100,7 +122,7 @@ async function hook(host: string | undefined): Promise<void> {
           entry.host === "claude-code" && entry.projectDir === projectDir,
       );
       const mode = state.modeOf(install);
-      if (mode === "observe") {
+      if (mode === "observe" || paused) {
         return;
       }
       const { decideForHost } = await import("./commands/decide.js");
@@ -144,7 +166,7 @@ async function hook(host: string | undefined): Promise<void> {
       observed.event.cwd ?? env.projectDir,
     );
     const mode = state.modeOf(install);
-    if (mode === "observe") {
+    if (mode === "observe" || paused) {
       return;
     }
     const { decideForCodex } = await import("./commands/codex-hook.js");
@@ -249,6 +271,13 @@ async function main(): Promise<number> {
       model: { type: "string" },
       endpoint: { type: "string" },
       consent: { type: "boolean", default: false },
+      tool: { type: "string" },
+      path: { type: "string" },
+      for: { type: "string" },
+      reason: { type: "string" },
+      revoke: { type: "boolean", default: false },
+      force: { type: "boolean", default: false },
+      json: { type: "boolean", default: false },
       yes: { type: "boolean", default: false },
       "dry-run": { type: "boolean", default: false },
       purge: { type: "boolean", default: false },
@@ -502,6 +531,197 @@ async function main(): Promise<number> {
           : "The local daemon's answer could not be read.\n",
       );
       return 1;
+    }
+
+    case "explain": {
+      const { explain, renderExplanation } =
+        await import("./commands/explain.js");
+      const words = positionals.slice(1);
+      if (
+        words.length === 0 &&
+        values.tool === undefined &&
+        values.path === undefined
+      ) {
+        write(
+          'Give a command ("rfx explain git push --force") or a file tool ("rfx explain --tool Write --path src/a.ts").\n',
+        );
+        return 2;
+      }
+      const { parseRegistry, statePaths, reflexHome } =
+        await import("./state.js");
+      const { readFile } = await import("node:fs/promises");
+      const registry = parseRegistry(
+        await readFile(statePaths(reflexHome(env)).installs, "utf8").catch(
+          () => undefined,
+        ),
+      );
+      const host =
+        registry.installs.find((entry) => entry.projectDir === env.projectDir)
+          ?.host ?? "claude-code";
+      const explanation = await explain(
+        {
+          host,
+          ...(words.length > 0 ? { command: words.join(" ") } : {}),
+          ...(values.tool === undefined ? {} : { tool: values.tool }),
+          ...(values.path === undefined ? {} : { path: values.path }),
+        },
+        env,
+        nodeFileSystem,
+      );
+      write(
+        values.json
+          ? `${JSON.stringify(explanation, null, 2)}\n`
+          : renderExplanation(explanation, env),
+      );
+      return 0;
+    }
+
+    case "trust": {
+      const trust = await import("./commands/trust.js");
+      if (values.revoke) {
+        const revoked = await trust.trustProjectPolicy(env, nodeFileSystem, {
+          revoke: true,
+        });
+        write(
+          revoked.kind === "revoked"
+            ? `Trust revoked for ${render.safe(revoked.path)}: its allow rules are ignored again.\n`
+            : revoked.kind === "no-policy"
+              ? "This project has no .reflex/policy.yaml.\n"
+              : "Could not write the trust record.\n",
+        );
+        return revoked.kind === "revoked" || revoked.kind === "no-policy"
+          ? 0
+          : 1;
+      }
+      const status = await trust.readProjectPolicy(env, nodeFileSystem);
+      if (status.reading === undefined) {
+        write(
+          'This project has no .reflex/policy.yaml. "rfx policy starter" writes one.\n',
+        );
+        return 0;
+      }
+      if (status.reading.problems.length > 0) {
+        write(
+          `${render.safe(status.reading.path)} does not load:\n  ${status.reading.problems.join("\n  ")}\nFix it before trusting it.\n`,
+        );
+        return 1;
+      }
+      if (status.reading.trusted) {
+        write(
+          `${render.safe(status.reading.path)} is already trusted at this content.\n`,
+        );
+        return 0;
+      }
+      write(
+        [
+          `${render.safe(status.reading.path)} is untrusted: its deny and ask rules apply, its allow rules do not.`,
+          "Trusting this version would let through:",
+          ...trust.describeAllowRules(status.reading.allowRules),
+          "A changed file is untrusted again and asks again.",
+          "",
+        ].join("\n"),
+      );
+      if (!(await confirm("Trust this policy?", values.yes))) {
+        return 0;
+      }
+      const result = await trust.trustProjectPolicy(env, nodeFileSystem);
+      if (result.kind !== "trusted") {
+        write("Could not write the trust record.\n");
+        return 1;
+      }
+      const { appendAudit } = await import("./commands/pause-command.js");
+      const { reflexHome } = await import("./state.js");
+      await appendAudit(reflexHome(env), {
+        at: env.now().toISOString(),
+        kind: "trust",
+        projectDir: env.projectDir,
+        detail: { path: result.path, policyHash: result.policyHash },
+      });
+      write(
+        `Trusted ${render.safe(result.path)} (${result.policyHash.slice(0, 19)}...). Its allow rules apply from the next decision.\n`,
+      );
+      return 0;
+    }
+
+    case "policy": {
+      if (argument !== "starter") {
+        write("Usage: rfx policy starter [--force]\n");
+        return 2;
+      }
+      const { writeStarterPolicy } = await import("./commands/starter.js");
+      const written = await writeStarterPolicy(env, nodeFileSystem, {
+        force: values.force,
+      });
+      if (written.kind === "written") {
+        write(
+          `Wrote ${render.safe(written.path)} and trusted it as written. Edit it freely; "rfx explain" shows what applies.\n`,
+        );
+        return 0;
+      }
+      if (written.kind === "exists") {
+        write(
+          `${render.safe(written.path)} exists and was not touched. Re-run with --force to replace it; the current file is backed up first.\n`,
+        );
+        return 1;
+      }
+      if (written.kind === "replaced") {
+        write(
+          `Replaced ${render.safe(written.path)}; the previous file is at ${render.safe(written.backup ?? "")}. Trusted as written.\n`,
+        );
+        return 0;
+      }
+      write("Could not write the policy file.\n");
+      return 1;
+    }
+
+    case "pause": {
+      const { pauseEnforcement } = await import("./commands/pause-command.js");
+      const result = await pauseEnforcement(
+        env,
+        nodeFileSystem,
+        values.for,
+        values.reason,
+      );
+      if (result.kind === "paused") {
+        write(
+          `Paused until ${result.record.until}. REFLEX keeps observing and answers nothing until then. "rfx resume" ends it early.\n`,
+        );
+        return 0;
+      }
+      if (result.kind === "bad-duration") {
+        write(
+          'A pause needs a bounded duration: "rfx pause --for 30m" (s, m, h, d; at most 1d).\n',
+        );
+        return 2;
+      }
+      write("Could not write the pause.\n");
+      return 1;
+    }
+
+    case "resume": {
+      const { resumeEnforcement } = await import("./commands/pause-command.js");
+      const result = await resumeEnforcement(env, nodeFileSystem);
+      if (result.kind === "resumed") {
+        write(`Resumed. The pause was to end at ${result.wasPausedUntil}.\n`);
+        return 0;
+      }
+      if (result.kind === "not-paused") {
+        write("REFLEX was not paused.\n");
+        return 0;
+      }
+      write("Could not remove the pause file.\n");
+      return 1;
+    }
+
+    case "doctor": {
+      const { renderDoctor, runDoctor } = await import("./commands/doctor.js");
+      const report = await runDoctor(env, nodeFileSystem);
+      write(
+        values.json
+          ? `${JSON.stringify(report, null, 2)}\n`
+          : renderDoctor(report),
+      );
+      return report.failures > 0 ? 1 : 0;
     }
 
     case "status": {

@@ -482,6 +482,18 @@ outranks every default (150 for `built-in` down to 110 for `local`), and among
 defaults the more specific source is higher (10 for `built-in` up to 50 for
 `local`).
 
+### Where the sources come from today (G9)
+
+- `local`: the user's `<REFLEX_HOME>/policy.yaml`, every project.
+- `project`: the repository's `.reflex/policy.yaml`, found from the action's
+  working directory upward and never above the home directory. `rfx init`
+  writes the starter one when the project has none and trusts it as written;
+  `rfx trust` trusts a version the user has read, by content hash; until
+  then the file only tightens (ADR-012). `rfx explain` shows which rules
+  matched, from which source, and which decided.
+- `organization` and `environment`: G9.5 (RFX-083, RFX-084), as signed
+  snapshots a team publishes.
+
 ## 7. Built-in rules
 
 REFLEX protects its own configuration from the agent it governs. Three

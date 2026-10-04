@@ -1,17 +1,29 @@
 {
   "name": "@reflex/decision-gateway",
   "version": "0.0.0",
-  "private": true,
   "description": "Latency-sensitive runtime decision endpoint. Deployable independently of dashboard/control-plane concerns.",
   "license": "Apache-2.0",
   "type": "module",
   "exports": {
     "./main.js": "./dist/main.js",
-    "./package.json": "./package.json"
+    "./package.json": "./package.json",
+    "./policy.js": {
+      "types": "./dist/policy.d.ts",
+      "default": "./dist/policy.js"
+    }
   },
   "files": [
     "dist"
   ],
+  "publishConfig": {
+    "access": "public",
+    "provenance": true
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/RafaelCasuso/reflex.git",
+    "directory": "apps/decision-gateway"
+  },
   "scripts": {
     "build": "tsc -p tsconfig.build.json",
     "typecheck": "tsc -p tsconfig.json",

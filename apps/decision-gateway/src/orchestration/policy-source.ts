@@ -23,8 +23,9 @@ import {
  * ADR-003 §3: a set that does not compile is reported and the last good one
  * stays in force. With no good set at all, REFLEX's own rules alone are in
  * force and everything else is unresolved, which the policy default reads as
- * `ask`. Serving one project's policy to that project (per `action`) is a
- * later gate's work; every action gets the same set here.
+ * `ask`. Since G9 a project's `.reflex/policy.yaml` is added per action by
+ * the composer of `project-policy.ts` (RFX-104); this holder keeps the
+ * user's own sources, which every set starts from.
  */
 export type PolicyLoadResult =
   | { readonly ok: true; readonly set: CompiledPolicySet }
@@ -44,6 +45,8 @@ export interface PolicyHolder {
     now: Date,
   ) => PolicyLoadResult;
   readonly setFor: (action: CanonicalAction) => CompiledPolicySet;
+  /** The user's sources as last loaded, for a composer that adds a project's (RFX-104). */
+  readonly sources: () => readonly PolicySourceDocument[];
 }
 
 export function createPolicyHolder(): PolicyHolder {
@@ -56,6 +59,7 @@ export function createPolicyHolder(): PolicyHolder {
     );
   }
   let current = builtInOnly.set;
+  let currentSources: readonly PolicySourceDocument[] = [];
   let lastProblems: readonly string[] = [];
   let loadedAt: string | undefined;
 
@@ -65,6 +69,7 @@ export function createPolicyHolder(): PolicyHolder {
       const result = compilePolicySet(sources);
       if (result.ok) {
         current = result.set;
+        currentSources = sources;
         lastProblems = [];
         loadedAt = now.toISOString();
         return { ok: true, set: result.set };
@@ -73,6 +78,7 @@ export function createPolicyHolder(): PolicyHolder {
       return { ok: false, problems: result.problems };
     },
     setFor: () => current,
+    sources: () => currentSources,
   };
 }
 
@@ -111,6 +117,8 @@ export async function readPolicyFiles(
 
 export interface EngineBuildOptions {
   readonly policies: PolicyHolder;
+  /** RFX-104: the set per action, when a composer adds the project's policy. */
+  readonly setFor?: (action: CanonicalAction) => CompiledPolicySet;
   readonly failureMode: FailureMode;
   readonly cache: boolean;
   readonly home: string | undefined;
@@ -129,7 +137,7 @@ export const DEFAULT_DEADLINE = { defaultMs: 2_000, maxMs: 10_000 } as const;
 
 export function buildEngine(options: EngineBuildOptions): ReflexDecisionEngine {
   return createDecisionEngine({
-    policy: options.policies.setFor,
+    policy: options.setFor ?? options.policies.setFor,
     failureMode: options.failureMode,
     deadline: options.deadline ?? DEFAULT_DEADLINE,
     ...(options.home === undefined ? {} : { paths: { home: options.home } }),

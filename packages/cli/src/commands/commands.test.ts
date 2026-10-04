@@ -802,9 +802,15 @@ web_search = true
       nodeFileSystem,
       codexProbes,
     );
-    expect(
-      otherPlan.kind === "install" && otherPlan.writes.map((w) => w.path),
-    ).toEqual([statePaths(env.reflexHomeOverride ?? "").installs]);
+    const otherPaths =
+      otherPlan.kind === "install" ? otherPlan.writes.map((w) => w.path) : [];
+    // The shared hooks file and the flag are not written again; the other
+    // project gets its registry entry, its starter policy and its trust.
+    expect(otherPaths).not.toContain(hooksFile);
+    expect(otherPaths).not.toContain(configFile);
+    expect(otherPaths).toContain(
+      statePaths(env.reflexHomeOverride ?? "").installs,
+    );
     if (otherPlan.kind === "install") {
       expect((await applyInit(otherPlan, nodeFileSystem, env.now)).ok).toBe(
         true,
