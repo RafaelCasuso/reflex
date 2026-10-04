@@ -1,4 +1,4 @@
-import { readdirSync } from "node:fs";
+import { existsSync, readdirSync } from "node:fs";
 
 import { ESLint } from "eslint";
 import { describe, expect, it } from "vitest";
@@ -259,6 +259,11 @@ describe("open-core boundary (ADR-015)", () => {
 
   it("declares in every manifest the licence the list gives it", () => {
     for (const entry of listed) {
+      // RFX-149: the public repository has no private package directories;
+      // an open one must always be there.
+      if (entry.side !== "open" && !existsSync(repoPath(entry.path))) {
+        continue;
+      }
       const raw = readJson(entry.path, "package.json") as { license?: unknown };
       expect(raw.license, entry.path).toBe(
         entry.side === "open" ? "Apache-2.0" : "UNLICENSED",

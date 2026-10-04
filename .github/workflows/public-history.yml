@@ -1,0 +1,36 @@
+# RFX-149 — the public repository's history holds no private path.
+#
+# Runs on every push and pull request, but only where the repository
+# variable REFLEX_PUBLIC is "true": the public `reflex`. In the private
+# monorepo the private paths exist by design and this check is skipped.
+#
+# Rules guarded by tests/ci.test.ts:
+#   - the check runs and can fail the job
+#   - no `continue-on-error`, no `|| true`
+#   - third-party actions are pinned to a full commit SHA
+name: Public history
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  public-history:
+    name: Public history check
+    if: ${{ vars.REFLEX_PUBLIC == 'true' }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - name: Checkout (full history, every ref)
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+
+      - name: Private paths never appear
+        run: bash tools/check-public-history.sh

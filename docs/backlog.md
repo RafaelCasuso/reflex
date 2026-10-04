@@ -1029,11 +1029,15 @@ RFX-052, RFX-053, RFX-056, RFX-057 and RFX-058 moved to G1.5. This gate complete
 
 **Acceptance:** Existing file never overwritten without explicit user action.
 
+**Status:** Done (2026-10-04). `rfx init` writes the starter policy of RFX-017 (`STARTER_POLICY_YAML`) to `<project>/.reflex/policy.yaml` when the project has none, in the same reversible transaction as the hooks, and trusts it as written (RFX-104); the plan says so before anything is touched. **Existing file never overwritten without explicit user action:** a file that exists is left byte for byte, `rfx init` says `already-installed`, and `rfx policy starter` refuses to replace it without `--force`, which keeps a timestamped copy next to it first (`g9.test.ts`, `bin.e2e.test.ts`). Every write is audited in `audit.jsonl`. `docs/cli.md`.
+
 ### RFX-055 — Implement `rfx doctor`
 
 **Goal:** Diagnose adapters, gateway, policy, auth and host config.
 
 **Acceptance:** Each failure includes concrete remediation.
+
+**Status:** Done (2026-10-04). `packages/cli/src/commands/doctor.ts`: checks the install registry and identity, the hook files of every host installed in the project against the command this `rfx` installs (gone, missing events, altered, `disableAllHooks`), the node binary and the entry the hooks name, Codex's `features.hooks` and its trust step, the daemon and its version against the shipped one, the socket directory's and the home's modes, the user's `policy.yaml` and the project's `.reflex/policy.yaml` with their trust, the provider and its consent and key, and a pause. **Each failure includes concrete remediation:** every `fail` and `warn` carries the command or the edit to make, held by a test that breaks a hook, a policy, a provider and pauses, and finds a remediation on each; exit 1 on any failure; `--json` for scripts; nothing is written. Auth is reported as not needed until G10. `docs/cli.md`.
 
 ### RFX-126 — Implement `rfx pause`
 
@@ -1043,6 +1047,8 @@ RFX-052, RFX-053, RFX-056, RFX-057 and RFX-058 moved to G1.5. This gate complete
 
 **Why:** The alternative to a break-glass is `rfx uninstall`, and an uninstalled REFLEX protects nothing.
 
+**Status:** Done (2026-10-04). `rfx pause --for <duration> [--reason]` writes `<REFLEX_HOME>/pause.json`; `rfx resume` removes it. **Mandatory duration:** `s`, `m`, `h`, `d`, at most one day, refused otherwise (exit 2). **Visible in `rfx status`** (`PAUSED until …`) and in `rfx doctor`. **Ends automatically:** the hook reads the file on every call and treats an expired pause as none. **Audited:** `audit.jsonl` gets a `pause` and a `resume` line. **While paused REFLEX keeps observing:** the hooks record every event and answer nothing, for Claude Code and Codex alike, held end to end against the real daemon in Autopilot (a deny before, silence during, the deny again after `rfx resume`). **The agent cannot invoke it:** `pause` and `resume` are on `reflex.protect-own-command` (RFX-103). A pause file REFLEX cannot read is no pause.
+
 ### RFX-127 — Signed releases
 
 **Goal:** Publish the CLI and SDK with build provenance, from `.github/workflows/release.yml`.
@@ -1050,6 +1056,8 @@ RFX-052, RFX-053, RFX-056, RFX-057 and RFX-058 moved to G1.5. This gate complete
 **Acceptance:** A published artifact can be verified against the commit and workflow that built it. Publishing is only possible from CI.
 
 **Why:** `rfx` installs itself into every tool call. `release.yml` is in the architecture layout and had no ticket.
+
+**Status:** Implemented, verification pending (2026-10-04). `.github/workflows/release.yml` runs for a `vMAJOR.MINOR.PATCH` tag only (no `workflow_dispatch`, no branch), installs frozen, runs lint, typecheck, test and build, sets every publishable version from the tag (`tools/release/set-version.mjs`), packs the tarballs, attaches a build-provenance attestation (`actions/attest-build-provenance`, pinned) and publishes every `@reflex/*` open package with `--provenance`; `tests/ci.test.ts` holds the trigger, the permissions (`id-token: write`, `contents: read`), the order and the flags. The sixteen open packages of `docs/open-core.md` are publishable (`publishConfig.access: public`, `provenance: true`, `files: [dist]`, Apache-2.0) and the three private ones stay `private: true`, held by `tests/workspace.test.ts`. **A published artifact can be verified against the commit and workflow that built it:** `npm audit signatures` and `gh attestation verify`, documented in `docs/releasing.md`. **Publishing is only possible from CI:** by construction of the trigger. **Missing:** no version has been published, because the npm scope `@reflex` is not set up for trusted publishing (or an `NPM_TOKEN`); that is the maintainer's one step, and the job fails at publish until it is done.
 
 ### RFX-099 — Implement `rfx explain`
 
@@ -1061,6 +1069,8 @@ RFX-052, RFX-053, RFX-056, RFX-057 and RFX-058 moved to G1.5. This gate complete
 
 **Why:** `CLAUDE.md` principle 6 requires every policy resolution to be explainable through matched rules, precedence and final effect. Nothing exposed that to the user.
 
+**Status:** Done (2026-10-04). `packages/cli/src/commands/explain.ts`: builds the canonical action for a shell command or a file tool and path, composes the policy set exactly as the daemon does (`@reflex/decision-gateway/policy`: the user's `policy.yaml`, the project's `.reflex/policy.yaml` under its recorded trust, REFLEX's own rules) and calls the policy engine's `evaluatePolicy` with the same path context. **The output comes from the same evaluation the engine performs, not from a re-implementation:** no matcher or precedence logic lives in the CLI; it prints the class and segments, every matched rule with its source (read back from the precedence of ADR-004), precedence, mandatory flag and which one decides, the final effect or the unresolved default and floor, and the effect per mode through `effectiveEffectOf`. **Works offline against the local policy:** no daemon, no provider; what a provider would say about an unresolved action is not known and the output says so. `--json` for scripts. Adversarial: the untrusted project policy's allow is shown as ignored and its deny as deciding (`g9.test.ts`, end to end in `bin.e2e.test.ts`).
+
 ### RFX-104 — Workspace trust for project policies
 
 **Goal:** Treat a repository's `.reflex/policy.yaml` as untrusted until the user trusts it.
@@ -1068,6 +1078,8 @@ RFX-052, RFX-053, RFX-056, RFX-057 and RFX-058 moved to G1.5. This gate complete
 **Acceptance:** An untrusted project policy can tighten (its deny and ask rules apply) and cannot loosen (its allow rules are ignored). Trust is bound to the policy content hash and asked again when the content changes. The prompt shows what the policy would allow. The agent cannot answer the prompt.
 
 **Depends on:** RFX-102, RFX-016.
+
+**Status:** Done (2026-10-04). `apps/decision-gateway/src/orchestration/project-policy.ts`: for every action the daemon finds `.reflex/policy.yaml` from the action's working directory upward, never above the home, and adds it as the `project` source, trusted only when `<REFLEX_HOME>/trust.json` holds that path at that content hash. **An untrusted project policy can tighten and cannot loosen:** its deny and ask rules apply, its allow rules are ignored, by the precedence engine of RFX-014 (ADR-012); held at the composer, in `rfx explain`, and end to end against the real daemon in Autopilot (a repository that allows `touch`: `ask` until trusted, `allow` after). **Trust is bound to the policy content hash and asked again when the content changes:** an edited file is untrusted at the next decision (the composer re-reads by size and mtime) and `rfx status` says `UNTRUSTED`. **The prompt shows what the policy would allow:** `rfx trust` prints every allow rule with its conditions, never the deny rules, and asks; `--yes` for scripts; `--revoke` takes it back. **The agent cannot answer the prompt:** `trust` is on `reflex.protect-own-command`. The starter `rfx init` writes is trusted at creation, because the user asked for it. Hot path: a few cached `stat` calls; a project policy that does not parse is dropped, counted in health and shown by `rfx doctor`.
 
 ### RFX-149 — Split the repositories: public `reflex`, private `reflex-cloud`
 
@@ -1083,7 +1095,11 @@ RFX-052, RFX-053, RFX-056, RFX-057 and RFX-058 moved to G1.5. This gate complete
 
 **Test layers:** contract (the boundary test and the history check in the public repository), CI (the private-path check on pull requests).
 
+**Status:** Implemented, verification pending (2026-10-04). In place: `tools/private-paths.txt` (the private table of `docs/open-core.md`, held equal by a test), `tools/check-public-history.sh` (fails on a private path in the working tree or in any commit of any ref), `.github/workflows/public-history.yml` (every push and pull request where the repository variable `REFLEX_PUBLIC` is `true`, so a pull request that adds a private file fails in the public repository), the quality gates made tolerant of the public layout (the workspace tests require every open package and accept the private ones only when present, and a package in neither table still fails; the rdm steps of `ci.yml` run only where `rdm/pyproject.toml` exists), and `docs/repo-split.md` with the procedure (`git filter-repo` through `uv`, the check, the gates, the renames). A dry run of the filtering and the checks was done locally (`docs/repo-split.md`, "Dry run"). **Missing, by the ticket's own preconditions:** the private repository must depend on the open packages by published version, which needs the first npm publish of RFX-127; and the repository is made public only once CI and the security gate are green over the filtered history there. Creating `reflex` and renaming this repository to `reflex-cloud` are the maintainer's actions.
+
 **Gate exit:** all tickets above are green in CI and documented; no known dangerous false-allow regression. **Specifically:** a partial install failure rolls back completely; every `rfx doctor` failure names a remediation; an existing policy file is never overwritten without an explicit user action; the public repository's history holds no private path.
+
+**Gate status:** Done locally, pending CI (2026-10-04). Five tickets done (RFX-054, RFX-055, RFX-126, RFX-099, RFX-104); two implemented with their verification pending on the maintainer (RFX-127: the npm scope; RFX-149: the split itself, which needs the first publish and the maintainer's go to make source public). **The specific exits:** a partial install failure rolls back completely (the transaction of RFX-053, unchanged, now carrying the starter policy and the trust record too); every `rfx doctor` failure names a remediation (test); an existing policy file is never overwritten without `--force` (tests, end to end); the public repository's history holds no private path (the check script and workflow, run on the filtered dry run). **No known dangerous false allow:** the one new way to an `allow` is a trusted project policy, and trust needs a human at a terminal who has seen the allow rules; untrusted, a repository can only tighten.
 
 ## G9.5 — Team policy and the public door
 

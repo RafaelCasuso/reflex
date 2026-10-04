@@ -1,7 +1,6 @@
 {
   "name": "@reflex/provider-local",
   "version": "0.0.0",
-  "private": true,
   "description": "A semantic provider that calls a local inference server speaking the canonical contract. RDM and Laya are checkpoints behind it; REFLEX does not know which.",
   "license": "Apache-2.0",
   "type": "module",
@@ -15,6 +14,15 @@
   "files": [
     "dist"
   ],
+  "publishConfig": {
+    "access": "public",
+    "provenance": true
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/RafaelCasuso/reflex.git",
+    "directory": "packages/provider-local"
+  },
   "scripts": {
     "build": "tsc -p tsconfig.build.json",
     "typecheck": "tsc -p tsconfig.json",

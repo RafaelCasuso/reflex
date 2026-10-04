@@ -1,7 +1,6 @@
 {
   "name": "@reflex/adapter-claude-code",
   "version": "0.0.0",
-  "private": true,
   "description": "Claude Code host translation only.",
   "license": "Apache-2.0",
   "type": "module",
@@ -19,6 +18,15 @@
   "files": [
     "dist"
   ],
+  "publishConfig": {
+    "access": "public",
+    "provenance": true
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/RafaelCasuso/reflex.git",
+    "directory": "packages/adapter-claude-code"
+  },
   "scripts": {
     "build": "tsc -p tsconfig.build.json",
     "typecheck": "tsc -p tsconfig.json",

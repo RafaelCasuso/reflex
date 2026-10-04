@@ -5,6 +5,7 @@ import { describe, expect, it } from "vitest";
 import { findForbiddenEdges } from "./support/boundaries.js";
 import {
   parseManifest,
+  readJson,
   readManifest,
   repoPath,
   type PackageManifest,
@@ -17,6 +18,17 @@ import {
  * the architecture document (and an ADR if boundaries move) together with
  * this list.
  */
+/**
+ * RFX-149: the private packages exist only in the private monorepo. The
+ * public repository (`docs/open-core.md`) has none of them, and this suite
+ * runs there too: every directory present must be documented, every open
+ * package must be present, and a private one is checked when it is there.
+ */
+const PRIVATE_WORKSPACES: Readonly<Record<string, readonly string[]>> = {
+  apps: ["api", "dashboard"],
+  packages: ["auth"],
+};
+
 const EXPECTED_WORKSPACES: Readonly<Record<string, readonly string[]>> = {
   apps: ["api", "dashboard", "decision-gateway"],
   packages: [
@@ -48,9 +60,15 @@ function directoriesIn(parent: string): readonly string[] {
     .sort();
 }
 
-const workspaces = Object.entries(EXPECTED_WORKSPACES).flatMap(
-  ([parent, names]) => names.map((name) => ({ parent, name })),
-);
+const isPresent = ({ parent, name }: { parent: string; name: string }) =>
+  directoriesIn(parent).includes(name);
+
+const workspaces = Object.entries(EXPECTED_WORKSPACES)
+  .flatMap(([parent, names]) => names.map((name) => ({ parent, name })))
+  .filter(isPresent);
+
+const isPrivateWorkspace = (parent: string, name: string): boolean =>
+  (PRIVATE_WORKSPACES[parent] ?? []).includes(name);
 
 const manifests: readonly PackageManifest[] = workspaces.map(
   ({ parent, name }) => readManifest(parent, name),
@@ -58,9 +76,20 @@ const manifests: readonly PackageManifest[] = workspaces.map(
 
 describe("RFX-002 workspace shape", () => {
   it.each(Object.keys(EXPECTED_WORKSPACES))(
-    "%s/ contains exactly the documented directories",
+    "%s/ contains documented directories only, every open one among them",
     (parent) => {
-      expect(directoriesIn(parent)).toEqual(EXPECTED_WORKSPACES[parent]);
+      const present = directoriesIn(parent);
+      const documented = EXPECTED_WORKSPACES[parent] ?? [];
+      for (const name of present) {
+        expect(documented, `${parent}/${name} is not documented`).toContain(
+          name,
+        );
+      }
+      for (const name of documented) {
+        if (!isPrivateWorkspace(parent, name)) {
+          expect(present, `${parent}/${name} is missing`).toContain(name);
+        }
+      }
     },
   );
 
@@ -71,9 +100,35 @@ describe("RFX-002 workspace shape", () => {
       expect(manifest.name).toBe(`@reflex/${name}`);
     });
 
-    it("cannot be published by accident", () => {
-      expect(manifest.isPrivate).toBe(true);
-    });
+    // RFX-127: an open package publishes from CI with provenance and ships
+    // its dist only; a private one can never be published.
+    it(
+      isPrivateWorkspace(parent, name)
+        ? "cannot be published"
+        : "is publishable, public, with provenance, dist only",
+      () => {
+        const raw = readJson(parent, name, "package.json") as {
+          private?: boolean;
+          publishConfig?: { access?: string; provenance?: boolean };
+          files?: string[];
+          license?: string;
+        };
+        if (isPrivateWorkspace(parent, name)) {
+          expect(raw.private).toBe(true);
+          return;
+        }
+        expect(raw.private).toBeUndefined();
+        expect(raw.publishConfig).toEqual({
+          access: "public",
+          provenance: true,
+        });
+        // dist always; a package may ship data next to it (evals: corpus),
+        // never its sources.
+        expect(raw.files).toContain("dist");
+        expect(raw.files).not.toContain("src");
+        expect(raw.license).toBe("Apache-2.0");
+      },
+    );
 
     it("takes part in every quality gate", () => {
       for (const script of QUALITY_GATE_SCRIPTS) {

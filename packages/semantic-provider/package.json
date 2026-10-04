@@ -1,7 +1,6 @@
 {
   "name": "@reflex/semantic-provider",
   "version": "0.0.0",
-  "private": true,
   "description": "Semantic decision provider interface.",
   "license": "Apache-2.0",
   "type": "module",
@@ -15,6 +14,15 @@
   "files": [
     "dist"
   ],
+  "publishConfig": {
+    "access": "public",
+    "provenance": true
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/RafaelCasuso/reflex.git",
+    "directory": "packages/semantic-provider"
+  },
   "scripts": {
     "build": "tsc -p tsconfig.build.json",
     "typecheck": "tsc -p tsconfig.json",

@@ -1,7 +1,6 @@
 {
   "name": "@reflex/contracts",
   "version": "0.0.0",
-  "private": true,
   "description": "Canonical public/internal schemas. The single source of truth for REFLEX contracts.",
   "license": "Apache-2.0",
   "type": "module",
@@ -15,6 +14,15 @@
   "files": [
     "dist"
   ],
+  "publishConfig": {
+    "access": "public",
+    "provenance": true
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/RafaelCasuso/reflex.git",
+    "directory": "packages/contracts"
+  },
   "scripts": {
     "build": "tsc -p tsconfig.build.json",
     "typecheck": "tsc -p tsconfig.json",

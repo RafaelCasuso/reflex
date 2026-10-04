@@ -1,7 +1,6 @@
 {
   "name": "@reflex/evals",
   "version": "0.0.0",
-  "private": true,
   "description": "Regression corpus and autonomy/safety evaluation harness.",
   "license": "Apache-2.0",
   "type": "module",
@@ -16,6 +15,15 @@
     "dist",
     "corpus"
   ],
+  "publishConfig": {
+    "access": "public",
+    "provenance": true
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/RafaelCasuso/reflex.git",
+    "directory": "packages/evals"
+  },
   "scripts": {
     "build": "tsc -p tsconfig.build.json",
     "typecheck": "tsc -p tsconfig.json",

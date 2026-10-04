@@ -19,6 +19,8 @@ export interface WorkflowRequirements {
   readonly install: string | undefined;
   /** Commands that must each be the whole of some `run` step. */
   readonly commands: readonly string[];
+  /** A workflow that never runs on a pull request, by design (a release). */
+  readonly pullRequest?: false;
 }
 
 /** RFX-145: the private rdm/ module's tests run in the same job, published nowhere. */
@@ -49,6 +51,22 @@ export const MUTATION_REQUIREMENTS: WorkflowRequirements = {
   commands: ["pnpm build", "pnpm mutation"],
 };
 
+/** RFX-127. Every gate, the build, then publish with provenance; tags only. */
+export const RELEASE_REQUIREMENTS: WorkflowRequirements = {
+  install: FROZEN_INSTALL,
+  commands: [
+    ...REQUIRED_GATES,
+    "pnpm -r publish --access public --provenance --no-git-checks",
+  ],
+  pullRequest: false,
+};
+
+/** RFX-149. The public repository's history holds no private path. */
+export const PUBLIC_HISTORY_REQUIREMENTS: WorkflowRequirements = {
+  install: undefined,
+  commands: ["bash tools/check-public-history.sh"],
+};
+
 /** RFX-124. The packages are built, then the latest host release is compared. */
 export const HOST_SCHEMA_REQUIREMENTS: WorkflowRequirements = {
   install: FROZEN_INSTALL,
@@ -71,7 +89,10 @@ export function auditWorkflow(
     .map((line) => /^\s*(?:-\s+)?run:\s*(.*)$/.exec(line)?.[1]?.trim())
     .filter((command): command is string => command !== undefined);
 
-  if (!/^\s*pull_request:/m.test(lines.join("\n"))) {
+  if (
+    requirements.pullRequest !== false &&
+    !/^\s*pull_request:/m.test(lines.join("\n"))
+  ) {
     problems.push("workflow does not run on pull_request");
   }
 

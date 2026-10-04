@@ -6,6 +6,8 @@ import {
   auditWorkflow,
   HOST_SCHEMA_REQUIREMENTS,
   MUTATION_REQUIREMENTS,
+  PUBLIC_HISTORY_REQUIREMENTS,
+  RELEASE_REQUIREMENTS,
   SECURITY_REQUIREMENTS,
 } from "./support/ci.js";
 import { readJson, readText, repoPath } from "./support/repo.js";
@@ -217,6 +219,106 @@ describe("RFX-124 host schema canary", () => {
     },
   ])("rejects the workflow when $label", ({ tamper, expected }) => {
     expect(audit(tamper(workflow))).toContain(expected);
+  });
+});
+
+/** RFX-127 — a release is built, verified and published from CI, with provenance. */
+describe("RFX-127 signed releases", () => {
+  const workflow = readText(".github", "workflows", "release.yml");
+  const audit = (text: string) => auditWorkflow(text, RELEASE_REQUIREMENTS);
+
+  it("passes the audit as committed", () => {
+    expect(audit(workflow)).toEqual([]);
+  });
+
+  it("runs only for a version tag pushed to the repository, never on demand or from a branch", () => {
+    expect(workflow).toMatch(
+      /^on:\n {2}push:\n {4}tags:\n {6}- "v\[0-9\]\+\.\[0-9\]\+\.\[0-9\]\+"/m,
+    );
+    expect(workflow).not.toContain("workflow_dispatch");
+    expect(workflow).not.toMatch(/^ {4}branches:/m);
+  });
+
+  it("asks for the OIDC token that provenance needs, and writes nothing else", () => {
+    expect(workflow).toMatch(/^ {6}id-token: write$/m);
+    expect(workflow).toMatch(/^ {6}attestations: write$/m);
+    expect(workflow).toMatch(/^ {6}contents: read$/m);
+    expect(workflow).not.toMatch(/contents: write/);
+  });
+
+  it("sets every publishable version from the tag after the gates and before publishing", () => {
+    expect(workflow).toContain(
+      'node tools/release/set-version.mjs "${GITHUB_REF_NAME#v}"',
+    );
+    const publish = workflow.indexOf("pnpm -r publish");
+    const version = workflow.indexOf("set-version.mjs");
+    const test = workflow.indexOf("run: pnpm test");
+    expect(version).toBeGreaterThan(test);
+    expect(publish).toBeGreaterThan(version);
+  });
+
+  it.each([
+    {
+      label: "publish loses provenance",
+      tamper: (text: string) => text.replace(" --provenance", ""),
+      expected:
+        'missing quality gate "pnpm -r publish --access public --provenance --no-git-checks"',
+    },
+    {
+      label: "a gate is skipped before publishing",
+      tamper: (text: string) =>
+        text.replace("run: pnpm test", "run: echo skipped"),
+      expected: 'missing quality gate "pnpm test"',
+    },
+  ])("rejects the workflow when $label", ({ tamper, expected }) => {
+    expect(audit(tamper(workflow))).toContain(expected);
+  });
+});
+
+/** RFX-149 — the public repository's history holds no private path. */
+describe("RFX-149 public history check", () => {
+  const workflow = readText(".github", "workflows", "public-history.yml");
+  const audit = (text: string) =>
+    auditWorkflow(text, PUBLIC_HISTORY_REQUIREMENTS);
+
+  it("passes the audit as committed", () => {
+    expect(audit(workflow)).toEqual([]);
+  });
+
+  it("runs only where the repository says it is the public one, with the whole history", () => {
+    expect(workflow).toContain("if: ${{ vars.REFLEX_PUBLIC == 'true' }}");
+    expect(workflow).toContain("fetch-depth: 0");
+  });
+
+  it("names every private path of docs/open-core.md, and nothing else", () => {
+    const listed = readText("tools", "private-paths.txt")
+      .split("\n")
+      .map((line) => line.replace(/#.*$/, "").trim())
+      .filter((line) => line !== "")
+      .sort();
+    const openCore = readText("docs", "open-core.md");
+    const privateSection = openCore.slice(
+      openCore.indexOf("## Private"),
+      openCore.indexOf("## Rules"),
+    );
+    const documented = [
+      ...new Set(
+        [...privateSection.matchAll(/`([^`]+)`/g)]
+          .map((match) => match[1] ?? "")
+          .filter(
+            (cell) => /^(apps|packages)\//.test(cell) || /^rdm\/?$/.test(cell),
+          )
+          .map((path) => path.replace(/\/$/, "")),
+      ),
+    ].sort();
+    expect(listed).toEqual(documented);
+  });
+
+  it("checks the working tree and every ref, and exits non-zero on a finding", () => {
+    const script = readText("tools", "check-public-history.sh");
+    expect(script).toContain("git log --all");
+    expect(script).toContain("tools/private-paths.txt");
+    expect(script).toContain('exit "$status"');
   });
 });
 

@@ -73,13 +73,15 @@ jobs:
       # RFX-145: the private rdm/ module's own tests (ADR-016 §5), run here
       # and published nowhere. `uv` is pinned by version through pipx, which
       # the runner ships; the environment is the locked one.
+      # RFX-149: the public repository has no rdm/; these steps run only
+      # where it exists, and every one of them can still fail the job there.
       - name: Set up uv
-        if: ${{ !cancelled() }}
+        if: ${{ !cancelled() && hashFiles('rdm/pyproject.toml') != '' }}
         run: pipx install uv==0.9.28
 
       - name: Install rdm (locked)
         id: rdm-install
-        if: ${{ !cancelled() }}
+        if: ${{ !cancelled() && hashFiles('rdm/pyproject.toml') != '' }}
         working-directory: rdm
         run: uv sync --locked
 
