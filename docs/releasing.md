@@ -126,5 +126,8 @@ by hand (2026-10-04, no provenance). `v0.1.1` is the first release from CI,
 through trusted publishing: every package carries npm provenance, and an
 install of `@reflex-control/cli@0.1.1` passes `npm audit signatures` with a
 verified attestation on every REFLEX package. `gh attestation verify` fails
-on `v0.1.1` for the reason above; the next tag is the first whose GitHub
-attestation names the tarballs npm serves.
+on `v0.1.1` for the reason above. `v0.1.2` (2026-10-05) is the first whose
+GitHub attestation names the tarballs npm serves: `gh attestation verify`
+on `npm pack @reflex-control/cli@0.1.2` succeeds, the attestation's subjects
+being the sixteen tarballs built by `release.yml` at `refs/tags/v0.1.2`, and
+the published `rfx --version` prints `rfx 0.1.2`.

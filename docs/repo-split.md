@@ -90,12 +90,15 @@ published `0.1.0` by hand, a trusted publisher was set on each package, the
 `NPM_TOKEN` secret was deleted, and `v0.1.1` published the sixteen packages
 from CI with provenance (`docs/releasing.md`).
 
-Still to do: `reflex-cloud` drops the open packages and depends on them by
-version, which closes RFX-149. It needs `v0.1.2`, the first version whose
-`@reflex-control/contracts` ships `fixtures/`: `rdm/` reads the frozen
-contract fixtures, and in `reflex-cloud` it reads them from the installed
-package instead of the path `packages/contracts/fixtures`.
+The last step was done on 2026-10-06 (`reflex-cloud` pull request #34),
+once `v0.1.2` had shipped `fixtures/` inside `@reflex-control/contracts`:
+`reflex-cloud` holds `apps/api`, `apps/dashboard`, `packages/auth` and
+`rdm/` only; its three packages and its root manifest pin
+`@reflex-control/contracts` at exactly `0.1.2`, its lockfile names it, and
+its tests hold the pins, the lockfile and the absence of every open
+package; `rdm/` reads the contracts' frozen fixtures from the installed
+package. RFX-149 is closed.
 
-Until that last step, open code and documentation are developed here first
-and mirrored into `reflex-cloud`; a change made there to an open path is
-cherry-picked here.
+From here on, open code and documentation are developed here only. The
+private repository consumes released versions and moves its pin by hand or
+through Dependabot; nothing is mirrored between the two.
