@@ -133,6 +133,24 @@ describe("RFX-143 the decision observer", () => {
     expect(built.observations[0]?.request).toBeDefined();
   });
 
+  // A provider that throws is reported as unavailable (ADR-005 §2), and the
+  // record must say the primary failed: the mutation check of 2026-10-06
+  // showed that nothing held the `ok: false` of that report.
+  it("carries the primary's failure when the provider threw, as unavailable", async () => {
+    const built = build({ primary: { kind: "throw" } });
+    const decision = await built.engine.decide(request(shell("cat README.md")));
+    expect(decision.fallback).toMatchObject({
+      used: true,
+      reason: "provider-error",
+    });
+    await observed(built, 1);
+    expect(built.observations[0]?.primary?.result).toMatchObject({
+      ok: false,
+      error: { kind: "unavailable", providerName: "fake" },
+    });
+    expect(built.observations[0]?.request).toBeDefined();
+  });
+
   it("says a rule decided, and carries no request or primary then", async () => {
     const built = build({ policy: ALLOW_GIT_STATUS });
     await built.engine.decide(request(shell("git status")));
