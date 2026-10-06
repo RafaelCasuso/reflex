@@ -16,15 +16,18 @@
     "test": "turbo run test test:root",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
-    "lint:root": "eslint --max-warnings 0 eslint.config.mjs vitest.config.ts tests",
+    "lint:root": "eslint --max-warnings 0 eslint.config.mjs vitest.config.ts tests site/src",
     "typecheck:root": "tsc -p tsconfig.json",
     "test:root": "vitest run",
-    "mutation": "node tools/mutate.mjs"
+    "mutation": "node tools/mutate.mjs",
+    "site:build": "node site/src/build.mjs",
+    "site:check": "node site/src/check-links.mjs"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
     "@types/node": "^24.13.5",
     "eslint": "^10.10.0",
+    "marked": "^18.1.0",
     "prettier": "^3.9.8",
     "turbo": "^2.10.13",
     "typescript": "~6.0.3",

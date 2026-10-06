@@ -1,0 +1,23 @@
+$ rfx status
+REFLEX  mode: observe  (records only, never interferes)
+
+Adapters
+  claude-code  active
+              ~/work/api/.claude/settings.local.json
+
+Observed in this project
+  1 actions
+    ran without a prompt   0
+    prompted               0  (approved 0, rejected 0)
+    blocked by the host    0
+    not yet known          1
+
+Last action  Bash  0s ago  class: unknown
+Hook time    p50 74.4 ms, p95 74.4 ms inside the hook process (1 calls; process start not included)
+
+Daemon       running, v0.0.0, pid 97221, up 0s
+Provider     none (policy alone; an open action asks; nothing leaves this machine)
+Policy       ~/work/api/.reflex/policy.yaml, trusted
+Team policy  2026.10 (sha256:782905915a6d...) from ~/team/reflex-policy.json
+Identity     agt_e0f15f5b0746b7531b73f8dd28065998  (local, anonymous)
+Log          ~/.reflex/observe/observations.jsonl

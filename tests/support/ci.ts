@@ -65,6 +65,28 @@ export const RELEASE_REQUIREMENTS: WorkflowRequirements = {
   pullRequest: false,
 };
 
+/** RFX-150, RFX-137. The site is built, its links checked, Lighthouse run, the install command run. */
+export const SITE_REQUIREMENTS: WorkflowRequirements = {
+  install: FROZEN_INSTALL,
+  commands: [
+    "pnpm build",
+    "node site/src/build.mjs",
+    "node site/src/check-links.mjs",
+    "bash tools/site/install-command-check.sh",
+  ],
+};
+
+/** RFX-150. The site is deployed from main only, after the same build and check. */
+export const PAGES_REQUIREMENTS: WorkflowRequirements = {
+  install: FROZEN_INSTALL,
+  commands: [
+    "pnpm build",
+    "node site/src/build.mjs",
+    "node site/src/check-links.mjs",
+  ],
+  pullRequest: false,
+};
+
 /** RFX-149. The public repository's history holds no private path. */
 export const PUBLIC_HISTORY_REQUIREMENTS: WorkflowRequirements = {
   install: undefined,

@@ -1,0 +1,2 @@
+$ rfx policy snapshot --policy ~/team/organization.yaml --environment production=~/team/production.yaml --key ~/team/keys/reflex-policy-key.pem --label 2026.10 --out ~/team/reflex-policy.json
+Wrote ~/team/reflex-policy.json: version 2026.10, 2 source(s), sha256:782905915a6d2957c664796699c767c80e42b6014ffe76b1795f74302c71a58d, signed with sha256:a3daecd0cb17d3b095600fe41fe0455ab82bd2c3e63b8e90a8a0fc689c340ba4. Publish it where every member can fetch it over HTTPS or from a shared file.

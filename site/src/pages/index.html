@@ -1,0 +1,58 @@
+<!-- title: REFLEX: one policy for every agent, auditable -->
+<!-- description: REFLEX decides, before your coding agent acts, whether an action executes, asks you, or stops. One policy a team wrote, applied to Claude Code and Codex, every decision on the record. No account. -->
+<h1>One policy for every agent, auditable.</h1>
+<p class="lede">{{positioning}}</p>
+
+<figure>
+{{{captures.explain.html}}}
+<figcaption>A real session. The team's policy says never force-push; the developer's own policy says git is fine; the repository's branch maps to production. The mandate holds, the record says which rule decided and why, and the developer can read every line of it.</figcaption>
+</figure>
+
+<p class="install-line"><code>{{install.command}}</code></p>
+<p class="quiet">Two minutes, no account, nothing leaves your machine. REFLEX starts in Observe and records what your agent does; you switch it to deciding when you have read the policy. <a href="/install/">What the install does, step by step.</a></p>
+
+<h2 id="what-reflex-does-in-order">What REFLEX does, in order</h2>
+<p>REFLEX runs as a hook on every tool call of your agent and asks a local daemon for a decision. The daemon works in a fixed order, and the model is the last step, not the first:</p>
+<ol>
+  <li>It normalizes the call into one canonical shape, the same for every host, and classifies its side effect: a read, a local write, something destructive, external, financial, a credential, a production system.</li>
+  <li>It redacts secrets locally. Nothing after this step sees them.</li>
+  <li>It evaluates your policy: the team's rules, your own, the repository's, and REFLEX's few of its own, with an explicit precedence. Most actions are decided here, deterministically, in well under a millisecond.</li>
+  <li>Only an action the policy leaves open is assessed by a model, and only if you turned one on and consented to what it is sent. Its answer is evidence; the policy's floors still hold.</li>
+  <li>The decision is recorded with the rules that matched and, later, with what you and the host did about it.</li>
+</ol>
+<dl class="verdicts">
+  <div><dt><span class="v-allow">allow</span></dt><dd>The action runs without a prompt.</dd></div>
+  <div><dt><span class="v-ask">ask</span></dt><dd>The host's own permission prompt is used. REFLEX never draws a dialog of its own.</dd></div>
+  <div><dt><span class="v-deny">deny</span></dt><dd>The action stops before it runs. A human can let it through once, on the record, with <code>rfx override</code>.</dd></div>
+</dl>
+
+<h2 id="beside-your-host-never-in-its-place">Beside your host, never in its place</h2>
+<p>Claude Code ships a permission classifier and a sandbox; Codex has its own approval policy. REFLEX does not replace them. It decides from a policy your team wrote and can read, before any model is asked, across hosts, and keeps the record. A sandbox contains what runs; REFLEX decides what runs. <a href="/docs/threat-model/">The threat model says plainly what REFLEX is not.</a></p>
+
+<h2 id="what-a-decision-costs">What a decision costs</h2>
+<p>Every number here is read from a file in the repository by the build, and a test holds the page to it.</p>
+<table>
+  <thead>
+    <tr><th scope="col">Measured</th><th scope="col">p50</th><th scope="col">p95</th><th scope="col">Where</th></tr>
+  </thead>
+  <tbody>
+    <tr><td>The hook, from process start to exit, on a real payload</td><td class="n">{{n.hook.p50}}</td><td class="n">{{n.hook.p95}}</td><td>{{n.hook.machine}}, {{n.hook.runs}} runs, {{n.hook.measuredAt}}</td></tr>
+    <tr><td>A decision over the daemon's socket, a cache miss, {{n.bench.rules}} rules</td><td class="n"></td><td class="n">{{n.bench.socketMissP95}}</td><td>{{n.bench.machine}}, {{n.bench.warmRuns}} runs, {{n.bench.measuredAt}}</td></tr>
+    <tr><td>The same, a cache hit</td><td class="n"></td><td class="n">{{n.bench.socketHitP95}}</td><td>as above</td></tr>
+    <tr><td>End to end, one hook process per call, over the socket</td><td class="n">{{n.bench.endToEndP50}}</td><td class="n">{{n.bench.endToEndP95}}</td><td>as above, {{n.bench.endToEndRuns}} runs</td></tr>
+  </tbody>
+</table>
+<p>The deterministic engine is tested against a corpus of {{n.corpus.golden}} shell, file and MCP cases with zero dangerous allows, a semantic corpus of {{n.corpus.semantic}} cases, and {{n.corpus.injectionPairs}} prompt-injection pairs. The hook cost is mostly starting a Node process, which is why the decision lives in a daemon.</p>
+
+<h2 id="what-leaves-your-machine">What leaves your machine</h2>
+<p>Nothing, until you turn a remote model on, and then only what this statement says. It is the exact text <code>rfx provider</code> shows before asking for your consent, read from the package that shows it.</p>
+{{{consent.html}}}
+
+<h2 id="two-hosts-one-policy">Two hosts, one policy</h2>
+<p>REFLEX installs as a hook into Claude Code and into Codex and translates each host's events into the same canonical action, so the same policy decides for both. Claude Code's integration is verified against the real binary in the repository's tests; Codex's is built from its documentation and says so until it is verified live. <a href="/docs/hosts/">What is verified for each host.</a></p>
+
+<h2 id="a-teams-policy-without-an-account">A team's policy, without an account</h2>
+<p>One person signs the team's policy into a snapshot and publishes it to a URL or a shared file. Every member subscribes once with the public key. From then on each daemon applies the team's rules, a local or project policy cannot weaken a mandatory one, and a snapshot that does not verify is refused and reported, never applied.</p>
+{{{captures.snapshot.html}}}
+{{{captures.subscribe.html}}}
+<p><a href="/docs/team-policy/">How a team policy is published and subscribed to.</a></p>

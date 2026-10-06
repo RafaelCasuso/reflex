@@ -1,0 +1,4 @@
+$ rfx policy keygen --out ~/team/keys
+Private key  ~/team/keys/reflex-policy-key.pem  (mode 600; keep it where the team keeps secrets, never in a repository)
+Public key   ~/team/keys/reflex-policy-key.pub  (give this one to every subscriber)
+Key id       sha256:a3daecd0cb17d3b095600fe41fe0455ab82bd2c3e63b8e90a8a0fc689c340ba4

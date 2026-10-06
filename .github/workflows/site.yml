@@ -1,0 +1,91 @@
+# RFX-150, RFX-137 — the public site is held to the repository.
+#
+# On every pull request and push: the site is built from the repository's
+# files, every internal link is checked, Lighthouse measures the landing and
+# the install page against the scores the ticket asks for (90 or more on
+# performance, accessibility, best practices and SEO; .lighthouserc.json),
+# and the install command the page shows is run against the released
+# package on npm, as a visitor would run it.
+#
+# Rules guarded by tests/ci.test.ts:
+#   - install is lockfile-frozen
+#   - the build, the link check and the Lighthouse run can each fail the job
+#   - no `continue-on-error`, no `|| true`
+#   - third-party actions are pinned to a full commit SHA
+name: Site
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: site-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  site:
+    name: Site build and Lighthouse
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    env:
+      TURBO_TELEMETRY_DISABLED: "1"
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
+
+      - name: Set up Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+
+      - name: Install (frozen lockfile)
+        run: pnpm install --frozen-lockfile
+
+      # The consent statement comes from the built semantic-provider package.
+      - name: Build the packages
+        run: pnpm build
+
+      - name: Build the site
+        run: node site/src/build.mjs
+
+      - name: Check every internal link
+        run: node site/src/check-links.mjs
+
+      - name: Lighthouse
+        uses: treosh/lighthouse-ci-action@3e7e23fb74242897f95c0ba9cabad3d0227b9b18 # v12.6.2
+        with:
+          configPath: ./.lighthouserc.json
+          uploadArtifacts: true
+          temporaryPublicStorage: false
+
+  install-command:
+    name: Install command against the released package
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version-file: .nvmrc
+
+      # The exact command the install page shows, from the package on npm,
+      # in an empty project: rfx is installed, rfx init runs, and a first
+      # decision can be explained. No pnpm, no checkout of the packages.
+      - name: Run the install command as a visitor would
+        run: bash tools/site/install-command-check.sh

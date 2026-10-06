@@ -13,3 +13,11 @@ packages/contracts/fixtures/
 # The engineering operating system is edited by hand, deliberately.
 # Tooling does not rewrite it.
 CLAUDE.md
+
+# The public site: built output and binary fonts.
+site/dist/
+site/fonts/
+site/captures/
+# The site's page templates carry tokens and hand-set lines; Prettier does not reflow them.
+site/src/pages/
+site/src/shell.html

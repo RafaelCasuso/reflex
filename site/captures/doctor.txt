@@ -1,0 +1,12 @@
+$ rfx doctor
+rfx doctor
+
+  ok    install  this project: installed for claude-code; mode autopilot, failure mode fail-ask
+  ok    hosts    claude-code hooks: 6 events in ~/work/api/.claude/settings.local.json
+        daemon   daemon: not running; it starts on the first decision it is asked for
+  ok    policy   user policy: ~/.reflex/policy.yaml loads
+  ok    policy   project policy: ~/work/api/.reflex/policy.yaml is trusted
+  ok    policy   team policy: 2026.10 (sha256:782905915a6d...) from ~/team/reflex-policy.json, fetched 2026-10-06T22:14:12.712Z
+  ok    provider provider: none: policy alone, nothing leaves this machine
+
+Everything checks out.

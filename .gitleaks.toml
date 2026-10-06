@@ -31,4 +31,8 @@ regexTarget = "match"
 regexes = [
   '''sk-live-[0-9a-f]{12}''',
   '''ghp_16C7e42F292c6912E7710c838347Ae178B4a''',
+  # RFX-083: a team key's id is the SHA-256 of its PUBLIC key, printed by
+  # `rfx policy keygen` and `rfx policy subscribe` and captured for the
+  # site. It names a key; it opens nothing.
+  '''(?i)key(?: id)?\s+sha256:[0-9a-f]{64}''',
 ]

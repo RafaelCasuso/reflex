@@ -1,9 +1,9 @@
-# REFLEX Starter Pack
+# REFLEX
 
 **The autonomy control layer for AI agents.**  
-**More autonomy. Less supervision.**
+**One policy for every agent, auditable.**
 
-This package is the implementation bootstrap for REFLEX.
+The public site, with the install command, the documentation and the numbers, is at https://rafaelcasuso.github.io/reflex/ and is built from this repository (`site/`). This file is for the people building REFLEX.
 
 ## Contents
 

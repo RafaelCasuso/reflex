@@ -6,10 +6,12 @@ import {
   auditWorkflow,
   HOST_SCHEMA_REQUIREMENTS,
   MUTATION_REQUIREMENTS,
+  PAGES_REQUIREMENTS,
   PUBLIC_HISTORY_REQUIREMENTS,
   RELEASE_PUBLISH,
   RELEASE_REQUIREMENTS,
   SECURITY_REQUIREMENTS,
+  SITE_REQUIREMENTS,
 } from "./support/ci.js";
 import { readJson, readText, repoPath } from "./support/repo.js";
 
@@ -328,6 +330,62 @@ describe("RFX-127 signed releases", () => {
     },
   ])("rejects the workflow when $label", ({ tamper, expected }) => {
     expect(audit(tamper(workflow))).toContain(expected);
+  });
+});
+
+/** RFX-150, RFX-137 — the site is checked on every change and deployed from main only. */
+describe("RFX-150 site and pages workflows", () => {
+  const site = readText(".github", "workflows", "site.yml");
+  const pages = readText(".github", "workflows", "pages.yml");
+
+  it("pass the audit as committed", () => {
+    expect(auditWorkflow(site, SITE_REQUIREMENTS)).toEqual([]);
+    expect(auditWorkflow(pages, PAGES_REQUIREMENTS)).toEqual([]);
+  });
+
+  it("deploy from a push to main only, never from a pull request, with the pinned Pages actions", () => {
+    expect(pages).toMatch(/^on:\n {2}push:\n {4}branches: \[main\]/m);
+    expect(pages).not.toContain("pull_request");
+    for (const action of [
+      "actions/configure-pages@",
+      "actions/upload-pages-artifact@",
+      "actions/deploy-pages@",
+    ]) {
+      expect(pages).toContain(action);
+    }
+    // Deploy needs the build, and only the deploy job may write to Pages.
+    expect(pages).toMatch(/needs: build/);
+    expect(pages).toMatch(/^permissions:\n {2}contents: read$/m);
+    expect(pages).toMatch(
+      /^ {4}permissions:\n {6}pages: write\n {6}id-token: write$/m,
+    );
+  });
+
+  it("measure Lighthouse on the landing and the install page, and fail under 90", () => {
+    expect(site).toContain("treosh/lighthouse-ci-action@");
+    expect(site).toContain("configPath: ./.lighthouserc.json");
+    expect(site).toContain("temporaryPublicStorage: false");
+  });
+
+  it.each([
+    {
+      label: "the link check is dropped",
+      tamper: (text: string) =>
+        text.replace("run: node site/src/check-links.mjs", "run: echo skipped"),
+      expected: 'missing quality gate "node site/src/check-links.mjs"',
+    },
+    {
+      label: "the install command check is swallowed",
+      tamper: (text: string) =>
+        text.replace(
+          "run: bash tools/site/install-command-check.sh",
+          "run: bash tools/site/install-command-check.sh || true",
+        ),
+      expected:
+        'gate result can be swallowed: "bash tools/site/install-command-check.sh || true"',
+    },
+  ])("rejects the site workflow when $label", ({ tamper, expected }) => {
+    expect(auditWorkflow(tamper(site), SITE_REQUIREMENTS)).toContain(expected);
   });
 });
 

@@ -1,0 +1,45 @@
+<!-- title: Install REFLEX -->
+<!-- description: Install the rfx command, run rfx init in a project, and REFLEX observes your agent in two minutes with no account. What the install does, what it writes, and how to take it back. -->
+<h1>Install, in two minutes.</h1>
+<p class="lede">One command installs <code>rfx</code>; one command installs REFLEX into a project. It starts in Observe: it records what your agent does and changes nothing, until you decide.</p>
+
+<h2 id="requirements">Requirements</h2>
+<ul>
+  <li>Node.js 24 or later, and npm.</li>
+  <li>Claude Code or Codex. REFLEX detects the ones you have; with neither detected it still installs the Claude Code hook, for when you have it.</li>
+</ul>
+
+<h2 id="the-command">The command</h2>
+<p class="install-line"><code>{{install.command}}</code></p>
+<p>Run the second half, <code>rfx init</code>, inside the project you want governed. The repository's continuous integration runs this exact line against the released package before every change to this page is published.</p>
+
+<h2 id="what-rfx-init-does">What <code>rfx init</code> does</h2>
+<p>It shows its plan and does nothing until you confirm. This is a real plan, on a machine with both hosts:</p>
+{{{captures.init.html}}}
+<ol>
+  <li>It detects the hosts you have.</li>
+  <li>It backs up every file it is about to change, under <code>~/.reflex/backups</code>.</li>
+  <li>It adds one hook per event to the host's settings. Your own hooks stay; REFLEX's are the only ones it adds or ever removes.</li>
+  <li>It writes a conservative starter policy to <code>.reflex/policy.yaml</code> when the project has none, and trusts it as written.</li>
+  <li>It creates an anonymous local identity. It is random and never sent anywhere.</li>
+  <li>It starts in Observe. The hooks answer nothing to the host.</li>
+</ol>
+
+<h2 id="the-first-thing-to-look-at">The first thing to look at</h2>
+<p>Use your agent for a while, then ask what REFLEX saw:</p>
+{{{captures.status.html}}}
+<p>Then ask why an action would be allowed, asked or denied. The answer comes from the same evaluation the daemon runs, offline:</p>
+{{{captures.explain-tests.html}}}
+
+<h2 id="switching-it-on">Switching it on</h2>
+<p><code>rfx mode assist</code> lets REFLEX allow what the policy allows and hands everything uncertain to the host's own prompt; it never blocks. <code>rfx mode autopilot</code> enforces allow, ask and deny. Both read the policy you can see with <code>rfx explain</code>; <code>rfx mode observe</code> goes back.</p>
+
+<h2 id="when-something-is-off">When something is off</h2>
+<p><code>rfx doctor</code> checks the install, the hooks and the host's own switches, the daemon, the policies and their trust, the provider and its consent. Every failure names what to do:</p>
+{{{captures.doctor.html}}}
+
+<h2 id="taking-it-back">Taking it back</h2>
+<p><code>rfx uninstall</code> removes REFLEX's hooks, byte for byte when the file is unchanged since, surgically otherwise, and leaves a file another project still uses. <code>rfx uninstall --purge</code> also deletes <code>~/.reflex</code>: your observations, backups and identity.</p>
+
+<h2 id="next">Next</h2>
+<p><a href="/docs/quick-start/">The quick start</a> walks through a first policy; <a href="/docs/team-policy/">team policy</a> shows how a team publishes one signed policy that every member's daemon applies, with no account.</p>
