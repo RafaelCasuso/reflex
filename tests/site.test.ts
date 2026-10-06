@@ -70,8 +70,10 @@ beforeAll(() => {
     true,
   );
   out = mkdtempSync(join(tmpdir(), "reflex-site-"));
+  // Built as GitHub Pages serves it, under /reflex/.
   execFileSync(process.execPath, [repoPath("site", "src", "build.mjs"), out], {
     stdio: "pipe",
+    env: { ...process.env, SITE_BASE_PATH: "/reflex" },
   });
 });
 
@@ -120,7 +122,7 @@ describe("RFX-150 the public landing and install page", () => {
   });
 
   it("links the threat model", () => {
-    expect(page("")).toContain('href="/docs/threat-model/"');
+    expect(page("")).toContain('href="/reflex/docs/threat-model/"');
     expect(page("docs/threat-model")).toContain("REFLEX is not a sandbox");
   });
 
@@ -260,13 +262,28 @@ describe("RFX-150 the public landing and install page", () => {
         join(out, "fonts", "bricolage-grotesque-latin-wght-normal.woff2"),
       ),
     ).toBe(true);
+    // Every root-absolute reference carries the base path GitHub Pages
+    // serves the site under; the first deploy had none and was unstyled.
+    for (const file of walk(out)) {
+      const html = readFileSync(file, "utf8");
+      for (const match of html.matchAll(/\s(?:href|src)="(\/[^"]*)"/g)) {
+        const reference = match[1] ?? "";
+        expect(reference, `${file}: ${reference}`).toMatch(/^\/reflex(\/|$)/);
+      }
+    }
+    expect(readFileSync(join(out, css), "utf8")).toContain(
+      'url("/reflex/fonts/',
+    );
+    expect(readFileSync(join(out, "sitemap.txt"), "utf8")).toContain(
+      "https://rafaelcasuso.github.io/reflex/install/",
+    );
   });
 
   it("has no broken internal link, by the same check the workflow runs", () => {
     const result = execFileSync(
       process.execPath,
       [repoPath("site", "src", "check-links.mjs"), out],
-      { encoding: "utf8" },
+      { encoding: "utf8", env: { ...process.env, SITE_BASE_PATH: "/reflex" } },
     );
     expect(result).toMatch(/, 0 broken link\(s\)/);
   });
@@ -378,7 +395,7 @@ describe("RFX-137 the documentation", () => {
       index.indexOf('<ol class="toc">'),
       index.indexOf("</ol>"),
     );
-    const slugs = [...toc.matchAll(/href="\/docs\/([a-z-]+)\/"/g)].map(
+    const slugs = [...toc.matchAll(/href="\/reflex\/docs\/([a-z-]+)\/"/g)].map(
       (match) => match[1],
     );
     expect(slugs).toEqual([

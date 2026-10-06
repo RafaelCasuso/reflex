@@ -56,11 +56,17 @@ jobs:
       - name: Build the packages
         run: pnpm build
 
+      # Lighthouse serves the built directory at the root, so the site is
+      # built for the root here; pages.yml builds it for /reflex/.
       - name: Build the site
         run: node site/src/build.mjs
+        env:
+          SITE_BASE_PATH: /
 
       - name: Check every internal link
         run: node site/src/check-links.mjs
+        env:
+          SITE_BASE_PATH: /
 
       - name: Lighthouse
         uses: treosh/lighthouse-ci-action@3e7e23fb74242897f95c0ba9cabad3d0227b9b18 # v12.6.2

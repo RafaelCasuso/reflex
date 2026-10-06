@@ -14,6 +14,8 @@ import { dirname, join, posix, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const SITE_ROOT = fileURLToPath(new URL("../", import.meta.url));
+/** The same base path the build used (site/src/build.mjs). */
+const BASE_PATH = (process.env.SITE_BASE_PATH ?? "/reflex").replace(/\/+$/, "");
 
 function htmlFiles(directory) {
   const found = [];
@@ -40,8 +42,23 @@ function targetOf(out, fromFile, reference) {
   if (path === "") {
     return fromFile;
   }
-  const base = path.startsWith("/") ? out : dirname(fromFile);
-  const resolved = path.startsWith("/") ? join(out, path) : resolve(base, path);
+  // A root-absolute reference must carry the base path; one without it
+  // would leave the site on GitHub Pages, so it resolves to nothing.
+  let sitePath = path;
+  if (path.startsWith("/")) {
+    if (
+      BASE_PATH !== "" &&
+      path !== `${BASE_PATH}/` &&
+      !path.startsWith(`${BASE_PATH}/`)
+    ) {
+      return join(out, "__outside_the_base_path__", path);
+    }
+    sitePath = BASE_PATH === "" ? path : path.slice(BASE_PATH.length) || "/";
+  }
+  const base = sitePath.startsWith("/") ? out : dirname(fromFile);
+  const resolved = sitePath.startsWith("/")
+    ? join(out, sitePath)
+    : resolve(base, sitePath);
   if (existsSync(resolved) && statSync(resolved).isDirectory()) {
     return join(resolved, "index.html");
   }
