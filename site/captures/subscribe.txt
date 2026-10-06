@@ -1,0 +1,2 @@
+$ rfx policy subscribe ~/team/reflex-policy.json --key ~/team/keys/reflex-policy-key.pub
+Subscribed to ~/team/reflex-policy.json with key sha256:a3daecd0cb17d3b095600fe41fe0455ab82bd2c3e63b8e90a8a0fc689c340ba4. Snapshot 2026.10 (sha256:782905915a6d...) verified and in force from the next decision.

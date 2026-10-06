@@ -1,0 +1,3 @@
+$ rfx hook claude-code < pre-tool-use.json
+{"hookSpecificOutput":{"hookEventName":"PreToolUse","permissionDecision":"deny","permissionDecisionReason":"REFLEX: denied by rule org-no-force-push (destructive). To let it through once, a human runs: rfx override dec_f48620c78839ff3a66f5fa19bd2dcf8a"}}
+

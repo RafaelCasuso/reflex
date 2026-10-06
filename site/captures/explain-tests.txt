@@ -1,0 +1,12 @@
+$ rfx explain pnpm test
+Action       Bash: pnpm test
+Project      ~/work/api
+Class        unknown
+Policy       user ~/.reflex/policy.yaml; project ~/work/api/.reflex/policy.yaml (trusted); REFLEX's own rules
+Team policy  2026.10 (sha256:782905915a6d...) from ~/team/reflex-policy.json
+Environment  production (mapped by .reflex/policy.yaml; branch main, origin github.com/acme/api)
+Set          sha256:12b92ce330cff245695627b03aa00dcdba7b8c5fa048c9789d3644be044624c9
+Matched
+  allow  repo-allow-tests                      project      precedence  40  <- decides
+Effect       allow
+By mode      observe: ask (records only)  assist: allow  autopilot: allow

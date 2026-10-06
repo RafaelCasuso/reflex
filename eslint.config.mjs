@@ -145,6 +145,19 @@ export default defineConfig(
     extends: [tseslint.configs.disableTypeChecked],
   },
 
+  // The site's build scripts are plain Node modules (RFX-150).
+  {
+    files: ["site/src/**/*.mjs"],
+    languageOptions: {
+      globals: {
+        process: "readonly",
+        Buffer: "readonly",
+        URL: "readonly",
+        console: "readonly",
+      },
+    },
+  },
+
   ...FORBIDDEN_DEPENDENCIES.map(({ files, forbidden, reason }) => ({
     files,
     rules: {
