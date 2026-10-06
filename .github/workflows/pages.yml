@@ -52,11 +52,16 @@ jobs:
       - name: Build the packages
         run: pnpm build
 
+      # The project site lives under /reflex/ on github.io.
       - name: Build the site
         run: node site/src/build.mjs
+        env:
+          SITE_BASE_PATH: /reflex
 
       - name: Check every internal link
         run: node site/src/check-links.mjs
+        env:
+          SITE_BASE_PATH: /reflex
 
       - name: Configure Pages
         uses: actions/configure-pages@45bfe0192ca1faeb007ade9deae92b16b8254a0d # v6.0.0

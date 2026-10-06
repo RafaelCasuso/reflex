@@ -33,7 +33,18 @@ import { Marked } from "marked";
 export const SITE_ROOT = fileURLToPath(new URL("../", import.meta.url));
 export const REPO_ROOT = resolve(SITE_ROOT, "..");
 export const REPOSITORY_URL = "https://github.com/RafaelCasuso/reflex";
-export const SITE_ORIGIN = "https://rafaelcasuso.github.io/reflex";
+export const SITE_ORIGIN = "https://rafaelcasuso.github.io";
+/**
+ * Where the site is served from under its origin. GitHub Pages serves a
+ * project site under `/<repository>/`; a local check or Lighthouse serves
+ * the built directory at the root. Every root-absolute reference the pages
+ * make (`/install/`, `/fonts/...`, the stylesheet) is prefixed with it at
+ * the end of the build, so templates and docs are written once.
+ */
+export const BASE_PATH = (process.env.SITE_BASE_PATH ?? "/reflex").replace(
+  /\/+$/,
+  "",
+);
 export const INSTALL_COMMAND = "npm install -g @reflex-control/cli && rfx init";
 
 const DOCS_ORDER = [
@@ -294,6 +305,19 @@ export function createMarkdown() {
 
 /* ---------- pages ---------- */
 
+/** Root-absolute references, prefixed with the base path. */
+export function withBasePath(html) {
+  if (BASE_PATH === "") {
+    return html;
+  }
+  return html
+    .replaceAll(
+      /\s(href|src)="\/(?!\/)/g,
+      (_match, attribute) => ` ${attribute}="${BASE_PATH}/`,
+    )
+    .replaceAll(/url\("\/(?!\/)/g, `url("${BASE_PATH}/`);
+}
+
 export function render(template, context) {
   return template
     .replaceAll(/\{\{\{\s*([\w.]+)\s*\}\}\}/g, (_match, path) =>
@@ -361,12 +385,12 @@ export async function build(outputDirectory) {
 
   rmSync(out, { recursive: true, force: true });
   mkdirSync(out, { recursive: true });
-  writeFileSync(join(out, cssFile), css);
+  writeFileSync(join(out, cssFile), withBasePath(css));
   cpSync(join(SITE_ROOT, "fonts"), join(out, "fonts"), { recursive: true });
   writeFileSync(join(out, ".nojekyll"), "");
   writeFileSync(
     join(out, "robots.txt"),
-    `User-agent: *\nAllow: /\nSitemap: ${SITE_ORIGIN}/sitemap.txt\n`,
+    `User-agent: *\nAllow: /\nSitemap: ${SITE_ORIGIN}${BASE_PATH}/sitemap.txt\n`,
   );
 
   const pages = [];
@@ -382,7 +406,7 @@ export async function build(outputDirectory) {
     }).replace("{{{body.html}}}", body);
     const directory = path === "/" ? out : join(out, path);
     mkdirSync(directory, { recursive: true });
-    writeFileSync(join(directory, "index.html"), html);
+    writeFileSync(join(directory, "index.html"), withBasePath(html));
     pages.push(path === "/" ? "/" : `${path}/`);
   };
 
@@ -466,10 +490,11 @@ export async function build(outputDirectory) {
 
   writeFileSync(
     join(out, "sitemap.txt"),
-    pages.map((path) => `${SITE_ORIGIN}${path}`).join("\n") + "\n",
+    pages.map((path) => `${SITE_ORIGIN}${BASE_PATH}${path}`).join("\n") + "\n",
   );
   return {
     out,
+    basePath: BASE_PATH,
     pages,
     numbers,
     captures: Object.keys(captures),
