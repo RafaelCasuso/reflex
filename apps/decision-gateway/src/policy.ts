@@ -15,12 +15,29 @@ export {
   trustFilePath,
   withTrust,
   withoutTrust,
+  type ActionPlace,
   type ProjectPolicyComposer,
   type ProjectPolicyComposerOptions,
   type ProjectPolicyReading,
   type TrustRecord,
   type TrustedPolicy,
 } from "./orchestration/project-policy.js";
+export {
+  DEFAULT_SNAPSHOT_INTERVAL_MS,
+  MIN_SNAPSHOT_INTERVAL_MS,
+  SUBSCRIPTION_RECORD_VERSION,
+  classifyLocation,
+  createSubscriptionHolder,
+  parseSubscriptionRecord,
+  serializeSubscription,
+  snapshotCachePath,
+  subscriptionPath,
+  type RefreshOutcome,
+  type SubscriptionHolder,
+  type SubscriptionRecord,
+  type SubscriptionState,
+} from "./orchestration/subscription.js";
+export { readGitFacts, type GitFacts } from "./orchestration/git-facts.js";
 export {
   createPolicyHolder,
   readPolicyFiles,

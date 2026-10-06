@@ -41,6 +41,13 @@ export interface GatewayHandlerOptions {
   readonly callerOf: (request: IncomingMessage) => string;
   /** What `GET /v1/health` reports besides `ok`. */
   readonly health: () => Readonly<Record<string, unknown>>;
+  /**
+   * RFX-084: what the daemon knows about the action that the host did not
+   * say (the repository's branch and remote, the environment), added before
+   * the decision is made, cached or recorded. Never overrides what the host
+   * said.
+   */
+  readonly enrich?: (request: DecisionRequest) => DecisionRequest;
   readonly clock: () => Date;
   readonly monotonic: () => number;
 }
@@ -290,7 +297,10 @@ export function createGatewayHandler(
       );
       return;
     }
-    const decisionRequest = parsed.value;
+    const decisionRequest =
+      options.enrich === undefined
+        ? parsed.value
+        : options.enrich(parsed.value);
 
     const contentHash = contentHashOf(options.engine, decisionRequest);
     const seen = options.idempotency.lookup(

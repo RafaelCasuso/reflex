@@ -1,6 +1,7 @@
 import type {
   CanonicalAction,
   DecisionEffect,
+  EnvironmentKind,
   PolicyCondition,
   PolicyDocument,
   PolicyEvaluation,
@@ -8,7 +9,10 @@ import type {
   PolicyUnresolvedDefault,
   SideEffectClass,
 } from "@reflex-control/contracts";
-import { SIDE_EFFECT_CLASSES } from "@reflex-control/contracts";
+import {
+  SIDE_EFFECT_CLASSES,
+  resolveEnvironment,
+} from "@reflex-control/contracts";
 
 import { canonicalizePolicySet } from "./canonical.js";
 import { ruleMatches, type MatchContext } from "./matcher.js";
@@ -35,6 +39,14 @@ export interface PolicySourceDocument {
   /** Whether the user trusts this content. Only ever false for `project`. */
   readonly trusted: boolean;
   readonly policyId?: PolicyId;
+  /**
+   * RFX-084 (ADR-018): required on an `environment` source and refused on
+   * any other. Its rules apply only to actions resolved to this environment,
+   * and its `deny` rules are floors whatever their `mandatory` flag says: an
+   * environment policy exists to constrain that environment, and a deny of
+   * it that a project could silently override would be no constraint.
+   */
+  readonly environment?: EnvironmentKind;
   readonly document: PolicyDocument;
 }
 
@@ -100,6 +112,19 @@ export function compilePolicySet(
     // ADR-012: trust is a question about what a repository ships. Every other
     // source is the user's own or arrives authenticated.
     const trusted = entry.source === "project" ? entry.trusted : true;
+    if (entry.source === "environment") {
+      if (entry.environment === undefined || entry.environment === "unknown") {
+        problems.push(
+          "environment: a source needs the environment it applies to, and unknown is not one",
+        );
+        continue;
+      }
+    } else if (entry.environment !== undefined) {
+      problems.push(
+        `${entry.source}: only an environment source names an environment`,
+      );
+      continue;
+    }
     const declared = entry.document.defaults?.unresolved;
     if (
       declared !== undefined &&
@@ -121,6 +146,7 @@ export function compilePolicySet(
       const key = JSON.stringify([
         entry.source,
         entry.policyId ?? null,
+        entry.environment ?? null,
         rule.id,
       ]);
       if (sources_.has(key)) {
@@ -128,11 +154,19 @@ export function compilePolicySet(
         continue;
       }
       sources_.add(key);
+      // ADR-018: a deny of an environment source is a floor.
+      const floor =
+        entry.source === "environment" &&
+        rule.effect === "deny" &&
+        rule.mandatory !== true;
       rules.push({
         source: entry.source,
         trusted,
         ...(entry.policyId === undefined ? {} : { policyId: entry.policyId }),
-        rule,
+        ...(entry.environment === undefined
+          ? {}
+          : { environment: entry.environment }),
+        rule: floor ? { ...rule, mandatory: true } : rule,
       });
     }
   }
@@ -164,6 +198,9 @@ export function compilePolicySet(
       ...(entry.document.defaults === undefined
         ? {}
         : { unresolved: entry.document.defaults.unresolved }),
+      ...(entry.environment === undefined
+        ? {}
+        : { environment: entry.environment }),
       rules: entry.document.rules,
     })),
   );
@@ -237,10 +274,17 @@ export function evaluatePolicy(
     pattern: (source) => set.patterns.get(source),
   };
 
+  // RFX-084: an environment source's rules exist only for actions in that
+  // environment; everywhere else they are not even candidates.
+  const environment = resolveEnvironment(action);
+  const candidates = set.rules.filter(
+    (sourced) =>
+      sourced.environment === undefined || sourced.environment === environment,
+  );
   const { effect, floor, matches } = combine(
     subjects.map((subject) =>
       resolve(
-        set.rules.filter((sourced) =>
+        candidates.filter((sourced) =>
           ruleMatches(sourced.rule, subject, matchContext),
         ),
       ),

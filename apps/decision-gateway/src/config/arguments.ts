@@ -1,4 +1,9 @@
 import { homedir } from "node:os";
+
+import {
+  DEFAULT_SNAPSHOT_INTERVAL_MS,
+  MIN_SNAPSHOT_INTERVAL_MS,
+} from "../orchestration/subscription.js";
 import { join } from "node:path";
 
 import { FAILURE_MODES, type FailureMode } from "@reflex-control/contracts";
@@ -38,6 +43,8 @@ export interface GatewayArguments {
   readonly shadowSample: ShadowSample;
   /** RFX-123: the consent record a remote provider needs before it is built. */
   readonly remoteConsentFile: string | undefined;
+  /** RFX-083: how often the subscribed snapshot is fetched again. */
+  readonly snapshotIntervalMs: number;
 }
 
 export type ArgumentsResult =
@@ -54,7 +61,7 @@ export function defaultSocketPath(reflexHome: string): string {
   return join(reflexHome, "run", "reflex.sock");
 }
 
-export const USAGE = `usage: reflex-gateway [--socket <path> | --tcp <host:port>] [--policy <file>]... [--failure-mode fail-open|fail-ask|fail-closed] [--no-cache] [--no-telemetry] [--home <dir>] [--rate-limit <burst>/<per-second>] [--semantic-provider none|jev|local|reflex|fake] [--semantic-model <id>] [--semantic-endpoint <url>] [--shadow-provider <id>]... [--shadow-deadline <ms>] [--shadow-sample unresolved|all] [--remote-consent <file>]`;
+export const USAGE = `usage: reflex-gateway [--socket <path> | --tcp <host:port>] [--policy <file>]... [--failure-mode fail-open|fail-ask|fail-closed] [--no-cache] [--no-telemetry] [--home <dir>] [--rate-limit <burst>/<per-second>] [--semantic-provider none|jev|local|reflex|fake] [--semantic-model <id>] [--semantic-endpoint <url>] [--shadow-provider <id>]... [--shadow-deadline <ms>] [--shadow-sample unresolved|all] [--remote-consent <file>] [--snapshot-interval <seconds>]`;
 
 /** A shadow answers off the path; a generous deadline costs the decision nothing. */
 export const DEFAULT_SHADOW_DEADLINE_MS = 5_000;
@@ -68,6 +75,7 @@ export function parseArguments(
   env: NodeJS.ProcessEnv = process.env,
 ): ArgumentsResult {
   let listen: ListenTarget | undefined;
+  let snapshotIntervalMs = DEFAULT_SNAPSHOT_INTERVAL_MS;
   const policyFiles: string[] = [];
   let failureMode: FailureMode = "fail-ask";
   let cache = true;
@@ -194,6 +202,19 @@ export function parseArguments(
         shadowProviders.push(id);
         break;
       }
+      case "--snapshot-interval": {
+        const seconds = Number(takeValue());
+        if (
+          !Number.isInteger(seconds) ||
+          seconds * 1000 < MIN_SNAPSHOT_INTERVAL_MS
+        ) {
+          return problem(
+            `--snapshot-interval needs whole seconds, at least ${String(MIN_SNAPSHOT_INTERVAL_MS / 1000)}`,
+          );
+        }
+        snapshotIntervalMs = seconds * 1000;
+        break;
+      }
       case "--shadow-deadline": {
         const ms = Number(takeValue());
         if (!Number.isInteger(ms) || ms < 1) {
@@ -260,6 +281,7 @@ export function parseArguments(
       reflexHome,
       telemetry,
       rateLimit,
+      snapshotIntervalMs,
       semanticProvider,
       semanticModel,
       semanticEndpoint,

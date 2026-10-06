@@ -2,6 +2,7 @@ import { homedir } from "node:os";
 
 import {
   createProjectPolicyComposer,
+  createSubscriptionHolder,
   findProjectPolicy,
   parseTrustRecord,
   policyHashOf,
@@ -48,10 +49,16 @@ export async function composerFor(
   const exists = (await fileSystem.read(userPolicy)) !== undefined;
   const read = exists ? await readPolicyFiles([userPolicy]) : undefined;
   const userSources = read?.ok ? read.sources : [];
+  // RFX-083: the team's last good snapshot, from the cache, never fetched
+  // here: a one-off read is offline, as the daemon is when its host is down.
+  const subscription = await createSubscriptionHolder({
+    home,
+    clock: environment.now,
+  });
   return createProjectPolicyComposer({
     home: environment.homeDir,
     trustFile: trustFilePath(home),
-    userSources: () => userSources,
+    userSources: () => [...subscription.sources(), ...userSources],
     lookupTtlMs: 0,
   });
 }

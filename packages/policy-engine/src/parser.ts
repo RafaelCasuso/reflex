@@ -25,6 +25,13 @@ import {
   fieldSpec,
   type FieldSpec,
 } from "./fields.js";
+import {
+  MAPPABLE_ENVIRONMENTS,
+  anchoredPattern,
+  type EnvironmentMapping,
+  type EnvironmentMatchers,
+  type MappableEnvironment,
+} from "./environment.js";
 import { compilePattern } from "./pattern.js";
 
 /**
@@ -81,7 +88,16 @@ export interface PolicyIssue {
 }
 
 export type PolicyParseResult =
-  | { readonly ok: true; readonly document: PolicyDocument }
+  | {
+      readonly ok: true;
+      readonly document: PolicyDocument;
+      /**
+       * RFX-084: the project's `environments` mapping, when the file has
+       * one. Not part of the document (ADR-001 contracts) nor of the set's
+       * hash: it says where an action is, not what to do about it.
+       */
+      readonly environments?: EnvironmentMapping;
+    }
   | { readonly ok: false; readonly issues: readonly PolicyIssue[] };
 
 const UNRESOLVED_DEFAULTS: readonly PolicyUnresolvedDefault[] = [
@@ -802,6 +818,106 @@ function readRule(
   };
 }
 
+/** A list of patterns, each of which must compile (RFX-100 §9). */
+function readPatternList(
+  parse: Parse,
+  node: Node | null | undefined,
+  path: string,
+): readonly string[] | undefined {
+  if (!parse.plain(node, path)) {
+    return undefined;
+  }
+  if (!isSeq(node) || node.items.length === 0) {
+    parse.at(
+      "invalid_type",
+      path,
+      node,
+      `${path} must be a non-empty list of patterns`,
+    );
+    return undefined;
+  }
+  if (node.items.length > POLICY_LIMITS.conditionsPerRule) {
+    parse.at(
+      "too_many",
+      path,
+      node,
+      `${path} holds at most ${String(POLICY_LIMITS.conditionsPerRule)} patterns`,
+    );
+    return undefined;
+  }
+  const before = parse.issues.length;
+  const patterns = node.items.map((item, index) => {
+    const itemPath = `${path}[${String(index)}]`;
+    const text = parse.text(
+      item as Node | null,
+      itemPath,
+      "a pattern",
+      POLICY_LIMITS.textLength,
+    );
+    if (text === undefined) {
+      return undefined;
+    }
+    const compiled = compilePattern(anchoredPattern(text));
+    if (!compiled.ok) {
+      parse.at("invalid_value", itemPath, item as Node, compiled.message);
+      return undefined;
+    }
+    return text;
+  });
+  return parse.issues.length > before
+    ? undefined
+    : patterns.filter((pattern): pattern is string => pattern !== undefined);
+}
+
+/**
+ * RFX-084: `environments`, a mapping from an environment to the branches
+ * and remotes that mean it. `unknown` cannot be mapped to: it is what an
+ * action is when nothing says otherwise.
+ */
+function readEnvironments(
+  parse: Parse,
+  node: Node | null | undefined,
+): EnvironmentMapping | undefined {
+  const entries = parse.map(
+    node,
+    "environments",
+    MAPPABLE_ENVIRONMENTS,
+    "environments",
+  );
+  if (entries === undefined) {
+    return undefined;
+  }
+  const mapping: Partial<Record<MappableEnvironment, EnvironmentMatchers>> = {};
+  for (const [name, value] of entries) {
+    const environment = name as MappableEnvironment;
+    const path = `environments.${name}`;
+    const matchers = parse.map(value, path, ["branches", "remotes"], path);
+    if (matchers === undefined) {
+      continue;
+    }
+    if (matchers.size === 0) {
+      parse.at(
+        "missing_key",
+        path,
+        value,
+        `${path} needs branches or remotes, or both`,
+      );
+      continue;
+    }
+    const branches = matchers.has("branches")
+      ? readPatternList(parse, matchers.get("branches"), `${path}.branches`)
+      : undefined;
+    const remotes = matchers.has("remotes")
+      ? readPatternList(parse, matchers.get("remotes"), `${path}.remotes`)
+      : undefined;
+    mapping[environment] = {
+      ...(branches === undefined ? {} : { branches }),
+      ...(remotes === undefined ? {} : { remotes }),
+    };
+  }
+  return mapping;
+}
+
 export function parsePolicy(source: string): PolicyParseResult {
   const lines = new LineCounter();
   const parse = new Parse(lines);
@@ -857,7 +973,7 @@ export function parsePolicy(source: string): PolicyParseResult {
   const root = parse.map(
     document.contents,
     "",
-    ["version", "defaults", "rules"],
+    ["version", "defaults", "rules", "environments"],
     "a policy",
   );
   if (root === undefined) {
@@ -942,6 +1058,10 @@ export function parsePolicy(source: string): PolicyParseResult {
     }
   }
 
+  const environments = root.has("environments")
+    ? readEnvironments(parse, root.get("environments"))
+    : undefined;
+
   if (parse.issues.length > 0) {
     return { ok: false, issues: parse.issues };
   }
@@ -952,5 +1072,6 @@ export function parsePolicy(source: string): PolicyParseResult {
       ...(unresolved === undefined ? {} : { defaults: { unresolved } }),
       rules,
     },
+    ...(environments === undefined ? {} : { environments }),
   };
 }

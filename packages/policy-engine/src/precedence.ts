@@ -1,5 +1,6 @@
 import type {
   DecisionEffect,
+  EnvironmentKind,
   PolicyId,
   PolicyMatch,
   PolicyRule,
@@ -40,6 +41,11 @@ export interface SourcedRule {
   /** Only a `project` source can be untrusted (ADR-012). */
   readonly trusted: boolean;
   readonly policyId?: PolicyId;
+  /**
+   * RFX-084: set on the rules of an `environment` source, which apply only
+   * to actions resolved to that environment (ADR-018).
+   */
+  readonly environment?: EnvironmentKind;
   readonly rule: PolicyRule;
 }
 

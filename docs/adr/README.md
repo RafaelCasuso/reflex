@@ -28,6 +28,7 @@ ADR says so explicitly and the same change updates `CLAUDE.md`.
 | [ADR-015](./ADR-015-open-core-boundary.md)                       | Open core boundary                                          | Accepted | 2026-09-22 | RFX-139 |
 | [ADR-016](./ADR-016-decision-model-providers-and-shadow-mode.md) | Decision model providers, shadow mode and decision records  | Accepted | 2026-09-22 | RFX-140 |
 | [ADR-017](./ADR-017-positioning-after-auto-mode.md)              | Positioning and gate order after the hosts' own classifiers | Accepted | 2026-10-03 | RFX-150 |
+| [ADR-018](./ADR-018-signed-policy-snapshots-and-environments.md) | Signed policy snapshots and environment resolution          | Accepted | 2026-10-07 | RFX-083 |
 
 ## When an ADR is required
 

@@ -64,5 +64,34 @@ export {
   type Subject,
   type SubjectSet,
 } from "./subjects.js";
+export {
+  MAPPABLE_ENVIRONMENTS,
+  anchoredPattern,
+  resolveMappedEnvironment,
+  type EnvironmentMapping,
+  type EnvironmentMatchers,
+  type MappableEnvironment,
+  type RepositoryFacts,
+  type ResolvedEnvironment,
+} from "./environment.js";
+export {
+  SNAPSHOT_FORMAT,
+  SNAPSHOT_LIMITS,
+  createPolicySnapshot,
+  generateSnapshotKeys,
+  keyIdOf,
+  parsePolicySnapshot,
+  serializeSnapshot,
+  verifyPolicySnapshot,
+  type CreateSnapshotOptions,
+  type ParseSnapshotResult,
+  type PolicySnapshot,
+  type SnapshotKeys,
+  type SnapshotResult,
+  type SnapshotSignature,
+  type SnapshotSourceInput,
+  type VerifiedSnapshot,
+  type VerifyResult,
+} from "./snapshot.js";
 export { BUILT_IN_POLICY_YAML, builtInPolicy } from "./packs/built-in.js";
 export { STARTER_POLICY_YAML, starterPolicy } from "./packs/starter.js";

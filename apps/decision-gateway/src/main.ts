@@ -29,6 +29,7 @@ import {
   createProjectPolicyComposer,
   trustFilePath,
 } from "./orchestration/project-policy.js";
+import { createSubscriptionHolder } from "./orchestration/subscription.js";
 import { buildSemanticStage } from "./orchestration/semantic-stage.js";
 import { createGatewayServer } from "./server.js";
 
@@ -120,10 +121,26 @@ async function main(argv: readonly string[]): Promise<number> {
   // RFX-104: a project's `.reflex/policy.yaml`, found from the action's
   // working directory and trusted only by the user's record, joins the
   // user's own sources per action.
+  // RFX-083: the team's signed snapshot, if this machine subscribes to one.
+  // Its sources come before the user's: the organization's defaults, which
+  // the user's own policy refines, and its mandates, which nothing refines.
+  const subscription = await createSubscriptionHolder({
+    home: config.reflexHome,
+  });
+  const refreshed = await subscription.refresh();
+  if (refreshed.kind === "refused") {
+    process.stderr.write(
+      `team policy snapshot not applied (${refreshed.reason}); ${subscription.state().current === undefined ? "none in force" : "the last good one stays in force"}\n`,
+    );
+  }
+  const refreshTimer = setInterval(() => {
+    void subscription.refresh();
+  }, config.snapshotIntervalMs);
+  refreshTimer.unref();
   const projects = createProjectPolicyComposer({
     home: process.env.HOME,
     trustFile: trustFilePath(config.reflexHome),
-    userSources: policies.sources,
+    userSources: () => [...subscription.sources(), ...policies.sources()],
   });
   const engine = buildEngine({
     policies,
@@ -185,6 +202,8 @@ async function main(argv: readonly string[]): Promise<number> {
   const server = createGatewayServer({
     engine,
     overrides,
+    // RFX-084: branch, remote and environment, where the host said nothing.
+    enrich: projects.enrich,
     ...(telemetry === undefined ? {} : { telemetry }),
     ...(config.rateLimit === undefined
       ? {}
@@ -199,6 +218,8 @@ async function main(argv: readonly string[]): Promise<number> {
       policyProblems: policies.state().lastProblems.length,
       // RFX-104: project policies that could not be used since start.
       projectPolicyProblems: projects.problems().length,
+      // RFX-083: the team snapshot in force, and the last attempt at one.
+      snapshot: subscription.state(),
       telemetryDropped: telemetry?.dropped ?? 0,
       recordsDropped: records?.dropped ?? 0,
       redactionKey: redactionKey.created ? "created" : "present",

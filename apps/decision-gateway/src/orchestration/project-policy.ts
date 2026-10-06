@@ -2,13 +2,23 @@ import { createHash } from "node:crypto";
 import { readFileSync, statSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 
-import type { CanonicalAction, PolicyRule } from "@reflex-control/contracts";
+import {
+  resolveEnvironment,
+  type CanonicalAction,
+  type DecisionRequest,
+  type PolicyRule,
+} from "@reflex-control/contracts";
 import {
   compilePolicySet,
   parsePolicy,
+  resolveMappedEnvironment,
   type CompiledPolicySet,
+  type EnvironmentMapping,
   type PolicySourceDocument,
+  type ResolvedEnvironment,
 } from "@reflex-control/policy-engine";
+
+import { readGitFacts, type GitFacts } from "./git-facts.js";
 
 /**
  * RFX-104 / RFX-054 — one project's policy, served to that project.
@@ -170,6 +180,8 @@ export interface ProjectPolicyReading {
   readonly allowRules: readonly PolicyRule[];
   /** The parsed source, when the file loaded. */
   readonly source?: PolicySourceDocument;
+  /** RFX-084: the file's `environments` mapping, when it has one. */
+  readonly environments?: EnvironmentMapping;
 }
 
 export interface ProjectPolicyComposerOptions {
@@ -183,6 +195,12 @@ export interface ProjectPolicyComposerOptions {
   readonly lookupTtlMs?: number;
 }
 
+/** RFX-084: what the daemon resolved about an action's place, for `rfx explain`. */
+export interface ActionPlace {
+  readonly repository?: GitFacts;
+  readonly environment: ResolvedEnvironment;
+}
+
 export interface ProjectPolicyComposer {
   /** The set for this action: the user's sources plus the project's, if any. */
   readonly setFor: (action: CanonicalAction) => CompiledPolicySet;
@@ -190,6 +208,14 @@ export interface ProjectPolicyComposer {
   readonly inspect: (cwd: string) => ProjectPolicyReading | undefined;
   /** Project policies that failed to parse since start. */
   readonly problems: () => readonly string[];
+  /**
+   * RFX-084: the action with its repository's branch and remote and its
+   * environment filled in from the daemon's own reading, where the host
+   * said nothing. What the host said is kept.
+   */
+  readonly enrich: (request: DecisionRequest) => DecisionRequest;
+  /** The same reading, explained: for `rfx explain` and `rfx status`. */
+  readonly placeOf: (action: CanonicalAction) => ActionPlace;
 }
 
 interface FileReading {
@@ -211,7 +237,15 @@ export function createProjectPolicyComposer(
   const sets = new Map<string, CompiledPolicySet>();
   const parsed = new Map<
     string,
-    { problems: readonly string[]; source?: PolicySourceDocument }
+    {
+      problems: readonly string[];
+      source?: PolicySourceDocument;
+      environments?: EnvironmentMapping;
+    }
+  >();
+  const repositories = new Map<
+    string,
+    { facts: GitFacts | undefined; at: number }
   >();
   let trust:
     | {
@@ -297,7 +331,11 @@ export function createProjectPolicyComposer(
     path: string,
     reading: FileReading,
     trusted: boolean,
-  ): { problems: readonly string[]; source?: PolicySourceDocument } => {
+  ): {
+    problems: readonly string[];
+    source?: PolicySourceDocument;
+    environments?: EnvironmentMapping;
+  } => {
     const key = `${reading.policyHash}|${String(trusted)}`;
     const cached = parsed.get(key);
     if (cached !== undefined) {
@@ -307,6 +345,7 @@ export function createProjectPolicyComposer(
     const entry: {
       problems: readonly string[];
       source?: PolicySourceDocument;
+      environments?: EnvironmentMapping;
     } = result.ok
       ? {
           problems: [],
@@ -315,6 +354,9 @@ export function createProjectPolicyComposer(
             trusted,
             document: result.document,
           },
+          ...(result.environments === undefined
+            ? {}
+            : { environments: result.environments }),
         }
       : {
           problems: result.issues.map(
@@ -356,6 +398,83 @@ export function createProjectPolicyComposer(
           (rule) => rule.effect === "allow",
         ) ?? [],
       ...(result.source === undefined ? {} : { source: result.source }),
+      ...(result.environments === undefined
+        ? {}
+        : { environments: result.environments }),
+    };
+  };
+
+  // RFX-084: the repository's facts, read from git's own files, cached by
+  // working directory for as long as a policy lookup is.
+  const repositoryOf = (cwd: string): GitFacts | undefined => {
+    const now = clock();
+    const known = repositories.get(cwd);
+    if (known !== undefined && now - known.at < lookupTtlMs) {
+      return known.facts;
+    }
+    const facts = readGitFacts(cwd, { home: options.home });
+    repositories.set(cwd, { facts, at: now });
+    if (repositories.size > 1_000) {
+      repositories.clear();
+    }
+    return facts;
+  };
+
+  const placeOf = (action: CanonicalAction): ActionPlace => {
+    const cwd = action.repository?.root ?? action.cwd;
+    const facts = cwd === undefined ? undefined : repositoryOf(cwd);
+    const project = cwd === undefined ? undefined : reading(cwd);
+    const environment = resolveMappedEnvironment({
+      fromHost: resolveEnvironment(action),
+      mapping: project?.environments,
+      mappingTrusted: project?.trusted === true,
+      facts:
+        facts === undefined
+          ? undefined
+          : {
+              ...((action.repository?.branch ?? facts.branch) === undefined
+                ? {}
+                : { branch: action.repository?.branch ?? facts.branch }),
+              ...(facts.remote === undefined ? {} : { remote: facts.remote }),
+            },
+    });
+    return {
+      ...(facts === undefined ? {} : { repository: facts }),
+      environment,
+    };
+  };
+
+  const enrich = (request: DecisionRequest): DecisionRequest => {
+    const { action } = request;
+    const place = placeOf(action);
+    const facts = place.repository;
+    const repository = {
+      ...action.repository,
+      ...(action.repository?.root === undefined && facts !== undefined
+        ? { root: facts.root }
+        : {}),
+      ...(action.repository?.branch === undefined && facts?.branch !== undefined
+        ? { branch: facts.branch }
+        : {}),
+      ...(action.repository?.remoteHost === undefined &&
+      facts?.remoteHost !== undefined
+        ? { remoteHost: facts.remoteHost }
+        : {}),
+    };
+    const resource =
+      place.environment.by === "mapping"
+        ? { ...action.resource, environment: place.environment.environment }
+        : action.resource;
+    if (Object.keys(repository).length === 0 && resource === action.resource) {
+      return request;
+    }
+    return {
+      ...request,
+      action: {
+        ...action,
+        ...(Object.keys(repository).length === 0 ? {} : { repository }),
+        ...(resource === undefined ? {} : { resource }),
+      },
     };
   };
 
@@ -406,5 +525,7 @@ export function createProjectPolicyComposer(
     },
     inspect: reading,
     problems: () => reported,
+    enrich,
+    placeOf,
   };
 }

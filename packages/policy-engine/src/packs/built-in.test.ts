@@ -30,7 +30,12 @@ rules:
 /** Every source a policy can come from, each allowing everything. */
 const permissive = compiled(
   { source: "organization", trusted: true, document: policy(ALLOW_EVERYTHING) },
-  { source: "environment", trusted: true, document: policy(ALLOW_EVERYTHING) },
+  {
+    source: "environment",
+    trusted: true,
+    environment: "production",
+    document: policy(ALLOW_EVERYTHING),
+  },
   { source: "project", trusted: true, document: policy(ALLOW_EVERYTHING) },
   local(ALLOW_EVERYTHING),
 );
