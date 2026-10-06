@@ -35,6 +35,12 @@ const USAGE = `rfx — REFLEX, the autonomy control layer for AI agents
       Review what this project's .reflex/policy.yaml would allow, and trust that version.
   rfx policy starter [--force]
       Write the conservative starter policy to .reflex/policy.yaml.
+  rfx policy keygen [--out <dir>]
+      Create the team's signing key pair (private key in ~/.reflex/keys unless --out).
+  rfx policy snapshot --policy <org.yaml> [--environment <env>=<file>]... --key <private.pem> --label <version> --out <file>
+      Compile and sign the team's policy into one snapshot to publish.
+  rfx policy subscribe <https URL | file> --key <public.pem>  |  rfx policy unsubscribe
+      Apply a team's signed snapshot as the organization and environment sources, no account needed.
   rfx pause --for <30m|2h|1d> [--reason <text>]  |  rfx resume
       Suspend enforcement for a bounded time; REFLEX keeps observing.
   rfx doctor [--json]
@@ -263,14 +269,67 @@ async function confirm(question: string, assumeYes: boolean): Promise<boolean> {
   }
 }
 
+/** The options that take a value, so that the value is never read as a command. */
+const VALUED_OPTIONS = new Set([
+  "host",
+  "scope",
+  "mode",
+  "failure-mode",
+  "model",
+  "endpoint",
+  "tool",
+  "path",
+  "for",
+  "reason",
+  "key",
+  "out",
+  "label",
+  "policy",
+  "environment",
+]);
+
+/**
+ * `rfx explain git push --force`: from the first word of the command on,
+ * every token is the agent's, dashes and all, and none of them is an option
+ * of rfx. rfx's own options (`--json`, `--tool`, `--path`) go before it.
+ */
+function splitExplain(args: readonly string[]): {
+  readonly own: readonly string[];
+  readonly command: readonly string[];
+} {
+  if (args[0] !== "explain") {
+    return { own: args, command: [] };
+  }
+  for (let index = 1; index < args.length; index += 1) {
+    const arg = args[index] ?? "";
+    if (arg.startsWith("--")) {
+      if (!arg.includes("=") && VALUED_OPTIONS.has(arg.slice(2))) {
+        index += 1;
+      }
+      continue;
+    }
+    if (arg.startsWith("-")) {
+      continue;
+    }
+    return { own: args.slice(0, index), command: args.slice(index) };
+  }
+  return { own: args, command: [] };
+}
+
 function parseArguments(args: readonly string[]) {
-  return parseArgs({
-    args: [...args],
+  const { own, command } = splitExplain(args);
+  const parsed = parseArgs({
+    args: [...own],
     allowPositionals: true,
     options: {
       version: { type: "boolean", short: "v", default: false },
       host: { type: "string" },
       scope: { type: "string" },
+      key: { type: "string" },
+      out: { type: "string" },
+      label: { type: "string" },
+      policy: { type: "string" },
+      environment: { type: "string", multiple: true },
       mode: { type: "string" },
       "failure-mode": { type: "string" },
       model: { type: "string" },
@@ -289,6 +348,10 @@ function parseArguments(args: readonly string[]) {
       help: { type: "boolean", default: false },
     },
   });
+  return {
+    values: parsed.values,
+    positionals: [...parsed.positionals, ...command],
+  };
 }
 
 async function main(): Promise<number> {
@@ -676,8 +739,114 @@ async function main(): Promise<number> {
     }
 
     case "policy": {
+      if (
+        argument === "keygen" ||
+        argument === "snapshot" ||
+        argument === "subscribe" ||
+        argument === "unsubscribe"
+      ) {
+        const team = await import("./commands/team-policy.js");
+        if (argument === "keygen") {
+          const keys = await team.generateKeys(env, nodeFileSystem, {
+            ...(values.out === undefined ? {} : { out: values.out }),
+          });
+          if (keys.kind === "exists") {
+            write(
+              `${render.safe(keys.privateKeyPath)} exists and was not touched. Choose another --out, or move it first.\n`,
+            );
+            return 1;
+          }
+          if (keys.kind === "write-failed") {
+            write(`Could not write ${render.safe(keys.privateKeyPath)}.\n`);
+            return 1;
+          }
+          write(
+            [
+              `Private key  ${render.safe(keys.privateKeyPath)}  (mode 600; keep it where the team keeps secrets, never in a repository)`,
+              `Public key   ${render.safe(keys.publicKeyPath)}  (give this one to every subscriber)`,
+              `Key id       ${keys.keyId}`,
+              "",
+            ].join("\n"),
+          );
+          return 0;
+        }
+        if (argument === "snapshot") {
+          if (
+            values.policy === undefined ||
+            values.key === undefined ||
+            values.label === undefined ||
+            values.out === undefined
+          ) {
+            write(
+              "Usage: rfx policy snapshot --policy <org.yaml> [--environment <env>=<file>]... --key <private.pem> --label <version> --out <file>\n",
+            );
+            return 2;
+          }
+          const written = await team.writeSnapshot(env, nodeFileSystem, {
+            policy: values.policy,
+            environments: values.environment ?? [],
+            key: values.key,
+            label: values.label,
+            out: values.out,
+          });
+          if (written.kind === "invalid") {
+            write(`Not written: ${render.safe(written.reason)}\n`);
+            return 1;
+          }
+          if (written.kind === "write-failed") {
+            write(`Could not write ${render.safe(written.path)}.\n`);
+            return 1;
+          }
+          write(
+            `Wrote ${render.safe(written.path)}: version ${written.version}, ${String(written.sources)} source(s), ${written.hash}, signed with ${written.keyId}. Publish it where every member can fetch it over HTTPS or from a shared file.\n`,
+          );
+          return 0;
+        }
+        if (argument === "subscribe") {
+          const location = positionals[2];
+          if (location === undefined || values.key === undefined) {
+            write(
+              "Usage: rfx policy subscribe <https URL | file> --key <public.pem>\n",
+            );
+            return 2;
+          }
+          const result = await team.subscribe(env, nodeFileSystem, {
+            location,
+            key: values.key,
+          });
+          if (result.kind === "invalid") {
+            write(`Not subscribed: ${render.safe(result.reason)}\n`);
+            return 1;
+          }
+          if (result.kind === "write-failed") {
+            write("Could not write the subscription.\n");
+            return 1;
+          }
+          const first =
+            result.first.kind === "applied"
+              ? `Snapshot ${result.first.version} (${result.first.hash.slice(0, 19)}...) verified and in force from the next decision.`
+              : result.first.kind === "refused"
+                ? `The snapshot there could not be applied yet (${render.safe(result.first.reason)}); the daemon keeps trying and "rfx status" shows it.`
+                : "Nothing fetched yet.";
+          write(
+            `Subscribed to ${render.safe(result.location)} with key ${result.keyId}. ${first}\n`,
+          );
+          return result.first.kind === "applied" ? 0 : 1;
+        }
+        const result = await team.unsubscribe(env, nodeFileSystem);
+        write(
+          result.kind === "unsubscribed"
+            ? `Unsubscribed from ${render.safe(result.location)}. The team's rules no longer apply from the next decision.\n`
+            : result.kind === "not-subscribed"
+              ? "No team policy subscription.\n"
+              : "Could not remove the subscription.\n",
+        );
+        return result.kind === "write-failed" ? 1 : 0;
+      }
       if (argument !== "starter") {
-        write("Usage: rfx policy starter [--force]\n");
+        write(
+          "Usage: rfx policy starter [--force] | keygen | snapshot | subscribe | unsubscribe\n",
+        );
         return 2;
       }
       const { writeStarterPolicy } = await import("./commands/starter.js");

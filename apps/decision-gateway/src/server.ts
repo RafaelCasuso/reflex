@@ -3,6 +3,7 @@ import { createServer, type Server } from "node:http";
 import { connect } from "node:net";
 import { dirname } from "node:path";
 
+import type { DecisionRequest } from "@reflex-control/contracts";
 import type { OverrideStore, ReflexDecisionEngine } from "@reflex-control/core";
 import type { TelemetrySink } from "@reflex-control/telemetry";
 
@@ -59,6 +60,8 @@ export interface GatewayServerOptions {
   readonly limits?: Partial<GatewayLimits>;
   readonly idempotency?: IdempotencyOptions;
   readonly health?: () => Readonly<Record<string, unknown>>;
+  /** RFX-084: see `GatewayHandlerOptions.enrich`. */
+  readonly enrich?: (request: DecisionRequest) => DecisionRequest;
   readonly clock?: () => Date;
   readonly monotonic?: () => number;
 }
@@ -130,6 +133,7 @@ export function createGatewayServer(
       options.idempotency ?? DEFAULT_IDEMPOTENCY,
     ),
     maxBodyBytes: limits.maxBodyBytes,
+    ...(options.enrich === undefined ? {} : { enrich: options.enrich }),
     // Every peer of a Unix socket is the same user: one caller. On TCP each
     // address is one, until API keys (G14) name callers.
     callerOf: (request) =>

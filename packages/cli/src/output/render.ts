@@ -5,6 +5,7 @@ import type {
   InstallInitPlan,
 } from "../commands/init.js";
 import { describeProvider } from "../commands/provider.js";
+import { describeTeamPolicy } from "../commands/team-policy.js";
 import type { StatusReport } from "../commands/status.js";
 import type { UninstallCommandPlan } from "../commands/uninstall.js";
 import type { SupportedHost } from "../hosts.js";
@@ -288,6 +289,7 @@ export function renderStatus(report: StatusReport, now: Date): string {
       : "Daemon       not running (starts on the first decision it is asked for)",
     `Provider     ${describeProvider(report.provider)}`,
     `Policy       ${describeProjectPolicy(report.projectPolicy)}`,
+    `Team policy  ${safe(describeTeamPolicy(report.teamPolicy))}`,
     `Identity     ${report.identity?.agentId ?? "none"}  (local, anonymous)`,
     `Log          ${safe(report.logFile)}`,
     "",

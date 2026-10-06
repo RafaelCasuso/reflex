@@ -16,6 +16,9 @@ import {
   type PauseRecord,
 } from "../pause.js";
 import { readProvider, type ProviderReport } from "./provider.js";
+import type { SubscriptionState } from "@reflex-control/decision-gateway/policy.js";
+
+import { readTeamPolicy } from "./team-policy.js";
 import { readProjectPolicy, type ProjectPolicyStatus } from "./trust.js";
 import {
   parseIdentity,
@@ -82,6 +85,8 @@ export interface StatusReport {
   readonly pause: PauseRecord | undefined;
   /** RFX-104: the project's own policy and whether it is trusted. */
   readonly projectPolicy: ProjectPolicyStatus;
+  /** RFX-083: the team's snapshot in force, from the local files. */
+  readonly teamPolicy: SubscriptionState;
   readonly adapters: readonly AdapterStatus[];
   readonly lastAction: ObservedActionRecord | undefined;
   readonly summary: OutcomeSummary;
@@ -131,6 +136,7 @@ export async function collectStatus(
     environment.now(),
   );
   const projectPolicy = await readProjectPolicy(environment, fileSystem);
+  const teamPolicy = await readTeamPolicy(environment);
   const registry = parseRegistry(
     (await fileSystem.read(paths.installs))?.content.toString("utf8"),
   );
@@ -209,6 +215,7 @@ export async function collectStatus(
     provider,
     pause,
     projectPolicy,
+    teamPolicy,
     adapters,
     lastAction: actions.at(-1),
     summary: summarize(assembleOutcomes(records)),

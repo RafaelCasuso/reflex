@@ -81,7 +81,7 @@ node apps/decision-gateway/dist/main.js [--socket <path> | --tcp <host:port>]
   [--semantic-provider none|jev|local|reflex|fake] [--semantic-model <id>]
   [--semantic-endpoint <url>] [--shadow-provider <id>]...
   [--shadow-deadline <ms>] [--shadow-sample unresolved|all]
-  [--remote-consent <file>]
+  [--remote-consent <file>] [--snapshot-interval <seconds>]
 ```
 
 - Default: the socket `<REFLEX_HOME>/run/reflex.sock`, in a directory of mode
@@ -127,6 +127,22 @@ node apps/decision-gateway/dist/main.js [--socket <path> | --tcp <host:port>]
   shadow evaluation is a `shadow` telemetry event of its own (provider,
   model, whether it assessed or how it failed, latency; no content), never
   a fallback. A decision served from the cache runs no shadow.
+- `--snapshot-interval` (RFX-083, ADR-018) is how often the subscribed team
+  snapshot (`<REFLEX_HOME>/subscription.json`) is fetched again: 300 seconds
+  by default, never under 30. On start and on every tick the daemon fetches
+  the location, verifies the snapshot with the subscribed key, compiles it
+  and applies it as the `organization` and `environment` sources; a fetch
+  that fails or a snapshot that does not verify leaves the last good one in
+  force (cached in `snapshot.json`, so an offline start has it) and is
+  reported in health (`snapshot: { subscribed, location, keyId, current:
+{ version, hash, publishedAt, fetchedAt }, lastAttemptAt, lastError,
+problem }`), by `rfx status` and by `rfx doctor`. Nothing about the
+  machine is sent to the location beyond the `GET` itself.
+- Before a decision, the daemon fills in what the host did not say about the
+  action (RFX-084): the repository's root, branch and remote host, read from
+  git's own files, and the environment, from the project's `environments`
+  mapping (`docs/policy-language.md` §13). What the host said is kept. The
+  decision, the cache and the record all see the enriched action.
 - `--remote-consent` (RFX-123) names the consent record `rfx provider`
   wrote (`<REFLEX_HOME>/consent.json`: the provider, when, and the digest of
   the statement that was shown). A remote provider (`jev`, `reflex`), as

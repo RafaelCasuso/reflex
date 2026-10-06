@@ -108,7 +108,11 @@ export interface AuditEvent {
     | "provider"
     | "trust"
     | "untrust"
-    | "policy-starter";
+    | "policy-starter"
+    | "policy-keygen"
+    | "policy-snapshot"
+    | "policy-subscribe"
+    | "policy-unsubscribe";
   readonly projectDir?: string;
   readonly detail?: Readonly<Record<string, string>>;
 }

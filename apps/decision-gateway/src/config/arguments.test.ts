@@ -23,6 +23,8 @@ describe("the daemon's command line", () => {
         shadowProviders: [],
         shadowDeadlineMs: 5_000,
         shadowSample: "unresolved",
+        remoteConsentFile: undefined,
+        snapshotIntervalMs: 300_000,
       },
     });
     expect(defaultSocketPath("/x")).toBe("/x/run/reflex.sock");
@@ -59,6 +61,8 @@ describe("the daemon's command line", () => {
         "250",
         "--remote-consent",
         "/elsewhere/consent.json",
+        "--snapshot-interval",
+        "60",
       ],
       env,
     );
@@ -79,6 +83,7 @@ describe("the daemon's command line", () => {
         shadowDeadlineMs: 250,
         shadowSample: "unresolved",
         remoteConsentFile: "/elsewhere/consent.json",
+        snapshotIntervalMs: 60_000,
       },
     });
   });
@@ -223,11 +228,23 @@ describe("RFX-142 the shadow flags", () => {
       ["--semantic-provider", "fake", "--shadow-deadline"],
       "whole milliseconds",
     ],
+    [["--snapshot-interval", "10"], "at least 30"],
+    [["--snapshot-interval", "1.5"], "whole seconds"],
+    [["--snapshot-interval"], "whole seconds"],
   ])("refuses %j", (argv, message) => {
     const parsed = parseArguments(argv, env);
     expect(parsed.ok).toBe(false);
     if (!parsed.ok) {
       expect(parsed.problem).toContain(message);
     }
+  });
+});
+
+describe("RFX-083 --snapshot-interval", () => {
+  it("defaults to five minutes and takes whole seconds", () => {
+    const given = parseArguments([], {});
+    expect(given.ok && given.arguments.snapshotIntervalMs).toBe(300_000);
+    const set = parseArguments(["--snapshot-interval", "60"], {});
+    expect(set.ok && set.arguments.snapshotIntervalMs).toBe(60_000);
   });
 });

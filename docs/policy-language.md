@@ -482,7 +482,7 @@ outranks every default (150 for `built-in` down to 110 for `local`), and among
 defaults the more specific source is higher (10 for `built-in` up to 50 for
 `local`).
 
-### Where the sources come from today (G9)
+### Where the sources come from
 
 - `local`: the user's `<REFLEX_HOME>/policy.yaml`, every project.
 - `project`: the repository's `.reflex/policy.yaml`, found from the action's
@@ -491,8 +491,15 @@ defaults the more specific source is higher (10 for `built-in` up to 50 for
   `rfx trust` trusts a version the user has read, by content hash; until
   then the file only tightens (ADR-012). `rfx explain` shows which rules
   matched, from which source, and which decided.
-- `organization` and `environment`: G9.5 (RFX-083, RFX-084), as signed
-  snapshots a team publishes.
+- `organization` and `environment`: a team's **signed snapshot** (RFX-083,
+  ADR-018), published to an HTTPS URL or a file with `rfx policy snapshot`
+  and applied on every member's machine with
+  `rfx policy subscribe <location> --key <public key>`. The daemon fetches
+  it on start and every few minutes, verifies the signature with that key,
+  and keeps the last good one when a fetch fails or a snapshot does not
+  verify; one that does not verify is refused and reported, never applied.
+  `rfx status`, `rfx doctor` and `rfx explain` show the version in force.
+  What an `environment` source applies to is §13.
 
 ## 7. Built-in rules
 
@@ -616,4 +623,112 @@ A set of policies has one hash, recorded with every decision as
 `policySetHash`. It depends on what the policies mean and on nothing else: not
 on comments, quoting, key order or indentation, and not on the order of rules,
 conditions or values. It changes with anything that changes a decision,
-including the source a policy comes from and whether a project is trusted.
+including the source a policy comes from, whether a project is trusted, and
+the environment an `environment` source names. A subscribed snapshot carries
+this very form as its payload, so every decision made under a team policy
+says which one through this hash.
+
+## 13. Environments
+
+**A `deny` in an `environment` source is a floor, whether or not it says
+`mandatory`.** An environment policy exists to constrain that environment,
+and a deny of it that a project could silently override would be no
+constraint (ADR-018 §4). Its `ask` is a default a more specific source may
+override, unless it says `mandatory: true`; its `allow` is a default like
+any other.
+
+An `environment` source names the environment it applies to, and its rules
+are candidates only for actions in that environment. Everywhere else they
+are not matched at all, and `rfx explain` does not list them. A team
+publishes one per environment it wants rules for
+(`rfx policy snapshot --environment production=production.yaml`).
+
+```yaml
+# example: environments
+# source: organization
+version: 1
+rules:
+  - id: org-ask-rm
+    name: Ask before rm
+    effect: ask
+    conditions:
+      - { field: command.name, operator: equals, value: rm }
+```
+
+```yaml
+# example: environments
+# source: environment
+# environment: production
+version: 1
+rules:
+  - id: prod-no-rm
+    name: No rm in production
+    effect: deny
+    conditions:
+      - { field: command.name, operator: equals, value: rm }
+```
+
+```yaml
+# example: environments
+# source: local
+version: 1
+rules:
+  - id: me-rm
+    name: rm is mine
+    effect: allow
+    conditions:
+      - { field: command.name, operator: equals, value: rm }
+```
+
+```text
+# expect: environments
+Bash: rm -rf build [environment=production] => deny
+Bash: rm -rf build [environment=development] => allow
+Bash: rm -rf build => allow
+```
+
+In production the environment's deny holds against the local allow, as a
+floor; elsewhere the local allow overrides the organization's non-mandatory
+ask (§6), and an action whose environment is `unknown` is nowhere.
+
+### How an action gets its environment
+
+The daemon resolves it once, before policy is asked, and writes it into the
+request the decision is made on (RFX-084):
+
+1. A host that says the environment (`resource.environment`, anything but
+   `unknown`) is believed.
+2. Else the project's `.reflex/policy.yaml` may say, with an `environments`
+   mapping: for each environment, the branches and the remotes that mean it.
+   The daemon reads the checked-out branch from the repository's `HEAD` and
+   the `origin` remote from its `config`, as `host/owner/repo`, never by
+   running git, and takes the riskiest environment whose matchers hold:
+   `production` before `staging` before `test` before `development` before
+   `local`.
+3. Else `unknown`, which is never safe (ADR-001 §4).
+
+```yaml
+version: 1
+rules: []
+environments:
+  production:
+    branches: [main, "release/.*"]
+    remotes: ["github.com/acme/.*"]
+  staging:
+    branches: [staging]
+  development:
+    branches: ["feature/.*"]
+```
+
+A matcher is a pattern (§9) matched against the whole branch or the whole
+remote: `main` means the branch `main`, not every branch with those letters
+in it; `release/.*` is how a prefix is written. The mapping is not part of
+the policy set's hash, since it says where an action is, not what to do
+about it; the resolved environment travels with the action into the
+decision record.
+
+**An untrusted mapping may only raise.** Until the user trusts a
+repository's policy (ADR-012), only its claims to `production` or `staging`
+are honoured: a hostile clone can bring the production rules onto itself
+and can never take them off. `rfx explain` prints the environment it
+resolved and what resolved it (the host, the mapping, or nothing).

@@ -416,6 +416,59 @@ export async function runDoctor(
     );
   }
 
+  // RFX-083: the team's snapshot.
+  const { readTeamPolicy } = await import("./team-policy.js");
+  const team = await readTeamPolicy(environment);
+  if (team.problem !== undefined) {
+    checks.push(
+      check(
+        "policy",
+        "team policy",
+        "fail",
+        team.problem,
+        'Run "rfx policy subscribe <location> --key <public key>" again, or "rfx policy unsubscribe".',
+      ),
+    );
+  } else if (!team.subscribed) {
+    checks.push(
+      check(
+        "policy",
+        "team policy",
+        "info",
+        'no team policy subscription; "rfx policy subscribe <location> --key <public key>" applies a team\'s signed snapshot',
+      ),
+    );
+  } else if (team.current === undefined) {
+    checks.push(
+      check(
+        "policy",
+        "team policy",
+        "fail",
+        `subscribed to ${team.location ?? "?"} but no snapshot is in force${team.lastError === undefined ? "" : `: ${team.lastError}`}`,
+        "Check that the location serves the snapshot and that it was signed with the key you subscribed with; the daemon retries on its interval.",
+      ),
+    );
+  } else if (team.lastError !== undefined) {
+    checks.push(
+      check(
+        "policy",
+        "team policy",
+        "warn",
+        `${team.current.version} (${team.current.hash.slice(0, 19)}...) is in force; the last fetch failed: ${team.lastError}`,
+        "The last good snapshot stays in force (ADR-003 §3). Check the location; the daemon retries on its interval.",
+      ),
+    );
+  } else {
+    checks.push(
+      check(
+        "policy",
+        "team policy",
+        "ok",
+        `${team.current.version} (${team.current.hash.slice(0, 19)}...) from ${team.location ?? "?"}, fetched ${team.current.fetchedAt}`,
+      ),
+    );
+  }
+
   // Provider.
   const provider = await readProvider(environment, fileSystem);
   if (provider.withheld.length > 0) {

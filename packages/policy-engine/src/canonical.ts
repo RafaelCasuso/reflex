@@ -1,6 +1,7 @@
 import { createHash } from "node:crypto";
 
 import type {
+  EnvironmentKind,
   PolicyCondition,
   PolicyRule,
   PolicyUnresolvedDefault,
@@ -18,9 +19,13 @@ import type { PolicySource } from "./precedence.js";
  * branches or of `in` values either, because none of them changes a decision
  * (ADR-004: rule order never matters).
  *
- * The canonical form is also the payload a signed snapshot will carry
- * (RFX-083): plain JSON, keys sorted, no whitespace. Signing can be added
- * around it without changing it.
+ * The canonical form is also the payload a signed snapshot carries
+ * (RFX-083, `snapshot.ts`): plain JSON, keys sorted, no whitespace. Signing
+ * is added around it without changing it.
+ *
+ * RFX-084: an `environment` source names the environment it applies to.
+ * The key is written only when present, so every set without one hashes as
+ * it did before.
  */
 export const POLICY_SET_FORMAT = 1;
 
@@ -29,6 +34,8 @@ export interface CanonicalSource {
   readonly trusted: boolean;
   readonly policyId?: string;
   readonly unresolved?: PolicyUnresolvedDefault;
+  /** Only on an `environment` source. */
+  readonly environment?: EnvironmentKind;
   readonly rules: readonly PolicyRule[];
 }
 
@@ -112,6 +119,9 @@ export function canonicalizePolicySet(
         trusted: entry.trusted,
         policyId: entry.policyId ?? null,
         unresolved: entry.unresolved ?? null,
+        ...(entry.environment === undefined
+          ? {}
+          : { environment: entry.environment }),
         rules: sorted(entry.rules.map(canonicalRule)),
       })),
     ),

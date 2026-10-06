@@ -69,6 +69,8 @@ for (const [, language, body] of REFERENCE.matchAll(
   const source = (/^# source: (\S+)$/m.exec(body)?.[1] ??
     "local") as PolicySource;
   const trusted = /^# trusted: false$/m.exec(body) === null;
+  // RFX-084: an `environment` source names the environment it applies to.
+  const environment = /^# environment: (\S+)$/m.exec(body)?.[1];
   const parsed = parsePolicy(body);
   if (!parsed.ok) {
     throw new Error(
@@ -76,7 +78,17 @@ for (const [, language, body] of REFERENCE.matchAll(
     );
   }
   expect(POLICY_SOURCES).toContain(source);
-  example.sources.push({ source, trusted, document: parsed.document });
+  if (environment !== undefined) {
+    expect(ENVIRONMENT_KINDS).toContain(environment);
+  }
+  example.sources.push({
+    source,
+    trusted,
+    ...(environment === undefined
+      ? {}
+      : { environment: environment as EnvironmentKind }),
+    document: parsed.document,
+  });
   example.yaml.push(body);
 }
 

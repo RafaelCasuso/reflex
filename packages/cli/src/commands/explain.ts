@@ -5,7 +5,11 @@ import type {
   ReflexMode,
 } from "@reflex-control/contracts";
 import { effectiveEffectOf } from "@reflex-control/core";
-import type { ProjectPolicyReading } from "@reflex-control/decision-gateway/policy.js";
+import type {
+  ActionPlace,
+  ProjectPolicyReading,
+  SubscriptionState,
+} from "@reflex-control/decision-gateway/policy.js";
 import {
   evaluatePolicy,
   POLICY_SOURCES,
@@ -17,6 +21,7 @@ import {
 import type { FileSystemPort } from "../backups/file-system.js";
 import type { SupportedHost } from "../hosts.js";
 import { reflexHome, type Environment } from "../state.js";
+import { describeTeamPolicy, readTeamPolicy } from "./team-policy.js";
 import { composerFor } from "./trust.js";
 
 /**
@@ -64,6 +69,10 @@ export interface Explanation {
   readonly byMode: Readonly<Record<ReflexMode, DecisionEffect>>;
   readonly policySetHash: string;
   readonly projectPolicy: ProjectPolicyReading | undefined;
+  /** RFX-083: the team's snapshot the set was composed with, if any. */
+  readonly teamPolicy: SubscriptionState;
+  /** RFX-084: the repository and environment the daemon would resolve. */
+  readonly place: ActionPlace;
 }
 
 const PRECEDENCE_SOURCE: ReadonlyMap<number, PolicySource> = new Map(
@@ -114,7 +123,16 @@ export async function explain(
   fileSystem: FileSystemPort,
 ): Promise<Explanation> {
   const composer = await composerFor(environment, fileSystem);
-  const action = actionFor(request, environment);
+  // RFX-084: the same enrichment the daemon applies before deciding, and
+  // the explanation of it, read before the enrichment so that a mapped
+  // environment is not reported as the host's word.
+  const given = actionFor(request, environment);
+  const place = composer.placeOf(given);
+  const { action } = composer.enrich({
+    mode: "autopilot",
+    failureMode: "fail-ask",
+    action: given,
+  });
   const set = composer.setFor(action);
   const result = evaluatePolicy(set, action, { home: environment.homeDir });
   const effect =
@@ -158,7 +176,24 @@ export async function explain(
     },
     policySetHash: set.hash,
     projectPolicy: composer.inspect(environment.projectDir),
+    teamPolicy: await readTeamPolicy(environment),
+    place,
   };
+}
+
+function describePlace(place: ActionPlace): string {
+  const repository = place.repository;
+  const where =
+    repository === undefined
+      ? "no repository found"
+      : `${repository.branch === undefined ? "detached" : `branch ${repository.branch}`}${repository.remote === undefined ? "" : `, origin ${repository.remote}`}`;
+  const how =
+    place.environment.by === "host"
+      ? "said by the host"
+      : place.environment.by === "mapping"
+        ? "mapped by .reflex/policy.yaml"
+        : "nothing maps it";
+  return `${place.environment.environment} (${how}; ${where})`;
 }
 
 export function renderExplanation(
@@ -191,6 +226,8 @@ export function renderExplanation(
           ? `${project.path} (not loaded: ${project.problems[0] ?? "invalid"})`
           : `${project.path} (${project.trusted ? "trusted" : `untrusted: its ${String(project.allowRules.length)} allow rule(s) are ignored, "rfx trust" to review`})`
     }; REFLEX's own rules`,
+    `Team policy  ${describeTeamPolicy(explanation.teamPolicy)}`,
+    `Environment  ${describePlace(explanation.place)}`,
     `Set          ${explanation.policySetHash}`,
   );
   if (explanation.matches.length === 0) {

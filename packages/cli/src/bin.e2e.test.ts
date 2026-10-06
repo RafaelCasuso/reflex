@@ -315,6 +315,20 @@ describe("rfx: the command line", () => {
     expect(summary).toContain("not yet known 0");
   });
 
+  // The usage line promises `rfx explain git push --force`; `--force` is
+  // also an option of rfx, and `-f` is not one at all. From the command's
+  // first word on, nothing is rfx's.
+  it("lets rfx explain take a command with its own dashes", async () => {
+    const run = await rfx(["explain", "git", "push", "--force", "-f"], {});
+    expect(run.code).toBe(0);
+    expect(run.stdout).toContain("Action       Bash: git push --force -f");
+    const json = await rfx(["explain", "--json", "git", "push", "--force"], {});
+    expect(json.code).toBe(0);
+    expect(JSON.parse(json.stdout) as object).toMatchObject({
+      action: { arguments: { command: "git push --force" } },
+    });
+  });
+
   it("rejects an unknown scope and an unknown command", async () => {
     expect((await rfx(["init", "--scope", "everywhere"], {})).code).toBe(2);
     expect((await rfx(["frobnicate"], {})).code).toBe(2);
@@ -1207,4 +1221,299 @@ describe("rfx mode", () => {
     });
     expect(unknown.code).toBe(2);
   });
+});
+
+/**
+ * RFX-083, RFX-084 — one signed team policy, applied by two machines'
+ * daemons to Claude Code and to Codex, with no account; a local policy
+ * cannot weaken its mandate; a production branch gets the production rules;
+ * a snapshot that does not verify is refused and reported. The gate exit of
+ * G9.5, against the real binary and the real daemon.
+ */
+describe("a team's signed policy snapshot (RFX-083, RFX-084)", () => {
+  let team: string;
+  let memberA: string;
+  let memberB: string;
+  let project: string;
+
+  const ORGANIZATION = `version: 1
+defaults:
+  unresolved: ask
+rules:
+  - id: org-no-force
+    name: Never force-push
+    effect: deny
+    mandatory: true
+    conditions:
+      - { field: command.name, operator: equals, value: git }
+      - { field: command.args, operator: in, value: [--force, -f] }
+`;
+  const PRODUCTION = `version: 1
+rules:
+  - id: prod-no-touch
+    name: No touch in production
+    effect: deny
+    conditions:
+      - { field: command.name, operator: equals, value: touch }
+`;
+  // The member's own policy allows everything the snapshot forbids: it must
+  // not be able to.
+  const MEMBER_POLICY = `version: 1
+defaults:
+  unresolved: ask
+rules:
+  - id: me-git
+    name: git is mine
+    effect: allow
+    conditions:
+      - { field: command.name, operator: equals, value: git }
+  - id: me-touch
+    name: touch is mine
+    effect: allow
+    conditions:
+      - { field: command.name, operator: equals, value: touch }
+`;
+  const MAPPING = `version: 1
+rules: []
+environments:
+  production:
+    branches: [main]
+`;
+
+  beforeEach(async () => {
+    team = join(root, "team");
+    memberA = join(root, "member-a");
+    memberB = join(root, "member-b");
+    await mkdir(team, { recursive: true });
+    await mkdir(join(root, "team-project", ".git"), { recursive: true });
+    // What the CLI sees as its working directory is the real path; the
+    // registry and the payloads must say the same (macOS /var -> /private/var).
+    project = await realpath(join(root, "team-project"));
+    await mkdir(join(project, ".reflex"), { recursive: true });
+    await writeFile(join(project, ".git", "HEAD"), "ref: refs/heads/main\n");
+    await writeFile(join(project, ".reflex", "policy.yaml"), MAPPING);
+  });
+
+  afterEach(async () => {
+    const { stopDaemon } = await import("./daemon/lifecycle.js");
+    await stopDaemon(memberA, { graceMs: 2_000 });
+    await stopDaemon(memberB, { graceMs: 2_000 });
+  });
+
+  async function member(
+    home: string,
+    host: "claude-code" | "codex",
+  ): Promise<void> {
+    await mkdir(home, { recursive: true, mode: 0o700 });
+    await writeFile(
+      join(home, "installs.json"),
+      JSON.stringify({
+        version: 1,
+        installs: [
+          {
+            host,
+            scope: host === "codex" ? "user" : "local",
+            settingsPath:
+              host === "codex"
+                ? join(home, ".codex", "hooks.json")
+                : join(project, ".claude", "settings.local.json"),
+            projectDir: project,
+            projectId: "prj_00000000000000000000000000000003",
+            manifestPath: join(home, "backups", "manifest.json"),
+            installedAt: "2026-10-06T10:00:00.000Z",
+            mode: "autopilot",
+            failureMode: "fail-ask",
+          },
+        ],
+        projects: [],
+      }),
+    );
+    await writeFile(join(home, "policy.yaml"), MEMBER_POLICY);
+  }
+
+  // Each call is a new tool call of the host: a new tool_use_id, or the
+  // daemon would see one id with two commands (RFX-120).
+  let calls = 0;
+  const claudePayload = (command: string): string => {
+    calls += 1;
+    const payload = JSON.parse(fixture("pre-tool-use.bash")) as {
+      tool_input: Record<string, unknown>;
+    } & Record<string, unknown>;
+    return JSON.stringify({
+      ...payload,
+      cwd: project,
+      tool_use_id: `toolu_team_${String(calls).padStart(4, "0")}`,
+      tool_input: { ...payload.tool_input, command },
+    });
+  };
+  const codexPayload = (command: string): string => {
+    calls += 1;
+    const payload = JSON.parse(codexFixture("pre-tool-use.bash", project)) as {
+      tool_input: Record<string, unknown>;
+    } & Record<string, unknown>;
+    return JSON.stringify({
+      ...payload,
+      tool_use_id: `toolu_team_${String(calls).padStart(4, "0")}`,
+      tool_input: { ...payload.tool_input, command },
+    });
+  };
+  const decisionOf = (run: Run): string =>
+    (answerOf(run) as { hookSpecificOutput: { permissionDecision: string } })
+      .hookSpecificOutput.permissionDecision;
+  const reasonOf = (run: Run): string =>
+    (
+      answerOf(run) as {
+        hookSpecificOutput: { permissionDecisionReason?: string };
+      }
+    ).hookSpecificOutput.permissionDecisionReason ?? "";
+
+  async function publish(): Promise<string> {
+    const env = { REFLEX_HOME: memberA };
+    await writeFile(join(team, "organization.yaml"), ORGANIZATION);
+    await writeFile(join(team, "production.yaml"), PRODUCTION);
+    const keygen = await rfx(
+      ["policy", "keygen", "--out", join(team, "keys")],
+      {
+        env,
+        cwd: team,
+      },
+    );
+    expect(keygen.code).toBe(0);
+    expect(keygen.stdout).toContain("Private key");
+    const snapshot = await rfx(
+      [
+        "policy",
+        "snapshot",
+        "--policy",
+        "organization.yaml",
+        "--environment",
+        "production=production.yaml",
+        "--key",
+        join(team, "keys", "reflex-policy-key.pem"),
+        "--label",
+        "2026.10",
+        "--out",
+        join(team, "policy.json"),
+      ],
+      { env, cwd: team },
+    );
+    expect(snapshot.code).toBe(0);
+    expect(snapshot.stdout).toContain("version 2026.10, 2 source(s)");
+    return join(team, "keys", "reflex-policy-key.pub");
+  }
+
+  it("is applied by two machines to Claude Code and to Codex, mandates held against local policy, production mapped", async () => {
+    await member(memberA, "claude-code");
+    await member(memberB, "codex");
+    const publicKey = await publish();
+
+    for (const home of [memberA, memberB]) {
+      const subscribed = await rfx(
+        ["policy", "subscribe", join(team, "policy.json"), "--key", publicKey],
+        { env: { REFLEX_HOME: home }, cwd: project },
+      );
+      expect(subscribed.code).toBe(0);
+      expect(subscribed.stdout).toContain("verified and in force");
+      // The member trusts the project's mapping, as `rfx init` would have.
+      const trusted = await rfx(["trust", "--yes"], {
+        env: { REFLEX_HOME: home },
+        cwd: project,
+      });
+      expect(trusted.code).toBe(0);
+    }
+
+    // Claude Code, member A: the mandate holds against the local allow.
+    const forced = await rfx(["hook", "claude-code"], {
+      stdin: claudePayload("git push --force"),
+      env: { REFLEX_HOME: memberA },
+    });
+    expect(forced.code).toBe(0);
+    expect(reasonOf(forced)).toContain("org-no-force");
+    expect(decisionOf(forced)).toBe("deny");
+
+    // Codex, member B: the same mandate, the same answer on its channel.
+    const forcedCodex = await rfx(["hook", "codex"], {
+      stdin: codexPayload("git push --force"),
+      env: { REFLEX_HOME: memberB },
+    });
+    expect(forcedCodex.code).toBe(0);
+    expect(decisionOf(forcedCodex)).toBe("deny");
+    expect(reasonOf(forcedCodex)).toContain("org-no-force");
+
+    // RFX-084: the project is on main, which its mapping calls production,
+    // so the production source applies and its deny is a floor.
+    const touched = await rfx(["hook", "claude-code"], {
+      stdin: claudePayload("touch notes.txt"),
+      env: { REFLEX_HOME: memberA },
+    });
+    expect(decisionOf(touched)).toBe("deny");
+    expect(reasonOf(touched)).toContain("prod-no-touch");
+
+    // The same set on both machines, explained offline the same way.
+    const explained = await Promise.all(
+      [memberA, memberB].map((home) =>
+        rfx(["explain", "git", "push", "--force"], {
+          env: { REFLEX_HOME: home },
+          cwd: project,
+        }),
+      ),
+    );
+    const setOf = (run: Run) =>
+      /^Set\s+(sha256:[0-9a-f]{64})$/m.exec(run.stdout)?.[1];
+    const sets = explained.map(setOf);
+    expect(sets[0]).toBeDefined();
+    expect(sets[0]).toBe(sets[1]);
+    for (const run of explained) {
+      expect(run.stdout).toContain("Team policy  2026.10");
+      expect(run.stdout).toMatch(/Environment\s+production \(mapped by/);
+      expect(run.stdout).toMatch(
+        /deny\s+org-no-force\s+organization .* mandatory\s+<- decides/,
+      );
+      expect(run.stdout).toContain("Effect       deny");
+    }
+
+    const status = await rfx(["status"], {
+      env: { REFLEX_HOME: memberA },
+      cwd: project,
+    });
+    expect(status.stdout).toContain("Team policy  2026.10");
+    const doctor = await rfx(["doctor"], {
+      env: { REFLEX_HOME: memberA },
+      cwd: project,
+    });
+    expect(doctor.stdout).toMatch(/team policy: 2026\.10/);
+  }, 40_000);
+
+  it("refuses a snapshot that does not verify, says so, and applies nothing from it", async () => {
+    await member(memberA, "claude-code");
+    const publicKey = await publish();
+    const text = await readFile(join(team, "policy.json"), "utf8");
+    await writeFile(join(team, "tampered.json"), text.replace("deny", "allow"));
+    const subscribed = await rfx(
+      ["policy", "subscribe", join(team, "tampered.json"), "--key", publicKey],
+      { env: { REFLEX_HOME: memberA }, cwd: project },
+    );
+    expect(subscribed.code).toBe(1);
+    expect(subscribed.stdout).toContain("could not be applied yet");
+    expect(subscribed.stdout).toContain("hash");
+    const doctor = await rfx(["doctor"], {
+      env: { REFLEX_HOME: memberA },
+      cwd: project,
+    });
+    expect(doctor.code).toBe(1);
+    expect(doctor.stdout).toMatch(/team policy.*no snapshot is in force/);
+    // Nothing of it applies: the local allow decides.
+    const explained = await rfx(["explain", "git", "push", "--force"], {
+      env: { REFLEX_HOME: memberA },
+      cwd: project,
+    });
+    expect(explained.stdout).toContain("Effect       allow");
+    // And unsubscribing is clean.
+    const gone = await rfx(["policy", "unsubscribe"], {
+      env: { REFLEX_HOME: memberA },
+      cwd: project,
+    });
+    expect(gone.code).toBe(0);
+    expect(gone.stdout).toContain("Unsubscribed");
+  }, 30_000);
 });
