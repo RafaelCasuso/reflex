@@ -25,6 +25,7 @@ import {
 import {
   fallbackReasonOf,
   providerError,
+  type ProviderError,
   type ProviderResult,
 } from "@reflex-control/semantic-provider";
 
@@ -212,6 +213,26 @@ type ProviderOutcome =
       readonly reason: FallbackReason;
     });
 
+/**
+ * The semantic stage's one attempt at the primary provider. A success
+ * carries the request the provider was asked with: the provider is only
+ * asked once the request is compiled, so a success never lacks one, and the
+ * type says so rather than a branch nobody can reach (the weekly mutation
+ * check of 2026-10-06 found that branch unheld, because it was unreachable).
+ */
+type SemanticAttempt =
+  | {
+      readonly ok: true;
+      readonly request: SemanticDecisionRequest;
+      readonly assessment: SemanticAssessment;
+      readonly result: ProviderResult;
+    }
+  | {
+      readonly ok: false;
+      readonly error: ProviderError;
+      readonly result: ProviderResult;
+    };
+
 export function createDecisionEngine(
   options: DecisionEngineOptions,
 ): ReflexDecisionEngine {
@@ -384,7 +405,7 @@ export function createDecisionEngine(
     let compiled: SemanticDecisionRequest | undefined;
     let shadows: Promise<ShadowObservation>[] = [];
     let providerStarted = compileStarted;
-    let result: ProviderResult;
+    let attempt: SemanticAttempt;
     try {
       compiled = stage.compiler.compile(request.action, {
         maxInputTokens: stage.maxInputTokens,
@@ -402,56 +423,46 @@ export function createDecisionEngine(
         "unresolved",
       );
       providerStarted = monotonic();
-      result = await stage.provider.evaluate(compiled, combined);
+      const result = await stage.provider.evaluate(compiled, combined);
+      attempt = result.ok
+        ? { ok: true, request: compiled, assessment: result.assessment, result }
+        : { ok: false, error: result.error, result };
     } catch {
       // ADR-005 §2: a provider or a compiler that throws is a bug, handled
       // as a provider that is unavailable. If the deadline or the caller
       // fired meanwhile, that is what happened.
-      result = {
-        ok: false,
-        error: providerError(
-          combined.aborted ? "timeout" : "unavailable",
-          stage.provider.providerName,
-          monotonic() - compileStarted,
-        ),
-      };
+      const error = providerError(
+        combined.aborted ? "timeout" : "unavailable",
+        stage.provider.providerName,
+        monotonic() - compileStarted,
+      );
+      attempt = { ok: false, error, result: { ok: false, error } };
     }
     const primary: PrimaryEvaluation = {
       provider: stage.provider.providerName,
       ...(stage.provider.model === undefined
         ? {}
         : { model: stage.provider.model }),
-      result,
+      result: attempt.result,
       latencyMs: Math.max(0, Math.round(monotonic() - providerStarted)),
     };
-    const seen = compiled === undefined ? {} : { request: compiled };
-    if (result.ok && compiled !== undefined) {
+    if (attempt.ok) {
       return {
         ok: true,
-        assessment: result.assessment,
-        request: compiled,
+        assessment: attempt.assessment,
+        request: attempt.request,
         contextMs,
         primary,
         shadows,
       };
     }
-    if (result.ok) {
-      // Cannot happen: a result needs a compiled request. Treated as the
-      // defect it would be.
-      return {
-        ok: false,
-        reason: "provider-error",
-        contextMs,
-        primary,
-        shadows,
-      };
-    }
-    // Nothing the provider says is read beyond the kind of its failure.
+    // Nothing the provider says is read beyond the kind of its failure. The
+    // compiled request, when there was one, is still reported.
     return {
       ok: false,
-      reason: fallbackReasonOf(result.error),
+      reason: fallbackReasonOf(attempt.error),
       contextMs,
-      ...seen,
+      ...(compiled === undefined ? {} : { request: compiled }),
       primary,
       shadows,
     };
