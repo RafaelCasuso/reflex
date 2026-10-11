@@ -1,0 +1,27 @@
+<!-- title: REFLEX plans and early access -->
+<!-- description: The open version of REFLEX is free with no account. The hosted control plane, by early access, adds the timeline across machines, retention you set, approval learning and team administration. Launch prices; nothing is billed yet. -->
+<h1>Plans, and what each one counts.</h1>
+<p class="lede">The open version decides on your machine and is free, for one person or a whole team. What costs money is the hosted control plane: the record across machines, kept as long as you say, with the people who run your agents in one place.</p>
+
+<div class="notice">
+  <p><strong>Launch prices, by early access.</strong> The control plane exists and runs; what does not exist yet is self-service billing. Nothing is charged today. Request early access and you get an organization, claim codes for your machines, and the launch price of your plan held when billing opens.</p>
+  <a class="button" href="{{contact.mailto}}">Request early access</a>
+</div>
+
+{{{pricing.plans}}}
+
+<h2 id="what-is-counted">What is counted</h2>
+<p>One unit: a <strong>governed action</strong>, a tool call your agent made that REFLEX decided about, whatever the verdict and whichever host made it. Reads and writes count the same; a decision served from the cache counts once. You are never billed in model tokens, and the open version counts nothing because it reports to no one.</p>
+<p>Where a governed action is counted is still being decided (the decisions are made on your machine; the control plane sees the ones a claimed project uploads). The repository records that decision when it is made, and the meter follows it, never the other way round.</p>
+
+<h2 id="open-and-hosted">Open and hosted</h2>
+<p>Open, under Apache-2.0, forever: the hook, the daemon, the policy engine and language, the local record, signed team policies without an account, a semantic provider of your own with your own key. What the plans add comes from the hosted side: the decision timeline across every claimed machine, retention per organization with deletion on request, the audit log, approval learning that proposes rules and never enforces them on its own, team administration, and support.</p>
+<p>An organization that would rather run the control plane itself can: it is a PostgreSQL database and one service, and the Enterprise plan includes that deployment.</p>
+
+<h2 id="questions">Questions</h2>
+<dl>
+  <div><dt>Does the free version expire?</dt><dd>No. It is the open-source product, and it needs no account. The Developer plan above is the hosted control plane's free tier, for one person who wants the timeline across machines.</dd></div>
+  <div><dt>What leaves my machine if I claim a project?</dt><dd>Each decision's summary by name (the tool, the rules that matched, the verdict, the latency) and the redacted record; never an argument value of an action a rule decided, never a path or a working directory. <code>rfx claim</code> shows the full statement and sends nothing before you agree. <a href="/docs/stored/">What is stored, and for how long.</a></dd></div>
+  <div><dt>Can we keep the data in our own infrastructure?</dt><dd>Yes, with the Enterprise plan, or by running the open daemon alone, which keeps everything local.</dd></div>
+  <div><dt>How do I ask for early access?</dt><dd>Write to <a href="{{contact.mailto}}">{{contact.email}}</a> with the plan you have in mind and how many people run agents on your team. You hear back from a person.</dd></div>
+</dl>
