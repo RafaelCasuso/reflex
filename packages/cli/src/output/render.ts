@@ -4,6 +4,7 @@ import type {
   InitWarning,
   InstallInitPlan,
 } from "../commands/init.js";
+import { describeCloud } from "../commands/cloud.js";
 import { describeProvider } from "../commands/provider.js";
 import { describeTeamPolicy } from "../commands/team-policy.js";
 import type { StatusReport } from "../commands/status.js";
@@ -290,7 +291,8 @@ export function renderStatus(report: StatusReport, now: Date): string {
     `Provider     ${describeProvider(report.provider)}`,
     `Policy       ${describeProjectPolicy(report.projectPolicy)}`,
     `Team policy  ${safe(describeTeamPolicy(report.teamPolicy))}`,
-    `Identity     ${report.identity?.agentId ?? "none"}  (local, anonymous)`,
+    `Cloud        ${safe(describeCloud(report.cloud))}`,
+    `Identity     ${report.identity?.agentId ?? "none"}  (${report.cloud.record === undefined ? "local, anonymous" : `local, claimed into ${safe(report.cloud.record.organizationName)}`})`,
     `Log          ${safe(report.logFile)}`,
     "",
   );

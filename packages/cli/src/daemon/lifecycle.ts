@@ -468,6 +468,8 @@ export interface DaemonStatus {
   readonly pid?: number;
   readonly uptimeMs?: number;
   readonly startedAt?: string;
+  /** Everything `GET /v1/health` said, for the parts status reads by shape. */
+  readonly health?: Readonly<Record<string, unknown>>;
 }
 
 /** What `rfx status` shows. Reads the socket, then the advisory state. */
@@ -485,5 +487,6 @@ export async function daemonStatus(home: string): Promise<DaemonStatus> {
     ...(probe.health.pid === undefined ? {} : { pid: probe.health.pid }),
     uptimeMs: probe.health.uptimeMs,
     ...(remembered === undefined ? {} : { startedAt: remembered.startedAt }),
+    health: probe.health.raw,
   };
 }

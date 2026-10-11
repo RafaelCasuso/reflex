@@ -166,6 +166,32 @@ problem }`), by `rfx status` and by `rfx doctor`. Nothing about the
   redacted semantic context); a record that fails to write is counted in
   health (`recordsDropped`) and never fails a decision. Off with
   `--no-telemetry`.
+- A claimed installation uploads (RFX-060, RFX-061, ADR-019 §4). When
+  `<REFLEX_HOME>/cloud.json` exists (written by `rfx claim`) and its consent
+  digest is the current statement's, the daemon appends, after every decision
+  of a claimed project and off the decision path, one entry to
+  `<REFLEX_HOME>/cloud/outbox.jsonl`: the decision's summary by name (the
+  ids, the host and tool names, the operation, the class, the environment,
+  the branch and remote host, the effect, the mode, the risk, the reason
+  codes, the matched rule ids, the policy set hash, the latencies; never an
+  argument, a path or a working directory) and its record. An uploader ships
+  the outbox in batches of at most 200, in order, with the `ingest` key as a
+  bearer token, one second after a new entry and every 30 seconds otherwise:
+  on success the cursor moves past the batch; on a refused key (401, 403) it
+  stops and says so until the daemon restarts after a new claim; on anything
+  else it backs off, doubling up to ten minutes, and keeps the batch. An
+  entry the control plane rejected is dropped and counted, never retried;
+  the outbox is bounded at 20 MiB and drops its oldest unsent entries when
+  full, counted. Outcomes of claimed projects (ADR-013) go the same way,
+  from the local observation log, newer than a watermark, keyed by action
+  id so that a resend is harmless. A decision of a project that is not
+  claimed is never written to the outbox, and nothing is written when the
+  consent statement changed since the yes (stderr says so at start). Health
+  reports `cloud: { claimed, endpoint, organizationId, organizationName,
+projects, consentCurrent, pending, uploaded, duplicates, rejected, dropped,
+lastUploadAt, lastError, keyRefused, nextAttemptAt }`, read by `rfx status`
+  and `rfx doctor`. The control plane's side (the schema, the second
+  redaction pass, the timeline, retention) is private (`reflex-cloud`).
 
 Decision telemetry goes to `<REFLEX_HOME>/decisions/decisions.jsonl`, rotated
 by size, one event per line: a `decision` event per decision (effect, mode,

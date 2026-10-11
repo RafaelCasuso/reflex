@@ -1,6 +1,7 @@
 import { existsSync, statSync } from "node:fs";
 
 import { configFilePath, inspectConfig } from "@reflex-control/adapter-codex";
+import { cloudPath } from "@reflex-control/decision-gateway/cloud.js";
 import { isRemoteProvider } from "@reflex-control/semantic-provider";
 
 import type { FileSystemPort } from "../backups/file-system.js";
@@ -19,6 +20,7 @@ import {
   statePaths,
   type Environment,
 } from "../state.js";
+import { readCloud } from "./cloud.js";
 import { readProvider } from "./provider.js";
 import { readProjectPolicy } from "./trust.js";
 
@@ -36,7 +38,7 @@ export type CheckOutcome = "ok" | "warn" | "fail" | "info";
 
 export interface DoctorCheck {
   readonly area:
-    "install" | "hosts" | "daemon" | "policy" | "provider" | "state";
+    "install" | "hosts" | "daemon" | "policy" | "provider" | "cloud" | "state";
   readonly name: string;
   readonly outcome: CheckOutcome;
   readonly detail: string;
@@ -510,6 +512,84 @@ export async function runDoctor(
           : provider.config.semanticProvider,
       ),
     );
+  }
+
+  // ADR-019: the claim, its consent and the uploads.
+  const cloud = await readCloud(environment, fileSystem, daemon.health);
+  if (cloud.record === undefined) {
+    checks.push(
+      check(
+        "cloud",
+        "cloud",
+        "info",
+        'not claimed: everything stays on this machine ("rfx claim <code> --endpoint <url>" links this project to an account)',
+      ),
+    );
+  } else {
+    const where = `${cloud.record.organizationName} at ${cloud.record.endpoint}`;
+    const cloudFile = cloudPath(reflexHome(environment));
+    const mode = modeOfPath(cloudFile);
+    if (mode !== undefined && (mode & 0o077) !== 0) {
+      checks.push(
+        check(
+          "cloud",
+          "cloud key file",
+          "fail",
+          `${cloudFile} is readable by others (mode ${mode.toString(8)}) and holds this installation's upload key`,
+          `Run "chmod 600 ${cloudFile}".`,
+        ),
+      );
+    }
+    if (!cloud.consentCurrent) {
+      checks.push(
+        check(
+          "cloud",
+          "cloud",
+          "warn",
+          `claimed into ${where}, but the consent statement changed since it was agreed to: nothing is uploaded`,
+          `Run "rfx claim <code> --endpoint ${cloud.record.endpoint}" to read the new statement and agree, or "rfx unclaim".`,
+        ),
+      );
+    } else if (cloud.thisProject === undefined) {
+      checks.push(
+        check(
+          "cloud",
+          "cloud",
+          "info",
+          `this installation is claimed into ${where}; this project is not`,
+          `Run "rfx claim <code> --endpoint ${cloud.record.endpoint}" here to add it.`,
+        ),
+      );
+    } else if (cloud.live?.keyRefused === true) {
+      checks.push(
+        check(
+          "cloud",
+          "cloud",
+          "fail",
+          `claimed into ${where}, but the control plane refused this installation's key: uploads stopped (${String(cloud.live.pending)} waiting)`,
+          `The key was revoked. Run "rfx claim <code> --endpoint ${cloud.record.endpoint}" with a new code, or "rfx unclaim".`,
+        ),
+      );
+    } else if (cloud.live?.lastError !== undefined) {
+      checks.push(
+        check(
+          "cloud",
+          "cloud",
+          "warn",
+          `claimed into ${where}; the last upload failed: ${cloud.live.lastError} (${String(cloud.live.pending)} waiting)`,
+          "The daemon retries with a growing delay; check the endpoint and the network.",
+        ),
+      );
+    } else {
+      checks.push(
+        check(
+          "cloud",
+          "cloud",
+          "ok",
+          `${cloud.thisProject.name} is claimed into ${where}; ${cloud.live === undefined ? `${String(cloud.pending)} waiting for the daemon` : `${String(cloud.live.uploaded)} uploaded since the daemon started, ${String(cloud.live.pending)} waiting`}`,
+        ),
+      );
+    }
   }
 
   return {

@@ -112,7 +112,9 @@ export interface AuditEvent {
     | "policy-keygen"
     | "policy-snapshot"
     | "policy-subscribe"
-    | "policy-unsubscribe";
+    | "policy-unsubscribe"
+    | "claim"
+    | "unclaim";
   readonly projectDir?: string;
   readonly detail?: Readonly<Record<string, string>>;
 }
