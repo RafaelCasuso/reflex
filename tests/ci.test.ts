@@ -367,7 +367,10 @@ describe("RFX-136 the Cloudflare Pages workflow", () => {
   it("serves security headers from the site itself", () => {
     const headers = readText("site", "public", "_headers");
     expect(headers).toContain("Content-Security-Policy: default-src 'none'");
+    expect(headers).toContain("script-src 'self'");
     expect(headers).toContain("style-src 'self'");
+    expect(headers).toContain("form-action 'none'");
+    expect(headers).toContain("/console.*.js");
     expect(headers).toContain("font-src 'self'");
     expect(headers).toContain("X-Content-Type-Options: nosniff");
     expect(headers).toContain("frame-ancestors 'none'");

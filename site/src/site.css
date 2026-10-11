@@ -1,12 +1,12 @@
-/* REFLEX public site (RFX-150, RFX-136). Static, no script, self-hosted fonts.
+/* REFLEX public site (RFX-150, RFX-136). One screen.
 
-   The idea: a control room in 1983. One amber CRT shows a real session of
-   the product; everything else is the operator's manual on putty paper, the
-   colour of the terminals of that year. Three faces: VT323 for whatever a
-   screen shows, Bricolage Grotesque for what is written on paper, IBM Plex
-   Mono only for code a reader copies. Colour is material, never decoration:
-   the phosphor's amber, the plastic of the bezel, the paper, and the
-   product's three verdicts as indicator lamps. */
+   The whole site is a CRT of 1983: the viewport is the bezel, the page is
+   the tube, every section is what the console prints, and a prompt at the
+   bottom takes commands (site/src/console.js). Without the script the same
+   screen is a readable document. Two faces: VT323 for everything the screen
+   shows, IBM Plex Mono for the long documentation and for code a reader
+   copies. Colour is the phosphor (amber by default, the console can change
+   it), the plastic, and the product's three verdicts as lamps. */
 
 @font-face {
   font-family: "VT323";
@@ -14,13 +14,6 @@
   font-weight: 400;
   font-display: swap;
   src: url("/fonts/vt323-latin-400-normal.woff2") format("woff2");
-}
-@font-face {
-  font-family: "Bricolage Grotesque";
-  font-style: normal;
-  font-weight: 200 800;
-  font-display: swap;
-  src: url("/fonts/bricolage-grotesque-latin-wght-normal.woff2") format("woff2");
 }
 @font-face {
   font-family: "IBM Plex Mono";
@@ -38,61 +31,27 @@
 }
 
 :root {
-  /* The tube and its phosphor. A warm brown-black, never a neutral black. */
   --tube: #120d06;
   --tube-edge: #1b1409;
   --phosphor: #ffb000;
   --phosphor-dim: #d08d14;
   --glow: rgba(255, 176, 0, 0.42);
-  /* The plastic. */
   --bezel: #2a2219;
   --bezel-hi: #3b3124;
   --bezel-lo: #130e08;
-  --engraved: #9a8b6a;
-  /* The paper: the putty of 1983 terminals, read under a lamp. */
-  --paper: #e9e0cb;
-  --paper-deep: #ddd1b4;
-  --ink: #1b1611;
-  --ink-soft: #5a5042;
-  --rule: #c2b595;
-  /* The verdicts, on paper. */
-  --allow: #1f6f43;
-  --ask: #8a5a00;
-  --deny: #a32638;
-  /* The verdicts, as lamps and on screens. */
+  --engraved: #a8977a;
   --lamp-allow: #5ad185;
   --lamp-ask: #ffb000;
   --lamp-deny: #ff5a4a;
-  --focus: #1f4f9f;
+  --focus: #fff3d6;
 
   --crt: "VT323", ui-monospace, SFMono-Regular, Menlo, monospace;
-  --sans: "Bricolage Grotesque", "Helvetica Neue", Arial, sans-serif;
   --mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
 
-  --measure: 40rem;
-  --wide: 53rem;
-  --card: 76rem;
-  --gutter: 1.25rem;
-  --step-0: 1.0625rem;
-  --step-1: 1.25rem;
-  --step-2: 1.5rem;
-  --step-3: 1.95rem;
-  --step-4: 2.6rem;
-  --crt-size: 1.3rem;
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --paper: #17120c;
-    --paper-deep: #211a12;
-    --ink: #efe4cc;
-    --ink-soft: #b9ab8e;
-    --rule: #4a3e2c;
-    --allow: #6fd39a;
-    --ask: #e8bc55;
-    --deny: #ff8a7e;
-    --focus: #ffd27a;
-  }
+  --measure: 72ch;
+  --wide: 100ch;
+  --size: 1.3rem;
+  --line: 1.25;
 }
 
 *,
@@ -101,264 +60,371 @@
   box-sizing: border-box;
 }
 
+html,
+body {
+  height: 100%;
+}
 html {
-  background: var(--paper);
-  color: var(--ink);
-  font-family: var(--sans);
+  background: var(--bezel-lo);
+  color: var(--phosphor);
+  font-family: var(--crt);
   font-size: 100%;
-  line-height: 1.55;
   -webkit-text-size-adjust: 100%;
 }
 body {
   margin: 0;
-  padding: 0 var(--gutter) 4rem;
-  font-size: var(--step-0);
-  font-weight: 400;
+  font-size: var(--size);
+  line-height: var(--line);
+  overflow: hidden;
 }
 
 a {
   color: inherit;
-  text-decoration-thickness: 0.06em;
-  text-underline-offset: 0.14em;
+  text-decoration: underline;
+  text-decoration-color: var(--phosphor-dim);
+  text-underline-offset: 0.12em;
 }
 a:hover {
-  text-decoration-thickness: 0.12em;
+  color: var(--focus);
+  text-decoration-color: currentColor;
 }
 :focus-visible {
-  outline: 3px solid var(--focus);
-  outline-offset: 3px;
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+/* A heading the console scrolled to takes focus for the reader's software;
+   it is not a control, so it draws no ring. */
+h1:focus,
+h2:focus {
+  outline: none;
 }
 
 .skip {
   position: absolute;
   left: -200vw;
   top: 0.5rem;
-  padding: 0.5rem 0.75rem;
-  background: var(--ink);
-  color: var(--paper);
+  z-index: 10;
+  padding: 0.4rem 0.7rem;
+  background: var(--phosphor);
+  color: var(--tube);
 }
 .skip:focus {
-  left: var(--gutter);
-  z-index: 10;
+  left: 1rem;
 }
 
-/* ---------- the masthead: a strip of the console ---------- */
+/* ---------- the bezel and the tube ---------- */
 
-.masthead {
+.bezel {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  padding: 0.9rem 0.9rem 0;
+  background: var(--bezel);
+  box-shadow:
+    inset 0 1px 0 var(--bezel-hi),
+    inset 0 -3px 0 var(--bezel-lo);
+}
+.screen {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  background: var(--tube);
+  border-radius: 18px;
+  box-shadow:
+    inset 0 0 0 1px var(--tube-edge),
+    inset 0 0 90px rgba(0, 0, 0, 0.65);
+  overflow: hidden;
+}
+/* The raster and the tube's curvature, over everything, touching nothing. */
+.screen::before,
+.screen::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  border-radius: 18px;
+  z-index: 3;
+}
+.screen::after {
+  background: repeating-linear-gradient(
+    to bottom,
+    transparent 0,
+    transparent 2px,
+    rgba(0, 0, 0, 0.17) 2px,
+    rgba(0, 0, 0, 0.17) 3px
+  );
+}
+.screen::before {
+  background: radial-gradient(
+    ellipse at center,
+    rgba(255, 255, 255, 0.025) 0,
+    transparent 55%,
+    rgba(0, 0, 0, 0.55) 100%
+  );
+}
+.panel {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.45rem 0.6rem 0.4rem;
+  color: var(--engraved);
+}
+.model {
+  font-size: 1.05rem;
+  letter-spacing: 0.1em;
+}
+
+/* ---------- the strip: wordmark, lamps, F-keys ---------- */
+
+.strip {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  justify-content: space-between;
-  gap: 0.5rem 1.5rem;
-  max-width: var(--wide);
-  margin: 1rem auto 0;
-  padding: 0.55rem 1rem;
-  background: var(--bezel);
-  color: var(--engraved);
-  border-radius: 10px 10px 4px 4px;
-  box-shadow:
-    inset 0 1px 0 var(--bezel-hi),
-    inset 0 -2px 0 var(--bezel-lo);
+  gap: 0.4rem 1.4rem;
+  padding: 0.75rem 1.4rem 0.6rem;
+  border-bottom: 1px solid var(--phosphor-dim);
+  text-shadow: 0 0 6px var(--glow);
 }
 .wordmark {
-  font-family: var(--crt);
-  font-size: 1.75rem;
+  font-size: 1.9rem;
+  letter-spacing: 0.14em;
   line-height: 1;
-  letter-spacing: 0.12em;
-  color: var(--phosphor);
-  text-shadow: 0 0 8px var(--glow);
   text-decoration: none;
-  padding: 0.15rem 0;
+  color: var(--phosphor);
 }
-.masthead nav {
+.lamps {
+  display: flex;
+  gap: 1rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  letter-spacing: 0.06em;
+}
+.lamps li {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin: 0;
+  text-shadow: none;
+}
+.lamps li::before {
+  content: "";
+  width: 0.6rem;
+  height: 0.6rem;
+  border-radius: 50%;
+  background: currentColor;
+  opacity: 0.3;
+  margin: 0;
+}
+.lamps .allow {
+  color: var(--lamp-allow);
+}
+.lamps .ask {
+  color: var(--lamp-ask);
+}
+.lamps .deny {
+  color: var(--lamp-deny);
+}
+.lamps li.lit {
+  text-shadow: 0 0 8px currentColor;
+}
+.lamps li.lit::before {
+  opacity: 1;
+  box-shadow: 0 0 10px currentColor;
+}
+.strip nav {
+  margin-left: auto;
   display: flex;
   flex-wrap: wrap;
-  gap: 0.25rem 1.1rem;
-  font-size: 0.98rem;
+  gap: 0.2rem 1.1rem;
 }
-.masthead nav a {
+.strip nav a {
   text-decoration: none;
-  color: var(--engraved);
-  padding: 0.3rem 0;
+  color: var(--phosphor-dim);
 }
-.masthead nav a:hover,
-.masthead nav a:focus-visible,
-body[data-section="install"] .masthead nav a[href$="/install/"],
-body[data-section="pricing"] .masthead nav a[href$="/pricing/"],
-body[data-section="docs"] .masthead nav a[href$="/docs/"] {
-  color: var(--paper);
+.strip nav a:hover,
+.strip nav a:focus-visible,
+body[data-section="install"] .strip nav a[href$="/install/"],
+body[data-section="pricing"] .strip nav a[href$="/pricing/"],
+body[data-section="docs"] .strip nav a[href$="/docs/"] {
+  color: var(--phosphor);
 }
-body[data-section="install"] .masthead nav a[href$="/install/"],
-body[data-section="pricing"] .masthead nav a[href$="/pricing/"],
-body[data-section="docs"] .masthead nav a[href$="/docs/"] {
-  text-decoration: underline;
-  text-decoration-color: var(--phosphor);
-  text-decoration-thickness: 0.12em;
+.strip kbd {
+  font-family: inherit;
+  font-size: 0.85em;
+  padding: 0 0.3em;
+  margin-right: 0.15em;
+  border: 1px solid var(--phosphor-dim);
+  border-radius: 3px;
+  color: var(--phosphor);
+}
+/* Without the script the F-keys are links; the key caps mean nothing. */
+html:not(.js) .strip kbd {
+  display: none;
 }
 
+/* ---------- the page: what the console printed ---------- */
+
 main {
-  max-width: var(--wide);
-  margin: 0 auto;
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  scrollbar-color: var(--phosphor-dim) transparent;
+  padding: 1.4rem 1.4rem 2rem;
+  text-shadow: 0 0 6px var(--glow);
+  scroll-padding-top: 1rem;
 }
 main > *,
-.doc > * {
+.doc > *,
+.colophon > * {
   max-width: var(--measure);
 }
 main > figure,
-main > .console,
+main > .hero,
+main > .hosts,
 main > table,
 main > .statement,
-main > .hosts,
-main > .verdicts,
+main > .plans,
 main > .sequence,
+main > .verdicts,
 main > .notice,
+main > .transcript,
+main > .colophon,
 .doc > pre,
 .doc > table,
-.doc > figure,
-.doc > .statement {
+.doc > figure {
   max-width: var(--wide);
 }
-main > .plans {
-  max-width: none;
-}
-
-/* ---------- type on paper ---------- */
 
 h1,
 h2,
 h3 {
-  font-weight: 650;
-  line-height: 1.08;
-  letter-spacing: -0.02em;
+  font-weight: 400;
+  line-height: 1.05;
   margin: 0;
+  color: var(--phosphor);
 }
 h1 {
-  font-size: clamp(2.4rem, 1.4rem + 4.4vw, 4.6rem);
-  letter-spacing: -0.035em;
-  max-width: 16ch;
-  margin-top: 2.75rem;
+  font-size: clamp(2.2rem, 1.2rem + 4vw, 4.6rem);
+  margin-top: 1.5rem;
+  max-width: 20ch;
 }
 h2 {
-  font-size: var(--step-3);
-  margin-top: 4.5rem;
-  padding-top: 1.1rem;
-  border-top: 2px solid var(--ink);
+  font-size: 1.9rem;
+  margin-top: 3rem;
+  padding-top: 0.6rem;
+  border-top: 1px dashed var(--phosphor-dim);
+}
+h2::before {
+  content: "## ";
+  color: var(--phosphor-dim);
 }
 h3 {
-  font-size: var(--step-1);
-  margin-top: 2rem;
+  font-size: 1.45rem;
+  margin-top: 1.6rem;
+}
+h3::before {
+  content: "### ";
+  color: var(--phosphor-dim);
 }
 p,
 ul,
 ol,
 dl {
-  margin: 1rem 0 0;
+  margin: 0.9rem 0 0;
 }
 .lede {
-  font-size: var(--step-2);
-  line-height: 1.38;
-  margin-top: 1.25rem;
-  max-width: 40ch;
+  font-size: 1.6rem;
+  line-height: 1.2;
+  max-width: 48ch;
 }
 .quiet {
-  color: var(--ink-soft);
+  color: var(--phosphor-dim);
 }
-ul,
 ol {
-  padding-left: 1.25rem;
+  padding-left: 1.4rem;
+}
+ul {
+  list-style: none;
+  padding-left: 1.2rem;
+}
+ul > li::before {
+  content: "- ";
+  margin-left: -1.2rem;
+  color: var(--phosphor-dim);
 }
 li + li {
-  margin-top: 0.45rem;
-}
-li > p {
-  margin-top: 0.4rem;
+  margin-top: 0.3rem;
 }
 dl > div {
-  margin-top: 1rem;
+  margin-top: 0.9rem;
 }
 dt {
-  font-weight: 650;
+  color: var(--focus);
 }
 dd {
-  margin: 0.2rem 0 0;
+  margin: 0.15rem 0 0;
 }
 strong {
-  font-weight: 650;
+  font-weight: 400;
+  color: var(--focus);
 }
 hr {
   border: 0;
-  border-top: 1px solid var(--rule);
-  margin: 3rem 0;
+  border-top: 1px dashed var(--phosphor-dim);
+  margin: 2rem 0;
 }
-
 code,
 kbd {
-  font-family: var(--mono);
-  font-size: 0.9em;
+  font-family: inherit;
 }
 p code,
 li code,
 td code,
-dd code,
-h2 code,
-h3 code {
-  padding: 0.05em 0.35em;
-  background: var(--paper-deep);
-  border-radius: 3px;
-  white-space: nowrap;
+dd code {
+  color: var(--focus);
 }
 
-/* ---------- screens: anything a terminal printed ---------- */
-
-/* A screen is a screen in either colour scheme: amber phosphor on the tube,
-   behind a plastic bezel, with the faint lines of a raster. */
-pre {
-  position: relative;
-  margin: 1.25rem 0 0;
-  padding: 1rem 1.25rem 1.1rem;
-  overflow-x: auto;
-  background: var(--tube);
+/* The banner: the wordmark as the console draws it. */
+.banner {
+  margin: 0.5rem 0 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  font-size: clamp(1.3rem, 1.1rem + 0.8vw, 2rem);
+  line-height: 1.05;
   color: var(--phosphor);
-  font-family: var(--crt);
-  font-size: var(--crt-size);
-  line-height: 1.22;
-  letter-spacing: 0.01em;
-  text-shadow: 0 0 6px var(--glow);
-  border: 8px solid var(--bezel);
-  border-radius: 14px;
-  box-shadow:
-    inset 0 0 0 1px var(--tube-edge),
-    inset 0 0 48px rgba(0, 0, 0, 0.55),
-    0 1px 0 var(--bezel-hi),
-    0 10px 24px rgba(0, 0, 0, 0.25);
-  tab-size: 4;
+  white-space: pre;
+  overflow-x: auto;
+  text-shadow: 0 0 10px var(--glow);
 }
-pre::after {
-  content: "";
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-  background: repeating-linear-gradient(
-    to bottom,
-    transparent 0,
-    transparent 2px,
-    rgba(0, 0, 0, 0.16) 2px,
-    rgba(0, 0, 0, 0.16) 3px
-  );
-  border-radius: 6px;
+
+/* ---------- what a terminal printed: captures, code, the statement ---------- */
+
+pre {
+  margin: 1rem 0 0;
+  padding: 0.8rem 1rem;
+  border-left: 3px solid var(--phosphor-dim);
+  background: rgba(255, 255, 255, 0.02);
+  overflow-x: auto;
+  font-family: inherit;
+  font-size: inherit;
+  line-height: var(--line);
+  tab-size: 4;
 }
 pre code {
   font-family: inherit;
   font-size: inherit;
 }
-/* A terminal wraps a long line: the capture is read, not scrolled. Code a
-   reader copies (policies, commands) keeps its lines and scrolls. */
 .terminal {
   white-space: pre-wrap;
   overflow-wrap: anywhere;
 }
-/* Inline, with the capture's own newlines between them: the text copies as
-   it was printed, and each line can still appear on its own. */
 .terminal .l {
   display: inline;
 }
@@ -366,235 +432,97 @@ pre code {
   color: var(--phosphor-dim);
 }
 .terminal .command {
-  color: #fff3d6;
+  color: var(--focus);
 }
-/* Copyable code: a screen too, but in a face one can read a YAML in. */
+/* Copyable code: a readable face, still on the tube. */
 .doc pre:not(.terminal),
 pre.code {
   font-family: var(--mono);
   font-size: 0.86rem;
   line-height: 1.5;
-  letter-spacing: 0;
   text-shadow: none;
   color: #f1e3c3;
+  border-left-color: var(--phosphor);
 }
-.doc pre:not(.terminal)::after,
-pre.code::after {
-  display: none;
-}
-/* The consent statement is printed, not displayed: it is a document. */
+/* The consent statement is a document: boxed, in full. */
 .statement {
-  background: transparent;
-  color: var(--ink);
-  font-family: var(--sans);
-  font-size: 0.95rem;
-  line-height: 1.5;
-  text-shadow: none;
   white-space: pre-wrap;
-  border: 1px solid var(--ink);
-  border-radius: 0;
-  box-shadow: none;
-  padding: 1.25rem 1.5rem;
-}
-.statement::after {
-  display: none;
+  border: 1px solid var(--phosphor-dim);
+  padding: 1rem 1.25rem;
+  background: transparent;
+  font-size: 1.15rem;
 }
 figure {
-  margin: 1.5rem 0 0;
+  margin: 1.25rem 0 0;
 }
 figure > pre {
   margin-top: 0;
 }
 figcaption {
-  margin-top: 0.7rem;
-  color: var(--ink-soft);
-  font-size: 0.95rem;
+  margin-top: 0.5rem;
+  color: var(--phosphor-dim);
   max-width: var(--measure);
 }
 
-/* The verdicts, where the CLI printed them as verdicts. */
+.v-allow,
 .terminal .v-allow {
   color: var(--lamp-allow);
-  text-shadow: 0 0 6px rgba(90, 209, 133, 0.5);
 }
+.v-ask,
 .terminal .v-ask {
   color: var(--lamp-ask);
 }
+.v-deny,
 .terminal .v-deny {
   color: var(--lamp-deny);
-  text-shadow: 0 0 6px rgba(255, 90, 74, 0.5);
-}
-.v-allow {
-  color: var(--allow);
-  font-weight: 650;
-}
-.v-ask {
-  color: var(--ask);
-  font-weight: 650;
-}
-.v-deny {
-  color: var(--deny);
-  font-weight: 650;
 }
 
-/* ---------- the console: the hero ---------- */
-
-.console {
-  margin: 1.5rem 0 0;
-  padding: 0.9rem 0.9rem 0.6rem;
-  background: var(--bezel);
-  border-radius: 18px;
-  box-shadow:
-    inset 0 1px 0 var(--bezel-hi),
-    inset 0 -3px 0 var(--bezel-lo),
-    0 18px 40px rgba(0, 0, 0, 0.3);
-}
-.console > pre {
-  margin: 0;
-  border-width: 0;
-  border-radius: 10px;
-  font-size: clamp(1.05rem, 0.7rem + 1.4vw, 1.45rem);
-  min-height: 17em;
-  box-shadow:
-    inset 0 0 0 1px var(--tube-edge),
-    inset 0 0 70px rgba(0, 0, 0, 0.6);
-}
-.console > pre::before {
-  content: "";
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-  background: radial-gradient(
-    ellipse at center,
-    rgba(255, 176, 0, 0.06) 0,
-    transparent 60%,
-    rgba(0, 0, 0, 0.5) 100%
-  );
-  border-radius: 10px;
-}
-/* The panel under the tube: the lamps, and the engraved model line. */
-.panel {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
-  gap: 0.5rem 1.5rem;
-  margin: 0;
-  padding: 0.7rem 0.4rem 0.3rem;
-  color: var(--engraved);
-  font-size: 0.9rem;
-}
-.lamps {
-  display: flex;
-  gap: 1.25rem;
-  margin: 0;
-  padding: 0;
-  list-style: none;
-  font-family: var(--crt);
-  font-size: 1.25rem;
-  letter-spacing: 0.06em;
-}
-.lamps li {
-  margin: 0;
-  display: flex;
-  align-items: center;
-  gap: 0.45rem;
-}
-.lamps li::before {
-  content: "";
-  width: 0.7rem;
-  height: 0.7rem;
-  border-radius: 50%;
-  background: var(--bezel-lo);
-  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.8);
-}
-.lamps .allow::before {
-  background: rgba(90, 209, 133, 0.22);
-}
-.lamps .ask::before {
-  background: rgba(255, 176, 0, 0.22);
-}
-.lamps .deny::before {
-  background: rgba(255, 90, 74, 0.22);
-}
-/* The hero's verdict lights its lamp. */
-.console[data-verdict="deny"] .lamps .deny,
-.console[data-verdict="ask"] .lamps .ask,
-.console[data-verdict="allow"] .lamps .allow {
-  color: var(--paper);
-}
-.console[data-verdict="deny"] .lamps .deny::before {
-  background: var(--lamp-deny);
-  box-shadow: 0 0 10px var(--lamp-deny);
-}
-.console[data-verdict="ask"] .lamps .ask::before {
-  background: var(--lamp-ask);
-  box-shadow: 0 0 10px var(--lamp-ask);
-}
-.console[data-verdict="allow"] .lamps .allow::before {
-  background: var(--lamp-allow);
-  box-shadow: 0 0 10px var(--lamp-allow);
-}
-.model {
-  font-family: var(--crt);
-  font-size: 1.15rem;
-  letter-spacing: 0.1em;
-}
-
-/* The one moment of motion: the session types itself in once, line by line,
-   as it did; then a cursor rests. With reduced motion the session is simply
-   there. */
+/* The hero's capture types itself in, once; then a cursor rests. */
 @media (prefers-reduced-motion: no-preference) {
-  .console .terminal .l {
+  .typed .terminal .l {
     opacity: 0;
     animation: raster 0.01s steps(1) forwards;
   }
-  .console .terminal .l:nth-child(1) {
-    animation-delay: 0.15s;
-  }
-  .console .terminal .l:nth-child(2) {
-    animation-delay: 0.55s;
-  }
-  .console .terminal .l:nth-child(3) {
-    animation-delay: 0.68s;
-  }
-  .console .terminal .l:nth-child(4) {
-    animation-delay: 0.81s;
-  }
-  .console .terminal .l:nth-child(5) {
-    animation-delay: 0.94s;
-  }
-  .console .terminal .l:nth-child(6) {
-    animation-delay: 1.07s;
-  }
-  .console .terminal .l:nth-child(7) {
+  .typed .terminal .l:nth-child(1) {
     animation-delay: 1.2s;
   }
-  .console .terminal .l:nth-child(8) {
-    animation-delay: 1.33s;
+  .typed .terminal .l:nth-child(2) {
+    animation-delay: 1.6s;
   }
-  .console .terminal .l:nth-child(9) {
-    animation-delay: 1.46s;
+  .typed .terminal .l:nth-child(3) {
+    animation-delay: 1.73s;
   }
-  .console .terminal .l:nth-child(10) {
-    animation-delay: 1.59s;
+  .typed .terminal .l:nth-child(4) {
+    animation-delay: 1.86s;
   }
-  .console .terminal .l:nth-child(11) {
-    animation-delay: 1.72s;
+  .typed .terminal .l:nth-child(5) {
+    animation-delay: 1.99s;
   }
-  .console .terminal .l:nth-child(12) {
-    animation-delay: 1.85s;
+  .typed .terminal .l:nth-child(6) {
+    animation-delay: 2.12s;
   }
-  .console .terminal .l:nth-child(13) {
-    animation-delay: 1.98s;
+  .typed .terminal .l:nth-child(7) {
+    animation-delay: 2.25s;
   }
-  .console .terminal .l:nth-child(14) {
-    animation-delay: 2.11s;
+  .typed .terminal .l:nth-child(8) {
+    animation-delay: 2.38s;
   }
-  .console .terminal .l:nth-child(n + 15) {
-    animation-delay: 2.24s;
+  .typed .terminal .l:nth-child(9) {
+    animation-delay: 2.51s;
   }
-  .console .terminal .l:last-child::after {
+  .typed .terminal .l:nth-child(10) {
+    animation-delay: 2.64s;
+  }
+  .typed .terminal .l:nth-child(11) {
+    animation-delay: 2.77s;
+  }
+  .typed .terminal .l:nth-child(12) {
+    animation-delay: 2.9s;
+  }
+  .typed .terminal .l:nth-child(n + 13) {
+    animation-delay: 3.03s;
+  }
+  .typed .terminal .l:last-child::after {
     content: "\2588";
     margin-left: 0.15em;
     animation: blink 1.1s steps(1) infinite;
@@ -609,256 +537,233 @@ figcaption {
       opacity: 0;
     }
   }
+  /* Degauss: the sequence every arcade knew, or the command. */
+  .screen.degauss {
+    animation: degauss 0.9s ease-out 1;
+  }
+  @keyframes degauss {
+    0% {
+      transform: skewX(0) scale(1);
+      filter: hue-rotate(0deg);
+    }
+    15% {
+      transform: skewX(1.5deg) scale(1.01);
+      filter: hue-rotate(120deg) saturate(1.6);
+    }
+    40% {
+      transform: skewX(-1deg) scale(0.995);
+      filter: hue-rotate(240deg);
+    }
+    100% {
+      transform: skewX(0) scale(1);
+      filter: hue-rotate(360deg);
+    }
+  }
+}
+/* While the console boots, a panel of its own covers the page, which is
+   underneath, already laid out; nothing moves when the panel is removed. */
+.boot {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  padding: 1.4rem;
+  background: var(--tube);
 }
 
-/* ---------- the install line: a label strip ---------- */
+/* ---------- the install line and the keys ---------- */
 
 .install-line {
   display: inline-block;
-  margin: 1.75rem 0 0;
-  padding: 0.55rem 0.9rem 0.45rem;
-  background: var(--ink);
-  color: var(--paper);
-  border-radius: 4px;
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.12),
-    0 2px 0 rgba(0, 0, 0, 0.35);
+  margin: 1.25rem 0 0;
+  padding: 0.35rem 0.8rem;
+  border: 1px solid var(--phosphor);
+  color: var(--focus);
   max-width: 100%;
   overflow-x: auto;
 }
 .install-line code {
-  font-family: var(--crt);
-  font-size: 1.45rem;
-  letter-spacing: 0.03em;
+  font-size: 1.4rem;
   white-space: nowrap;
-  color: inherit;
-  background: transparent;
-  padding: 0;
 }
 .install-line + p {
-  margin-top: 0.75rem;
+  margin-top: 0.6rem;
 }
-
-/* ---------- buttons: a key on the console, or ink on paper ---------- */
-
 .button,
 .button-paper {
   display: inline-block;
-  margin-top: 1.25rem;
-  padding: 0.6rem 1.1rem 0.5rem;
-  font-family: var(--crt);
-  font-size: 1.35rem;
-  letter-spacing: 0.04em;
+  margin-top: 1rem;
+  padding: 0.4rem 0.9rem 0.3rem;
+  font-size: 1.3rem;
   line-height: 1;
   text-decoration: none;
-  border-radius: 6px;
+  border: 2px solid var(--phosphor);
+  color: var(--phosphor);
+  border-radius: 4px;
 }
 .button {
-  background: var(--tube);
-  color: var(--phosphor);
-  text-shadow: 0 0 6px var(--glow);
-  border: 3px solid var(--bezel);
-  box-shadow:
-    0 3px 0 var(--bezel-lo),
-    inset 0 0 14px rgba(0, 0, 0, 0.6);
+  background: var(--phosphor);
+  color: var(--tube);
+  text-shadow: none;
 }
 .button:hover,
 .button:focus-visible {
-  color: #fff3d6;
-}
-.button:active {
-  transform: translateY(2px);
-  box-shadow:
-    0 1px 0 var(--bezel-lo),
-    inset 0 0 14px rgba(0, 0, 0, 0.6);
-}
-.button-paper {
-  color: var(--ink);
-  border: 2px solid var(--ink);
-  background: transparent;
+  background: var(--focus);
+  border-color: var(--focus);
+  color: var(--tube);
 }
 .button-paper:hover,
 .button-paper:focus-visible {
-  background: var(--ink);
-  color: var(--paper);
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--focus);
 }
 
-/* ---------- the verdicts on paper: three lamps and their meaning ---------- */
+/* ---------- the verdicts and the sequence ---------- */
 
 .verdicts {
   display: grid;
-  gap: 1rem 2rem;
-  grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr));
-  margin-top: 1.5rem;
+  gap: 0.8rem 2rem;
+  grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr));
+  margin-top: 1.25rem;
 }
 .verdicts > div {
   margin: 0;
-  padding-top: 0.9rem;
-  border-top: 1px solid var(--rule);
+  padding-top: 0.6rem;
+  border-top: 1px dashed var(--phosphor-dim);
 }
 .verdicts dt {
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  font-family: var(--crt);
   font-size: 1.5rem;
   letter-spacing: 0.05em;
 }
 .verdicts dt::before {
   content: "";
-  width: 0.75rem;
-  height: 0.75rem;
+  width: 0.7rem;
+  height: 0.7rem;
   border-radius: 50%;
   background: currentColor;
   box-shadow: 0 0 8px currentColor;
 }
-
-/* ---------- the sequence: the only numbered list on the page ---------- */
-
 .sequence {
   counter-reset: step;
   list-style: none;
   padding: 0;
-  margin-top: 1.5rem;
+  margin-top: 1.25rem;
 }
 .sequence li {
   position: relative;
-  padding: 0.9rem 0 0.9rem 4.25rem;
-  border-top: 1px solid var(--rule);
+  padding: 0.7rem 0 0.7rem 3.5rem;
+  border-top: 1px dashed var(--phosphor-dim);
   margin: 0;
-}
-.sequence li:last-child {
-  border-bottom: 1px solid var(--rule);
 }
 .sequence li::before {
   counter-increment: step;
-  content: counter(step);
+  content: counter(step, decimal-leading-zero);
   position: absolute;
   left: 0;
-  top: 0.75rem;
-  width: 3rem;
-  text-align: center;
-  font-family: var(--crt);
-  font-size: 1.9rem;
+  top: 0.6rem;
+  margin: 0;
+  color: var(--phosphor-dim);
+  font-size: 1.6rem;
   line-height: 1;
-  color: var(--ask);
 }
 .sequence strong {
   display: block;
-  font-size: var(--step-1);
+  font-size: 1.45rem;
 }
 
-/* ---------- the spec sheet ---------- */
+/* ---------- tables, hosts, plans ---------- */
 
 table {
   width: 100%;
-  margin-top: 1.25rem;
+  margin-top: 1rem;
   border-collapse: collapse;
-  font-size: 0.95rem;
 }
 th,
 td {
   text-align: left;
   vertical-align: top;
-  padding: 0.6rem 0.75rem 0.6rem 0;
-  border-bottom: 1px solid var(--rule);
+  padding: 0.45rem 0.8rem 0.45rem 0;
+  border-bottom: 1px dashed var(--phosphor-dim);
 }
 thead th {
-  border-bottom: 2px solid var(--ink);
-  font-weight: 650;
+  color: var(--focus);
+  border-bottom: 1px solid var(--phosphor);
 }
 td.n {
-  font-family: var(--mono);
   white-space: nowrap;
+  color: var(--focus);
 }
-
-/* ---------- two hosts: two small screens side by side ---------- */
-
 .hosts {
   display: grid;
   gap: 1.25rem;
-  grid-template-columns: repeat(auto-fit, minmax(20rem, 1fr));
-  margin-top: 1.5rem;
+  grid-template-columns: repeat(auto-fit, minmax(22rem, 1fr));
+  margin-top: 1.25rem;
 }
 .hosts figure {
   margin: 0;
   min-width: 0;
 }
-.hosts pre {
-  font-size: 1.05rem;
-}
-
-/* ---------- the plans: a rate card ---------- */
-
-/* The rate card is wider than the text: five columns where the window has
-   them, centred on the column, never past the window's edge. */
 .plans {
   display: grid;
   gap: 1rem;
-  grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr));
-  margin-top: 1.5rem;
+  grid-template-columns: repeat(auto-fit, minmax(13rem, 1fr));
+  margin-top: 1.25rem;
   list-style: none;
   padding: 0;
-  width: min(100vw - 2 * var(--gutter), var(--card));
-  position: relative;
-  left: 50%;
-  transform: translateX(-50%);
+}
+/* Five plans in one row when the tube is wide enough. */
+main > .plans {
+  max-width: none;
 }
 .plan {
   margin: 0;
-  padding: 1.1rem 1.1rem 1.25rem;
-  border: 1px solid var(--ink);
+  padding: 0.9rem 1rem 1rem;
+  border: 1px solid var(--phosphor-dim);
   display: flex;
   flex-direction: column;
 }
+.plan::before {
+  display: none;
+}
 .plan h3 {
   margin: 0;
-  font-size: var(--step-1);
+  font-size: 1.45rem;
+}
+.plan h3::before {
+  content: "";
 }
 .plan .price {
-  margin: 0.75rem 0 0;
-  padding: 0.45rem 0.75rem 0.35rem;
-  background: var(--tube);
-  color: var(--phosphor);
-  font-family: var(--crt);
-  font-size: 2rem;
+  margin: 0.6rem 0 0;
+  font-size: 2.1rem;
   line-height: 1;
-  letter-spacing: 0.02em;
-  text-shadow: 0 0 6px var(--glow);
-  border-radius: 4px;
-  box-shadow: inset 0 0 12px rgba(0, 0, 0, 0.6);
-  align-self: flex-start;
+  color: var(--focus);
+  text-shadow: 0 0 8px var(--glow);
 }
 .plan .price small {
   font-size: 1.1rem;
   color: var(--phosphor-dim);
-  text-shadow: none;
 }
 .plan .meter {
-  margin-top: 0.9rem;
-  font-weight: 650;
+  margin-top: 0.8rem;
+  color: var(--focus);
 }
 .plan ul {
-  margin-top: 0.6rem;
-  padding-left: 1.1rem;
-  font-size: 0.95rem;
+  margin-top: 0.5rem;
   flex: 1;
-}
-.plan ul li + li {
-  margin-top: 0.3rem;
+  font-size: 1.15rem;
 }
 .plan .button,
 .plan .button-paper {
-  margin-top: 1.1rem;
   font-size: 1.15rem;
   align-self: flex-start;
   white-space: nowrap;
 }
 .notice {
-  margin-top: 1.5rem;
-  padding: 1rem 1.25rem;
-  border-left: 4px solid var(--phosphor);
-  background: var(--paper-deep);
+  margin-top: 1.25rem;
+  padding: 0.9rem 1.1rem;
+  border: 1px dashed var(--phosphor);
 }
 
 /* ---------- docs ---------- */
@@ -866,107 +771,191 @@ td.n {
 .toc {
   list-style: none;
   padding: 0;
-  margin-top: 1.5rem;
+  margin-top: 1.25rem;
   counter-reset: doc;
 }
 .toc li {
   display: grid;
   grid-template-columns: 3rem 1fr;
-  gap: 0.15rem 0.5rem;
-  padding: 0.9rem 0;
-  border-top: 1px solid var(--rule);
-}
-.toc li:last-child {
-  border-bottom: 1px solid var(--rule);
+  gap: 0.1rem 0.5rem;
+  padding: 0.7rem 0;
+  border-top: 1px dashed var(--phosphor-dim);
 }
 .toc li::before {
   counter-increment: doc;
   content: counter(doc, decimal-leading-zero);
   grid-row: 1 / span 2;
-  font-family: var(--crt);
-  font-size: 1.6rem;
+  margin: 0;
+  color: var(--phosphor-dim);
+  font-size: 1.5rem;
   line-height: 1.1;
-  color: var(--ask);
 }
 .toc a {
-  font-weight: 650;
-  font-size: var(--step-1);
+  font-size: 1.45rem;
 }
 .toc span {
   grid-column: 2;
-  color: var(--ink-soft);
+  color: var(--phosphor-dim);
+}
+/* Long documentation reads in the mono face, still on the tube. */
+.doc {
+  font-family: var(--mono);
+  font-size: 1rem;
+  line-height: 1.55;
+  text-shadow: none;
+  color: #f1e3c3;
+}
+.doc h1,
+.doc h2,
+.doc h3 {
+  font-family: var(--crt);
+  color: var(--phosphor);
+  text-shadow: 0 0 6px var(--glow);
 }
 .doc h1 {
-  max-width: var(--measure);
-  font-size: clamp(2rem, 1.3rem + 2.4vw, var(--step-4));
+  font-size: clamp(2rem, 1.3rem + 2.4vw, 3rem);
+}
+.doc h2 {
+  font-size: 1.8rem;
+}
+.doc h3 {
+  font-size: 1.4rem;
 }
 .doc blockquote {
   margin: 1rem 0 0;
   padding-left: 1rem;
-  border-left: 3px solid var(--rule);
-  color: var(--ink-soft);
+  border-left: 3px solid var(--phosphor-dim);
+  color: var(--phosphor-dim);
+}
+.doc p code,
+.doc li code,
+.doc td code {
+  font-family: var(--mono);
+  padding: 0 0.3em;
+  border: 1px solid var(--phosphor-dim);
+  border-radius: 3px;
+  font-size: 0.92em;
+  color: var(--focus);
 }
 
-/* ---------- colophon ---------- */
+/* ---------- the colophon and the transcript ---------- */
 
 .colophon {
-  max-width: var(--wide);
-  margin: 5rem auto 0;
-  padding-top: 1.1rem;
-  border-top: 2px solid var(--ink);
-  color: var(--ink-soft);
-  font-size: 0.95rem;
+  margin-top: 3rem;
+  padding-top: 0.6rem;
+  border-top: 1px dashed var(--phosphor-dim);
+  color: var(--phosphor-dim);
+  font-size: 1.1rem;
 }
-.colophon p {
-  max-width: var(--measure);
+.transcript {
+  margin-top: 1.5rem;
+  min-height: 1.3em;
+}
+.out {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.out.dim {
+  color: var(--phosphor-dim);
+}
+.out.echo {
+  margin-top: 0.6rem;
+  color: var(--focus);
+}
+.out pre {
+  margin-top: 0.4rem;
+}
+.prompt-text {
+  color: var(--phosphor-dim);
 }
 
-@media (max-width: 40rem) {
+/* ---------- the prompt ---------- */
+
+.console-prompt {
+  display: flex;
+  align-items: baseline;
+  gap: 0.5rem;
+  padding: 0.6rem 1.4rem 0.7rem;
+  border-top: 1px solid var(--phosphor-dim);
+  background: var(--tube);
+  position: relative;
+  z-index: 4;
+  text-shadow: 0 0 6px var(--glow);
+}
+.console-prompt input {
+  flex: 1;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--focus);
+  font: inherit;
+  text-shadow: inherit;
+  caret-color: var(--phosphor);
+  outline: none;
+}
+.console-prompt input::placeholder {
+  color: var(--phosphor-dim);
+  opacity: 0.7;
+}
+.console-prompt .hint {
+  color: var(--phosphor-dim);
+  font-size: 1rem;
+}
+.console-prompt:focus-within .hint {
+  visibility: hidden;
+}
+/* Without the script the prompt would take nothing: it is not shown. */
+html:not(.js) .console-prompt,
+html:not(.js) .transcript {
+  display: none;
+}
+
+/* A wide screen is a bigger tube, not a wider column. */
+@media (min-width: 80rem) {
   :root {
-    --gutter: 1rem;
-    --crt-size: 1.15rem;
+    --size: 1.5rem;
   }
-  .masthead {
-    border-radius: 8px 8px 3px 3px;
+}
+@media (max-width: 44rem) {
+  :root {
+    --size: 1.15rem;
   }
-  .wordmark {
-    font-size: 1.5rem;
+  .bezel {
+    padding: 0.5rem 0.5rem 0;
   }
-  .console {
-    padding: 0.6rem 0.6rem 0.4rem;
-    border-radius: 12px;
+  .screen,
+  .screen::before,
+  .screen::after {
+    border-radius: 10px;
   }
-  .console > pre {
-    min-height: 0;
+  .strip {
+    padding: 0.6rem 0.9rem 0.5rem;
+    gap: 0.3rem 0.9rem;
   }
-  .lamps {
-    gap: 0.9rem;
-    font-size: 1.1rem;
+  .strip nav {
+    margin-left: 0;
+    gap: 0.2rem 0.8rem;
   }
-  pre {
-    padding: 0.85rem 0.9rem;
-    border-width: 6px;
+  main {
+    padding: 1rem 0.9rem 2rem;
   }
-  /* One command, wrapped on a phone: it copies as one line all the same. */
   .install-line {
     display: block;
   }
   .install-line code {
     white-space: normal;
     overflow-wrap: anywhere;
-    font-size: 1.25rem;
+    font-size: 1.2rem;
   }
-  .sequence li {
-    padding-left: 3rem;
+  .console-prompt {
+    padding: 0.5rem 0.9rem 0.6rem;
   }
-  .sequence li::before {
-    width: 2.25rem;
-    font-size: 1.6rem;
+  .panel {
+    font-size: 0.9rem;
   }
-}
-
-@media (prefers-reduced-motion: no-preference) {
-  html {
-    scroll-behavior: smooth;
+  .model:last-child {
+    display: none;
   }
 }

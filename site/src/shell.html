@@ -1,15 +1,12 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" data-base="{{base}}">
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>{{title}}</title>
     <meta name="description" content="{{description}}" />
-    <meta name="color-scheme" content="light dark" />
-    <meta
-      name="theme-color"
-      content="#2a2219"
-    />
+    <meta name="color-scheme" content="dark" />
+    <meta name="theme-color" content="#2a2219" />
     <link rel="stylesheet" href="{{css}}" />
     <link
       rel="preload"
@@ -18,46 +15,58 @@
       type="font/woff2"
       crossorigin
     />
-    <link
-      rel="preload"
-      href="/fonts/bricolage-grotesque-latin-wght-normal.woff2"
-      as="font"
-      type="font/woff2"
-      crossorigin
-    />
+    <script src="{{script}}" defer></script>
   </head>
   <body data-section="{{section}}">
     <a class="skip" href="#main">Skip to content</a>
-    <header class="masthead">
-      <a class="wordmark" href="/">REFLEX</a>
-      <nav aria-label="Site">
-        <a href="/install/">Install</a>
-        <a href="/pricing/">Pricing</a>
-        <a href="/docs/">Docs</a>
-        <a href="{{repository}}" rel="noopener">Source</a>
-        <a
-          href="https://www.npmjs.com/package/@reflex-control/cli"
-          rel="noopener"
-          >npm</a
-        >
-      </nav>
-    </header>
-    <main id="main">{{{body.html}}}</main>
-    <footer class="colophon">
-      <p>
-        REFLEX is open source under the Apache License 2.0. The daemon, the
-        policy engine, the adapters and this site are in
-        <a href="{{repository}}" rel="noopener">the repository</a>; the packages
-        are on npm under
-        <a href="https://www.npmjs.com/org/reflex-control" rel="noopener"
-          >@reflex-control</a
-        >. The hosted control plane is not open yet;
-        <a href="/pricing/">early access</a> is by request.
-      </p>
-      <p>
-        It sits beside your host's own permission classifier and sandbox, never
-        in their place. <a href="/docs/threat-model/">What it is not</a>.
-      </p>
-    </footer>
+    <div class="bezel">
+      <div class="screen">
+        <header class="strip">
+          <a class="wordmark" href="/">REFLEX</a>
+          <ul class="lamps" aria-label="The three verdicts">
+            <li class="allow">allow</li>
+            <li class="ask">ask</li>
+            <li class="deny">deny</li>
+          </ul>
+          <nav aria-label="Site">
+            <a href="/install/" data-command="install"><kbd>F1</kbd> Install</a>
+            <a href="/pricing/" data-command="plans"><kbd>F2</kbd> Plans</a>
+            <a href="/docs/" data-command="docs"><kbd>F3</kbd> Docs</a>
+            <a href="{{repository}}" rel="noopener">Source</a>
+            <a href="https://www.npmjs.com/org/reflex-control" rel="noopener">npm</a>
+          </nav>
+        </header>
+        <main id="main">
+          {{{body.html}}}
+          <footer class="colophon" id="about">
+            <p>
+              REFLEX is open source under the Apache License 2.0. The daemon, the
+              policy engine, the adapters and this site are in
+              <a href="{{repository}}" rel="noopener">the repository</a>; the
+              packages are on npm under
+              <a href="https://www.npmjs.com/org/reflex-control" rel="noopener"
+                >@reflex-control</a
+              >. The hosted control plane is not open yet;
+              <a href="/pricing/">early access</a> is by request.
+            </p>
+            <p>
+              It sits beside your host's own permission classifier and sandbox,
+              never in their place. <a href="/docs/threat-model/">What it is not</a>.
+              This page runs one script of its own and sends nothing anywhere.
+            </p>
+          </footer>
+          <div id="transcript" class="transcript" role="log" aria-live="polite" aria-label="Console output"></div>
+        </main>
+        <form class="console-prompt" autocomplete="off">
+          <label for="command" class="prompt-text">operator@reflex:~$</label>
+          <input id="command" name="command" type="text" spellcheck="false" autocapitalize="off" autocorrect="off" placeholder="type help" aria-describedby="prompt-hint" />
+          <span id="prompt-hint" class="hint">help</span>
+        </form>
+      </div>
+      <div class="panel">
+        <span class="model">REFLEX &middot; AUTONOMY CONTROL LAYER</span>
+        <span class="model">ROM 0.2 &middot; no network</span>
+      </div>
+    </div>
   </body>
 </html>

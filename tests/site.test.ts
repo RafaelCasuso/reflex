@@ -235,10 +235,39 @@ describe("RFX-150 the public landing and install page", () => {
     );
   });
 
-  it("runs no script and makes no request to a third party, on any page", () => {
+  it("runs one script of its own, nothing inline, and makes no request to a third party, on any page", () => {
+    const scriptFile =
+      readdirSync(out).find((file) =>
+        /^console\.[0-9a-f]{8}\.js$/.test(file),
+      ) ?? "";
+    expect(scriptFile).not.toBe("");
+    const script = readFileSync(join(out, scriptFile), "utf8");
+    expect(script).toBe(readText("site", "src", "console.js"));
+    // The console takes commands and prints; it never makes a request, opens
+    // a channel or loads anything, so a visitor's keystrokes stay on the page.
+    expect(script).not.toMatch(
+      /\bfetch\s*\(|XMLHttpRequest|sendBeacon|WebSocket|EventSource|new\s+Image\s*\(|\bimport\s*\(|createElement\(\s*["'](?:script|img|iframe|link)["']/,
+    );
+    for (const url of script.matchAll(/https?:\/\/[^\s"'`]+/g)) {
+      expect([
+        "https://github.com/RafaelCasuso/reflex",
+        "https://www.npmjs.com/org/reflex-control",
+      ]).toContain(url[0]);
+    }
     for (const file of walk(out)) {
       const html = readFileSync(file, "utf8");
-      expect(html, file).not.toMatch(/<script/i);
+      const scripts = [
+        ...html.matchAll(/<script\b([^>]*)>([\s\S]*?)<\/script>/gi),
+      ];
+      expect(scripts, file).toHaveLength(1);
+      expect(scripts[0]?.[1], file).toMatch(
+        new RegExp(`^\\s+src="/reflex/${scriptFile}"\\s+defer\\s*$`),
+      );
+      expect(scripts[0]?.[2], file).toBe("");
+      // Adversarial: an inline handler or a javascript: URL would run under
+      // no policy and fail the CSP the headers promise (script-src 'self').
+      expect(html, file).not.toMatch(/\son[a-z]+\s*=/i);
+      expect(html, file).not.toMatch(/javascript:/i);
       for (const match of html.matchAll(/\s(?:src|href)="(https?:[^"]+)"/g)) {
         const url = match[1] ?? "";
         // Links a reader may follow are fine; resources the browser fetches
@@ -258,11 +287,12 @@ describe("RFX-150 the public landing and install page", () => {
     expect(readFileSync(join(out, css), "utf8")).not.toMatch(
       /url\(["']?https?:/,
     );
-    expect(
-      existsSync(
-        join(out, "fonts", "bricolage-grotesque-latin-wght-normal.woff2"),
-      ),
-    ).toBe(true);
+    for (const font of [
+      "vt323-latin-400-normal.woff2",
+      "ibm-plex-mono-latin-400-normal.woff2",
+    ]) {
+      expect(existsSync(join(out, "fonts", font)), font).toBe(true);
+    }
     // Every root-absolute reference carries the base path GitHub Pages
     // serves the site under; the first deploy had none and was unstyled.
     for (const file of walk(out)) {

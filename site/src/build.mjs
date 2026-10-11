@@ -13,8 +13,10 @@
  * the plans come from the pricing hypothesis in docs/product.md (RFX-136).
  * tests/site.test.ts builds this and holds each of those to its source.
  *
- * The output is static HTML and CSS, self-hosted fonts, no script: nothing
- * runs in the visitor's browser and no request leaves it for a third party.
+ * The output is static HTML and CSS, self-hosted fonts and one script of
+ * the site's own (site/src/console.js, the command prompt of the screen;
+ * every page reads without it). Nothing on a page comes from a third party
+ * and no request leaves the visitor's browser for one.
  */
 import { createHash } from "node:crypto";
 import {
@@ -306,7 +308,7 @@ export function readCaptures() {
     );
     captures[file.slice(0, -4)] = {
       text,
-      html: `<pre class="terminal" tabindex="0"><code>${highlightCapture(text)}</code></pre>`,
+      html: `<pre class="terminal" tabindex="0" data-capture="${escapeHtml(file.slice(0, -4))}"><code>${highlightCapture(text)}</code></pre>`,
     };
   }
   return captures;
@@ -455,11 +457,20 @@ export async function build(outputDirectory) {
   const css = readFileSync(join(SITE_ROOT, "src", "site.css"), "utf8");
   const cssHash = createHash("sha256").update(css).digest("hex").slice(0, 8);
   const cssFile = `site.${cssHash}.css`;
+  const script = readFileSync(join(SITE_ROOT, "src", "console.js"), "utf8");
+  const scriptHash = createHash("sha256")
+    .update(script)
+    .digest("hex")
+    .slice(0, 8);
+  const scriptFile = `console.${scriptHash}.js`;
   const marked = createMarkdown();
 
   rmSync(out, { recursive: true, force: true });
   mkdirSync(out, { recursive: true });
   writeFileSync(join(out, cssFile), withBasePath(css));
+  // The script reads the base path from the document; nothing in it is
+  // rewritten, so what is served is what is in the repository, byte for byte.
+  writeFileSync(join(out, scriptFile), script);
   cpSync(join(SITE_ROOT, "fonts"), join(out, "fonts"), { recursive: true });
   // Files served as they are: the Cloudflare Pages headers (RFX-136).
   if (existsSync(join(SITE_ROOT, "public"))) {
@@ -477,6 +488,8 @@ export async function build(outputDirectory) {
       title,
       description,
       css: `/${cssFile}`,
+      script: `/${scriptFile}`,
+      base: BASE_PATH === "" ? "/" : BASE_PATH,
       section,
       year: String(new Date().getUTCFullYear()),
       repository: REPOSITORY_URL,

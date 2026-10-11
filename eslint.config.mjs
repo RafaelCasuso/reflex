@@ -157,6 +157,22 @@ export default defineConfig(
       },
     },
   },
+  // The site's console runs in the visitor's browser, as a classic script
+  // (RFX-136). It may touch the document and this browser's storage; the
+  // test in tests/site.test.ts holds it to making no request.
+  {
+    files: ["site/src/console.js"],
+    languageOptions: {
+      sourceType: "script",
+      globals: {
+        document: "readonly",
+        window: "readonly",
+        localStorage: "readonly",
+        sessionStorage: "readonly",
+        performance: "readonly",
+      },
+    },
+  },
 
   ...FORBIDDEN_DEPENDENCIES.map(({ files, forbidden, reason }) => ({
     files,

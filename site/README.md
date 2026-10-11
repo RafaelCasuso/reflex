@@ -1,13 +1,30 @@
 # The public site
 
-Static HTML and CSS, self-hosted fonts, no script, built from this
-repository's files by `site/src/build.mjs` (RFX-150, RFX-137, RFX-136).
+Static HTML and CSS, self-hosted fonts and one script of its own, built
+from this repository's files by `site/src/build.mjs` (RFX-150, RFX-137,
+RFX-136).
 Nothing on it is typed twice: the positioning comes from `docs/product.md`,
 the consent statement from the built semantic-provider package, every
 number from the benchmark record, the hook cost table and the corpus files,
 every terminal block from a capture that `tools/site/capture.sh` made by
 running the CLI, and the plans from the pricing hypothesis in
 `docs/product.md`. `tests/site.test.ts` holds each page to its source.
+
+## The console
+
+The whole site is one screen: an amber CRT whose pages are what the console
+printed, with a prompt at the bottom (`site/src/console.js`, served hashed
+as `console.<hash>.js`). `help` lists the commands: `ls` and `open` move
+around the page's sections, `install`, `plans` and `docs` change page,
+`explain` prints the real capture, `allow`, `ask` and `deny` light a lamp,
+`phosphor` changes the colour (kept in this browser's localStorage, the one
+thing the site remembers). There are hidden commands and a sequence every
+arcade knew; each one says it is the console's own joke, never a decision
+REFLEX made, because no policy is loaded on a web page. Without the script
+every page reads as a document: the prompt is not shown and the F-keys are
+plain links. The script makes no request anywhere; `tests/site.test.ts`
+holds it to that, and `site/public/_headers` serves a content security
+policy with `script-src 'self'` and nothing inline.
 
 ## Build and check
 
