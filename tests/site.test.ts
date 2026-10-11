@@ -322,9 +322,10 @@ describe("RFX-150 the public landing and install page", () => {
 describe("RFX-136 the plans and early access", () => {
   function hypothesis(): { name: string; price: string; features: string[] }[] {
     const product = readText(SITE_SOURCES.product);
-    const section = product
-      .slice(product.indexOf("## Pricing hypothesis"))
-      .split("\n## ")[0];
+    const section =
+      product
+        .slice(product.indexOf("## Pricing hypothesis"))
+        .split("\n## ")[0] ?? "";
     return section
       .split("\n### ")
       .slice(1)
