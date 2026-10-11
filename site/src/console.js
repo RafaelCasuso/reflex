@@ -794,7 +794,8 @@
 
   /* The boot, once per visit. It prints on a panel of its own over the
      page, which is already laid out underneath; when the panel is removed
-     nothing on the page has moved, and one line lands in the drawer. */
+     nothing on the page has moved. The drawer stays closed until there is
+     output: the prompt's own placeholder says what to do. */
   const booted = (() => {
     try {
       return sessionStorage.getItem("reflex-booted") === "1";
@@ -826,7 +827,6 @@
           panel.appendChild(element);
           if (last) {
             panel.remove();
-            line(`${boot[0]}  \u00b7  ${READY}`);
             try {
               sessionStorage.setItem("reflex-booted", "1");
             } catch {
@@ -837,7 +837,5 @@
         120 + index * 160,
       );
     });
-  } else {
-    line(READY, "dim");
   }
 })();
