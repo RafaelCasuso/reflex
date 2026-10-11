@@ -18,9 +18,14 @@ import {
   CONTRACT_VERSION,
   parseActionOutcome,
   parseCanonicalAction,
+  parseClaimRequest,
+  parseClaimResult,
   parseDecisionFeedback,
   parseDecisionRecord,
   parseDecisionRequest,
+  parseDecisionSummary,
+  parseIngestRequest,
+  parseIngestResult,
   parseReflexDecision,
   parseSemanticAssessment,
   type ValidationResult,
@@ -45,6 +50,12 @@ const PARSERS: Readonly<Record<string, Parser>> = {
   "decision-feedback": parseDecisionFeedback,
   "action-outcome": parseActionOutcome,
   "decision-record": parseDecisionRecord,
+  // v1.6 (ADR-019)
+  "decision-summary": parseDecisionSummary,
+  "ingest-request": parseIngestRequest,
+  "ingest-result": parseIngestResult,
+  "claim-request": parseClaimRequest,
+  "claim-result": parseClaimResult,
 };
 
 function parserFor(file: string): Parser | undefined {
@@ -325,6 +336,64 @@ describe("RFX-011 frozen fixtures are not edited", () => {
       "vocabulary.json":
         "32dde7fcbeed6dd03a13024fb84e589834672246a9d57d645176f776d6b7ddec",
     },
+    "v1.6": {
+      "action-outcome.blocked-by-host.json":
+        "b8eeb7e6f6fdad5d12dba1de4bfc48925ea5d5fb36dd5ba94761922a631c6faf",
+      "action-outcome.executed-without-prompt.json":
+        "2f180556d6e4b8af436cad974c8f050822012a0d28102a5fec8d5f03463f1b03",
+      "action-outcome.no-signal.json":
+        "890d1ef1d2e74c906ee27970813d1ff8bc4190b6d8b2e7e9d5898774000c7862",
+      "action-outcome.prompted-approved.json":
+        "59d73999ea1ed752709d572b98ba504388e1ba88bbd5ef24a7f56d831dd407f1",
+      "action-outcome.prompted-rejected.json":
+        "89bd7e8d9990ea802be02a4939ad65da9a32e9b815c7c718e658766550f74455",
+      "canonical-action.full.json":
+        "09fffb3d041294c4146df1ed0f66d97b7127303a840019f30ca672423b2ebba3",
+      "canonical-action.minimal.json":
+        "f2db44d14d19b90bd8f8ee20278c1fdf33aa47d9307662bdaa9c1647b0b4b3e8",
+      "canonical-action.operands-argv.json":
+        "3126914b06fe8f92cd1be2ff027e9df7cd548a739392be9f8000fce185995762",
+      "canonical-action.operands.json":
+        "aa704159bd41621233daab41dc5a693fc8558a7ded77b53b8379c13346814735",
+      "claim-request.json":
+        "1e8c8f84b44be1e6008e4265f1e60bd623be0cef41de81af6cbef1b320dddcd7",
+      "claim-result.json":
+        "720b9a2384f401ce3b40ef59cf6110699bc9d3dae0cb8fd79ab967496735f854",
+      "decision-feedback.full.json":
+        "47f4b241fbcfef750b407df12386f8b058d6fdec8d2150a94fb1e62a4f06514a",
+      "decision-feedback.minimal.json":
+        "90161dd81364a974b154c8adfc2ca190148c0ecc302ce940dc22868b1d583e95",
+      "decision-record.deterministic.json":
+        "2a426a45e86bde56a3464ca4abe7e95d2bb98f6d3cadfa0327305fc8067e8168",
+      "decision-record.full.json":
+        "1c8ad555b9b3d2e61b13060a5ea1aefb751f721a3f6dc6bcc6cf14fd18a9fa80",
+      "decision-record.minimal.json":
+        "7e3541ec5d2742cf2b73e24ff8e8c17b0373bee2d0e271d26509d4f0fbcef704",
+      "decision-request.full.json":
+        "5e4563884a0132b2c68dad92c6b716aab198a715d2084a0f1193229788dae28c",
+      "decision-request.minimal.json":
+        "ace2d9ca0ba8bc0b28bfc44d255d8d26b7e29a38c34623c5bf24a14563bdcfa3",
+      "decision-summary.full.json":
+        "632dce10d7d0649195a3cf309479df8745d66db3a33f9dc93ea28120dd7add37",
+      "decision-summary.minimal.json":
+        "cb2b7c91ab70b470f8d31f704a25ad328e78db75cf9e89c965edeef268c3242d",
+      "ingest-request.full.json":
+        "898993faf0fc109e6efd4e0143a08a6c76e34a323dda08a30f44800a39031632",
+      "ingest-request.minimal.json":
+        "2220e7f137f7d8a5712e118f20461fef152b42bf773f9650f7520d8c6af8b906",
+      "ingest-result.json":
+        "9af7625b1767f7b03d272714a6800b80d5836de1117baa67f316dc6d05973037",
+      "reflex-decision.full.json":
+        "901e4c4da0f7d3bb31ffff22d262542d16ffd534521bb67a30b1dff6fa699afc",
+      "reflex-decision.minimal.json":
+        "0232b3f7fbb27cd6f491d58cd3a598b0824285a888fc9302050cddcf02c3d1c7",
+      "reflex-decision.overridden.json":
+        "affaec5ea2661a65049adf2e2b0765808364ec08f56a609aa5a748b58e7ea4c9",
+      "semantic-assessment.json":
+        "a832bca12b82a1c5c3a6d35d81bfc7aec0d1c708dbd6ba5f034fa84379e563f9",
+      "vocabulary.json":
+        "201837c31cd904054126f83ddd9182f6f8fab6a94a16b3952e9a3ecac9010d2d",
+    },
   };
 
   it("has a checksum entry for every released fixture set", () => {
@@ -412,6 +481,28 @@ describe("RFX-011 no new mandatory fields", () => {
       "labels",
       "recordedAt",
     ],
+    // Introduced in v1.6 (ADR-019).
+    "decision-summary": [
+      "action",
+      "actionId",
+      "agentId",
+      "cached",
+      "confidence",
+      "decidedAt",
+      "decisionId",
+      "effect",
+      "effectiveEffect",
+      "latency",
+      "matchedRuleIds",
+      "mode",
+      "projectId",
+      "reasonCodes",
+      "risk",
+    ],
+    "ingest-request": ["agentId", "entries", "sentAt"],
+    "ingest-result": ["accepted", "duplicates", "rejected"],
+    "claim-request": ["agent", "code", "hosts", "project", "requestedAt"],
+    "claim-result": ["claimedAt", "key", "organization", "project"],
   };
 
   it.each(Object.entries(PARSERS))(
@@ -455,6 +546,8 @@ describe("RFX-011 vocabulary only grows", () => {
     EVALUATION_ROLES: contracts.EVALUATION_ROLES,
     PROVIDER_ERROR_KINDS: contracts.PROVIDER_ERROR_KINDS,
     ASSESSMENT_DIMENSIONS: contracts.ASSESSMENT_DIMENSIONS,
+    CLOUD_KEY_SCOPES: contracts.CLOUD_KEY_SCOPES,
+    INGEST_REJECTION_REASONS: contracts.INGEST_REJECTION_REASONS,
   };
 
   const released = fixtureVersions().map((version) => ({
@@ -527,6 +620,9 @@ describe("RFX-011 limits only loosen", () => {
     recordEvaluations: 16,
     recordLabels: 256,
     recordFeedback: 64,
+    // v1.6 (ADR-019)
+    ingestEntries: 500,
+    claimCodeLength: 64,
   };
 
   it.each(Object.entries(LIMITS_AT_RELEASE))(
@@ -579,6 +675,16 @@ describe("RFX-011 public surface", () => {
     "LABEL_SOURCES",
     "PROVIDER_ERROR_KINDS",
     "parseDecisionRecord",
+    // v1.6 (ADR-019)
+    "CLAIM_CODE_FORM",
+    "CLOUD_KEY_FORM",
+    "CLOUD_KEY_SCOPES",
+    "INGEST_REJECTION_REASONS",
+    "parseClaimRequest",
+    "parseClaimResult",
+    "parseDecisionSummary",
+    "parseIngestRequest",
+    "parseIngestResult",
   ];
 
   it("still exports everything it ever exported", () => {
@@ -637,6 +743,9 @@ describe("RFX-011 direction of tolerance", () => {
       "action-outcome.prompted-approved.json",
     ],
     ["DecisionRecord", parseDecisionRecord, "decision-record.full.json"],
+    ["DecisionSummary", parseDecisionSummary, "decision-summary.full.json"],
+    ["IngestRequest", parseIngestRequest, "ingest-request.full.json"],
+    ["ClaimRequest", parseClaimRequest, "claim-request.json"],
   ] as const)(
     "%s is an input to a decision: an unknown field is rejected",
     (_name, parse, file) => {
@@ -652,4 +761,16 @@ describe("RFX-011 direction of tolerance", () => {
       wire,
     );
   });
+
+  const answers: readonly (readonly [string, Parser, string])[] = [
+    ["IngestResult", parseIngestResult, "ingest-result.json"],
+    ["ClaimResult", parseClaimResult, "claim-result.json"],
+  ];
+  it.each(answers)(
+    "%s is the control plane's answer: an unknown field is ignored",
+    (_name, parse, file) => {
+      const wire = loadFixture(file, currentVersion);
+      expect(valueOf(parse({ ...wire, ...extra }))).toStrictEqual(wire);
+    },
+  );
 });

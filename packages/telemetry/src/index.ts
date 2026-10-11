@@ -23,6 +23,7 @@ export {
   rejectedRequestEvent,
   riskBucketOf,
   shadowEventOf,
+  type ActionFacts,
   type DecisionEvent,
   type DecisionEventInput,
   type FallbackEvent,
@@ -55,6 +56,23 @@ export {
   type DecisionRecordLogOptions,
   type EvaluationInput,
 } from "./decision-records.js";
+
+export {
+  CloudOutbox,
+  DEFAULT_OUTBOX_MAX_BYTES,
+  OUTBOX_CURSOR_FILE,
+  OUTBOX_FILE,
+  defaultOutboxDirectory,
+  type CloudOutboxOptions,
+  type OutboxBatch,
+} from "./cloud-outbox.js";
+
+export {
+  decisionEntryOf,
+  decisionSummaryOf,
+  summaryFromEvent,
+  type SummaryInput,
+} from "./cloud-summary.js";
 
 export { RotatingJsonlLog, type RotatingLogOptions } from "./rotating-log.js";
 

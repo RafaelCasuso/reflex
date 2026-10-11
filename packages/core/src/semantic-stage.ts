@@ -140,8 +140,60 @@ export interface PrimaryEvaluation {
   readonly latencyMs: DurationMs;
 }
 
+/**
+ * ADR-019: the action, by name, for the record and the cloud summary. The
+ * fields are selected here, once, so that an observer can never be handed
+ * `arguments`, `operands`, `cwd` or `adapterMetadata` by mistake; the
+ * repository root is dropped too, since it is a path on the user's disk.
+ */
+export type ObservedAction = Pick<
+  CanonicalAction,
+  | "projectId"
+  | "organizationId"
+  | "sessionId"
+  | "agent"
+  | "tool"
+  | "operation"
+  | "sideEffectClass"
+  | "resource"
+> & {
+  readonly repository?: Pick<
+    NonNullable<CanonicalAction["repository"]>,
+    "branch" | "remoteHost"
+  >;
+};
+
+export function observedActionOf(action: CanonicalAction): ObservedAction {
+  const repository =
+    action.repository === undefined
+      ? undefined
+      : {
+          ...(action.repository.branch === undefined
+            ? {}
+            : { branch: action.repository.branch }),
+          ...(action.repository.remoteHost === undefined
+            ? {}
+            : { remoteHost: action.repository.remoteHost }),
+        };
+  return {
+    ...(action.projectId === undefined ? {} : { projectId: action.projectId }),
+    ...(action.organizationId === undefined
+      ? {}
+      : { organizationId: action.organizationId }),
+    ...(action.sessionId === undefined ? {} : { sessionId: action.sessionId }),
+    agent: action.agent,
+    tool: action.tool,
+    ...(action.operation === undefined ? {} : { operation: action.operation }),
+    sideEffectClass: action.sideEffectClass,
+    ...(action.resource === undefined ? {} : { resource: action.resource }),
+    ...(repository === undefined ? {} : { repository }),
+  };
+}
+
 export interface DecisionObservation {
   readonly decision: ReflexDecision;
+  /** ADR-019: what the decision was about, by name; never its content. */
+  readonly action: ObservedAction;
   /** The request the primary was given, when one was compiled. */
   readonly request?: SemanticDecisionRequest;
   /** The primary's answer or failure, when it was asked. */

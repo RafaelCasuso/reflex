@@ -1,0 +1,29 @@
+{
+  "decisionId": "dec_01J8ZC2P0R3S5U7W9Y1A3C5E7J",
+  "actionId": "act_01J8ZC2N6Q4T7V9X3B5D8F0H2N",
+  "agentId": "agt_0f1e2d3c4b5a69788796a5b4c3d2e1f0",
+  "projectId": "prj_00112233445566778899aabbccddeeff",
+  "decidedAt": "2026-09-18T10:15:32.000Z",
+  "action": {
+    "host": "codex",
+    "toolName": "Read",
+    "sideEffectClass": "local-read",
+    "environment": "unknown"
+  },
+  "effect": "allow",
+  "effectiveEffect": "allow",
+  "mode": "autopilot",
+  "risk": 5,
+  "confidence": 1,
+  "reasonCodes": [
+    "explicit_allow"
+  ],
+  "matchedRuleIds": [
+    "allow-reads"
+  ],
+  "cached": true,
+  "latency": {
+    "totalMs": 0,
+    "policyMs": 0
+  }
+}

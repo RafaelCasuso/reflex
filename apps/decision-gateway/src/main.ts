@@ -8,7 +8,9 @@ import {
 import {
   DecisionLog,
   DecisionRecordLog,
+  decisionEntryOf,
   decisionRecordOf,
+  decisionSummaryOf,
   defaultDecisionLogDirectory,
   defaultDecisionRecordDirectory,
   shadowEventOf,
@@ -20,6 +22,13 @@ import {
 } from "./orchestration/redaction-key.js";
 
 import { parseArguments } from "./config/arguments.js";
+import {
+  UNCLAIMED,
+  cloudConsentCovers,
+  createUploader,
+  readCloudRecord,
+  type Uploader,
+} from "./orchestration/cloud.js";
 import {
   buildEngine,
   createPolicyHolder,
@@ -114,6 +123,23 @@ async function main(argv: readonly string[]): Promise<number> {
         directory: defaultDecisionRecordDirectory(config.reflexHome),
       })
     : undefined;
+  // ADR-019: a claimed installation uploads its decisions, after the answer,
+  // from the outbox, and only while its consent covers the statement. The
+  // record is read once: `rfx claim` and `rfx unclaim` restart the daemon.
+  let cloud: Uploader | undefined;
+  const cloudRecord = config.telemetry
+    ? await readCloudRecord(config.reflexHome)
+    : undefined;
+  if (cloudRecord !== undefined) {
+    cloud = createUploader({ home: config.reflexHome, record: cloudRecord });
+    if (cloudConsentCovers(cloudRecord)) {
+      cloud.start();
+    } else {
+      process.stderr.write(
+        'the cloud consent statement changed since it was agreed to: nothing is uploaded until "rfx claim" is run again\n',
+      );
+    }
+  }
   // RFX-125: the override path. The store is the engine's and the server's:
   // the engine remembers every decision in it and takes the grants; the
   // server turns a human's `rfx override` into a grant.
@@ -168,32 +194,49 @@ async function main(argv: readonly string[]): Promise<number> {
       : {
           onDecision: (observation: DecisionObservation) => {
             void Promise.all(observation.shadows).then((shadows) => {
-              records.write(
-                decisionRecordOf({
+              const record = decisionRecordOf({
+                decision: observation.decision,
+                ...(observation.request === undefined
+                  ? {}
+                  : { request: observation.request }),
+                evaluations: [
+                  ...(observation.primary === undefined
+                    ? []
+                    : [{ ...observation.primary, role: "primary" as const }]),
+                  ...shadows.map((shadow) => ({
+                    provider: shadow.provider,
+                    ...(shadow.model === undefined
+                      ? {}
+                      : { model: shadow.model }),
+                    role: "shadow" as const,
+                    sampledOn: shadow.sampledOn,
+                    result: shadow.result,
+                    latencyMs: shadow.latencyMs,
+                  })),
+                ],
+                resolvedByPolicy: observation.resolvedByPolicy,
+                humanOverride: observation.humanOverride,
+                recordedAt: new Date().toISOString(),
+              });
+              records.write(record);
+              // ADR-019 §4: a claimed project's decision goes to the outbox,
+              // as its summary by name and its record; nothing for a project
+              // that is not claimed, and nothing on the decision path.
+              if (cloud !== undefined) {
+                const summary = decisionSummaryOf({
                   decision: observation.decision,
-                  ...(observation.request === undefined
-                    ? {}
-                    : { request: observation.request }),
-                  evaluations: [
-                    ...(observation.primary === undefined
-                      ? []
-                      : [{ ...observation.primary, role: "primary" as const }]),
-                    ...shadows.map((shadow) => ({
-                      provider: shadow.provider,
-                      ...(shadow.model === undefined
-                        ? {}
-                        : { model: shadow.model }),
-                      role: "shadow" as const,
-                      sampledOn: shadow.sampledOn,
-                      result: shadow.result,
-                      latencyMs: shadow.latencyMs,
-                    })),
-                  ],
-                  resolvedByPolicy: observation.resolvedByPolicy,
-                  humanOverride: observation.humanOverride,
-                  recordedAt: new Date().toISOString(),
-                }),
-              );
+                  action: observation.action,
+                  agentId: cloud.record.agentId,
+                });
+                if (
+                  summary !== undefined &&
+                  cloud.record.projects.some(
+                    (project) => project.projectId === summary.projectId,
+                  )
+                ) {
+                  void cloud.enqueue(decisionEntryOf(summary, record));
+                }
+              }
             });
           },
         }),
@@ -222,6 +265,8 @@ async function main(argv: readonly string[]): Promise<number> {
       snapshot: subscription.state(),
       telemetryDropped: telemetry?.dropped ?? 0,
       recordsDropped: records?.dropped ?? 0,
+      // ADR-019: whether this installation is claimed, and how the uploads go.
+      cloud: cloud?.state() ?? UNCLAIMED,
       redactionKey: redactionKey.created ? "created" : "present",
       semanticProvider: semantic.provider,
       shadowProviders: semantic.shadows,
@@ -247,6 +292,7 @@ async function main(argv: readonly string[]): Promise<number> {
     process.once("SIGINT", stop);
   });
   await server.close();
+  cloud?.stop();
   await telemetry?.flush();
   await records?.flush();
   return 0;

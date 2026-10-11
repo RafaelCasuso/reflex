@@ -17,6 +17,8 @@ export const ID_PREFIXES = {
   organization: "org",
   policy: "pol",
   session: "ses",
+  /** An API key of the control plane (ADR-019 §2, v1.6). */
+  key: "key",
 } as const;
 
 export type IdPrefix = (typeof ID_PREFIXES)[keyof typeof ID_PREFIXES];
@@ -30,6 +32,7 @@ export type ProjectId = OpaqueId<"prj">;
 export type OrganizationId = OpaqueId<"org">;
 export type PolicyId = OpaqueId<"pol">;
 export type SessionId = OpaqueId<"ses">;
+export type KeyId = OpaqueId<"key">;
 
 /** Longest permitted ID body. Generous enough for UUIDs, ULIDs and nanoids. */
 export const ID_BODY_MAX_LENGTH = 128;

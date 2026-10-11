@@ -1,0 +1,15 @@
+{
+  "organization": {
+    "id": "org_a1b2c3d4e5f60718",
+    "name": "Example Co"
+  },
+  "project": {
+    "id": "prj_00112233445566778899aabbccddeeff"
+  },
+  "key": {
+    "id": "key_0123456789abcdef",
+    "secret": "rfk_key_0123456789abcdef_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+    "scope": "ingest"
+  },
+  "claimedAt": "2026-09-18T10:00:01.000Z"
+}

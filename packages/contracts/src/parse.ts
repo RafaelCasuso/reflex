@@ -1,7 +1,21 @@
 import type { CanonicalAction } from "./action.js";
+import type {
+  ClaimRequest,
+  ClaimResult,
+  DecisionSummary,
+  IngestRequest,
+  IngestResult,
+} from "./cloud.js";
 import type { DecisionRequest, ReflexDecision } from "./decision.js";
 import type { DecisionFeedback } from "./feedback.js";
 import { canonicalActionSchema } from "./internal/action.schema.js";
+import {
+  claimRequestSchema,
+  claimResultSchema,
+  decisionSummarySchema,
+  ingestRequestSchema,
+  ingestResultSchema,
+} from "./internal/cloud.schema.js";
 import {
   decisionRequestSchema,
   reflexDecisionSchema,
@@ -77,4 +91,39 @@ export function parseDecisionRecord(
   input: unknown,
 ): ValidationResult<DecisionRecord> {
   return validate(decisionRecordSchema, input);
+}
+
+/** Strict: a summary is an input to storage (ADR-019 §4). */
+export function parseDecisionSummary(
+  input: unknown,
+): ValidationResult<DecisionSummary> {
+  return validate(decisionSummarySchema, input);
+}
+
+/** Strict: what a claimed installation uploads (ADR-019 §4). */
+export function parseIngestRequest(
+  input: unknown,
+): ValidationResult<IngestRequest> {
+  return validate(ingestRequestSchema, input);
+}
+
+/** Tolerant: the control plane's answer, read by older daemons. */
+export function parseIngestResult(
+  input: unknown,
+): ValidationResult<IngestResult> {
+  return validate(ingestResultSchema, input);
+}
+
+/** Strict: a claim links an installation to an organization (ADR-019 §3). */
+export function parseClaimRequest(
+  input: unknown,
+): ValidationResult<ClaimRequest> {
+  return validate(claimRequestSchema, input);
+}
+
+/** Tolerant: the control plane's answer, read by older CLIs. */
+export function parseClaimResult(
+  input: unknown,
+): ValidationResult<ClaimResult> {
+  return validate(claimResultSchema, input);
 }
