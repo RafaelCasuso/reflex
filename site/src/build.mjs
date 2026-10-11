@@ -414,6 +414,48 @@ function lookup(context, path) {
   return value;
 }
 
+/** The second-level headings of a rendered doc, for its rail. */
+function headingsOf(html) {
+  return [...html.matchAll(/<h2 id="([^"]+)">([\s\S]*?)<\/h2>/g)].map(
+    (match) => ({
+      id: match[1],
+      title: match[2].replace(/<[^>]+>/g, "").trim(),
+    }),
+  );
+}
+
+/**
+ * The rail beside a doc: this page's sections, then every doc in order
+ * with the current one marked. Plain links; the console's `open` reads the
+ * same headings.
+ */
+function railHtml(current, docs) {
+  const sections =
+    current.headings.length === 0
+      ? ""
+      : [
+          '<p class="rail-title">On this page</p>',
+          '<ol class="rail-list">',
+          ...current.headings.map(
+            (heading) =>
+              // The rail numbers the list; a heading's own "3. " would double it.
+              `<li><a href="#${escapeHtml(heading.id)}">${escapeHtml(heading.title.replace(/^\d+\.\s+/, ""))}</a></li>`,
+          ),
+          "</ol>",
+        ].join("");
+  const all = [
+    '<p class="rail-title">Docs</p>',
+    '<ol class="rail-list">',
+    ...docs.map((doc) =>
+      doc.slug === current.slug
+        ? `<li aria-current="page">${escapeHtml(doc.title)}</li>`
+        : `<li><a href="/docs/${doc.slug}/">${escapeHtml(doc.title)}</a></li>`,
+    ),
+    "</ol>",
+  ].join("");
+  return `<nav class="rail" aria-label="Documentation">${sections}${all}</nav>`;
+}
+
 function titleOf(markdown, fallback) {
   const match = /^# (.+)$/m.exec(markdown);
   return match === null ? fallback : match[1].trim();
@@ -541,6 +583,7 @@ export async function build(outputDirectory) {
   }
 
   // The docs: this repository's own files, rendered as they are.
+  // First every doc is rendered, so that each page's rail can list them all.
   const docs = [];
   for (const slug of DOCS_ORDER) {
     const fromRepository = DOCS_FROM_REPOSITORY[slug];
@@ -552,18 +595,25 @@ export async function build(outputDirectory) {
       fail(`no source for the docs page ${slug}`);
     }
     const markdown = render(readFileSync(source, "utf8"), context);
-    const title = titleOf(markdown, slug);
-    docs.push({ slug, title, description: descriptionOf(markdown) });
-    const body = `<article class="doc">${await marked.parse(markdown)}</article>`;
-    page(`/docs/${slug}`, {
-      title: `${title} · REFLEX docs`,
+    const html = await marked.parse(markdown);
+    docs.push({
+      slug,
+      title: titleOf(markdown, slug),
       description: descriptionOf(markdown),
+      html,
+      headings: headingsOf(html),
+    });
+  }
+  for (const doc of docs) {
+    page(`/docs/${doc.slug}`, {
+      title: `${doc.title} · REFLEX docs`,
+      description: doc.description,
       section: "docs",
-      body,
+      body: `<div class="docs"><article class="doc">${doc.html}</article>${railHtml(doc, docs)}</div>`,
     });
   }
   const index = [
-    '<article class="doc">',
+    '<article class="doc doc-index">',
     "<h1>Documentation</h1>",
     "<p>What you need to install, trust and operate REFLEX. Every command and every policy example on these pages is run by a test in the repository that builds them; a number that is not measured is not here.</p>",
     '<ol class="toc">',
