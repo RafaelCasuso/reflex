@@ -12,17 +12,22 @@ running the CLI, and the plans from the pricing hypothesis in
 
 ## The console
 
-The whole site is one screen: an amber CRT whose pages are what the console
+The whole site is one screen, edge to edge with no frame: a green-phosphor CRT whose pages are what the console
 printed, with a prompt at the bottom (`site/src/console.js`, served hashed
-as `console.<hash>.js`). `help` lists the commands: `ls` and `open` move
-around the page's sections, `install`, `plans` and `docs` change page,
-`explain` prints the real capture, `allow`, `ask` and `deny` light a lamp,
-`phosphor` changes the colour (kept in this browser's localStorage, the one
-thing the site remembers). There are hidden commands and a sequence every
-arcade knew; each one says it is the console's own joke, never a decision
-REFLEX made, because no policy is loaded on a web page. Without the script
-every page reads as a document: the prompt is not shown and the F-keys are
-plain links. The script makes no request anywhere; `tests/site.test.ts`
+as `console.<hash>.js`). What the prompt takes is never a secret: a menu
+above it lists the commands as they are typed, with what each does and the
+arguments it accepts (sections for `open`, colours for `phosphor`), Tab
+completes, a key bar at the foot names the keys, a `?` button prints the
+list for touch screens, and `help` prints it too. Output lands in a drawer
+above the prompt, wherever the page is scrolled; reading on closes it, the
+next output brings it back. `ls` and `open` move around the page's
+sections, `install`, `plans` and `docs` change page, `explain` prints the
+real capture, `allow`, `ask` and `deny` light a lamp, `phosphor` changes
+the colour (kept in this browser's localStorage, the one thing the site
+remembers). There are hidden commands and a sequence every arcade knew;
+each one says it is the console's own joke, never a decision REFLEX made,
+because no policy is loaded on a web page. Without the script every page
+reads as a document: none of this is shown and the links are plain links. The script makes no request anywhere; `tests/site.test.ts`
 holds it to that, and `site/public/_headers` serves a content security
 policy with `script-src 'self'` and nothing inline.
 
