@@ -42,4 +42,9 @@ export const CONTRACT_LIMITS = {
   recordEvaluations: 16,
   recordLabels: 256,
   recordFeedback: 64,
+
+  /** Entries of one ingest request (ADR-019 §4, v1.6). */
+  ingestEntries: 500,
+  /** A claim code as typed (v1.6). */
+  claimCodeLength: 64,
 } as const;

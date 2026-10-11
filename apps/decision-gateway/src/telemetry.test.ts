@@ -275,6 +275,7 @@ describe("RFX-023 structured decision telemetry", () => {
       action: {
         agent: { host: "codex" },
         tool: { name: "shell", namespace: "mcp-x" },
+        sideEffectClass: "unknown",
       },
       at: "2026-09-22T10:00:00.001Z",
     });

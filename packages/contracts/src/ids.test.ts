@@ -8,6 +8,7 @@ import {
   type AgentId,
   type DecisionId,
   type IdPrefix,
+  type KeyId,
   type OrganizationId,
   type PolicyId,
   type ProjectId,
@@ -47,6 +48,7 @@ describe("RFX-006 opaque IDs: compile-time separation", () => {
       org: OrganizationId;
       pol: PolicyId;
       ses: SessionId;
+      key: KeyId;
     }
     // Every ordered pair (A, B), A != B, where A is assignable to B.
     type Collisions = {
@@ -76,7 +78,8 @@ describe("RFX-006 opaque IDs: compile-time separation", () => {
 describe("RFX-006 opaque IDs: runtime guard", () => {
   it("registers every prefix named in CLAUDE.md, plus sessions", () => {
     expect(Object.values(ID_PREFIXES).sort()).toEqual(
-      ["dec", "act", "pol", "agt", "org", "prj", "ses"].sort(),
+      // v1.6 (ADR-019): API keys of the control plane.
+      ["dec", "act", "pol", "agt", "org", "prj", "ses", "key"].sort(),
     );
   });
 

@@ -1,0 +1,10 @@
+{
+  "accepted": 3,
+  "duplicates": 0,
+  "rejected": [
+    {
+      "index": 1,
+      "reason": "unknown-project"
+    }
+  ]
+}

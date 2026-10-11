@@ -1,0 +1,16 @@
+{
+  "code": "RFX-7K3M-9PQ2-X4ZB",
+  "agent": {
+    "id": "agt_0f1e2d3c4b5a69788796a5b4c3d2e1f0",
+    "createdAt": "2026-09-01T08:00:00.000Z"
+  },
+  "project": {
+    "id": "prj_00112233445566778899aabbccddeeff",
+    "name": "reflex-demo"
+  },
+  "hosts": [
+    "claude-code",
+    "codex"
+  ],
+  "requestedAt": "2026-09-18T10:00:00.000Z"
+}

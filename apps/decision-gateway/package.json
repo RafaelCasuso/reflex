@@ -10,6 +10,10 @@
     "./policy.js": {
       "types": "./dist/policy.d.ts",
       "default": "./dist/policy.js"
+    },
+    "./cloud.js": {
+      "types": "./dist/cloud.d.ts",
+      "default": "./dist/cloud.js"
     }
   },
   "files": [

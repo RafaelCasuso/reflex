@@ -1,29 +1,58 @@
-import type {
-  ActionId,
-  CanonicalAction,
-  DecisionEffect,
-  DecisionLatency,
-  DecisionId,
-  FailureMode,
-  FallbackReason,
-  HostKind,
-  IsoTimestamp,
-  ReasonCode,
-  ReflexDecision,
-  ReflexMode,
-  RiskScore,
+import {
+  resolveEnvironment,
+  type ActionId,
+  type AgentId,
+  type CanonicalAction,
+  type DecisionEffect,
+  type DecisionLatency,
+  type DecisionId,
+  type EnvironmentKind,
+  type FailureMode,
+  type FallbackReason,
+  type HostKind,
+  type IsoTimestamp,
+  type ProjectId,
+  type ReasonCode,
+  type ReflexDecision,
+  type ReflexMode,
+  type RiskScore,
+  type SessionId,
+  type SideEffectClass,
 } from "@reflex-control/contracts";
 
 /**
  * RFX-023 — structured decision telemetry (`docs/architecture.md` §13).
  *
- * An event is built from a decision and from three fields of the action
- * selected by name: the host, the tool and nothing else. No argument, no
+ * An event is built from a decision and from fields of the action selected
+ * by name: the host, the tool, the operation, the class, the environment,
+ * the branch and remote host, and the ids (ADR-019). No argument, no
  * operand, no path, no working directory, no objective ever gets here, and
- * `decision-events.test.ts` runs canary values through the whole engine to
- * hold that (ADR-008 §3).
+ * the gateway's telemetry test runs canary values through the whole engine
+ * to hold that (ADR-008 §3).
  */
 export const DECISION_EVENT_VERSION = 1;
+
+/**
+ * The action, by name. Structurally what `@reflex-control/core` observes
+ * (`ObservedAction`); declared here so that this package depends on the
+ * contracts alone. The repository is its branch and remote host, never its
+ * root on disk.
+ */
+export type ActionFacts = Pick<
+  CanonicalAction,
+  | "agent"
+  | "tool"
+  | "projectId"
+  | "sessionId"
+  | "operation"
+  | "sideEffectClass"
+  | "resource"
+> & {
+  readonly repository?: Pick<
+    NonNullable<CanonicalAction["repository"]>,
+    "branch" | "remoteHost"
+  >;
+};
 
 export type RiskBucket = "low" | "medium" | "high" | "critical";
 
@@ -47,10 +76,19 @@ export interface DecisionEvent {
   readonly decisionId: DecisionId;
   readonly actionId: ActionId;
   readonly requestId?: string;
+  /** ADR-019: the tenancy ids the action carried, when it carried them. */
+  readonly agentId?: AgentId;
+  readonly projectId?: ProjectId;
+  readonly sessionId?: SessionId;
   readonly host: HostKind;
   readonly hostVersion?: string;
   readonly toolName: string;
   readonly toolNamespace?: string;
+  readonly operation?: string;
+  readonly sideEffectClass: SideEffectClass;
+  readonly environment: EnvironmentKind;
+  readonly branch?: string;
+  readonly remoteHost?: string;
   readonly mode: ReflexMode;
   readonly effect: DecisionEffect;
   readonly effectiveEffect: DecisionEffect;
@@ -196,7 +234,7 @@ export interface TelemetrySink {
 
 export interface DecisionEventInput {
   readonly decision: ReflexDecision;
-  readonly action: Pick<CanonicalAction, "agent" | "tool">;
+  readonly action: ActionFacts;
   readonly at: IsoTimestamp;
   readonly requestId?: string;
 }
@@ -213,6 +251,9 @@ export function decisionEventsOf(
     decisionId: decision.id,
     actionId: decision.actionId,
     ...(input.requestId === undefined ? {} : { requestId: input.requestId }),
+    ...(action.agent.id === undefined ? {} : { agentId: action.agent.id }),
+    ...(action.projectId === undefined ? {} : { projectId: action.projectId }),
+    ...(action.sessionId === undefined ? {} : { sessionId: action.sessionId }),
     host: action.agent.host,
     ...(action.agent.hostVersion === undefined
       ? {}
@@ -221,6 +262,15 @@ export function decisionEventsOf(
     ...(action.tool.namespace === undefined
       ? {}
       : { toolNamespace: action.tool.namespace }),
+    ...(action.operation === undefined ? {} : { operation: action.operation }),
+    sideEffectClass: action.sideEffectClass,
+    environment: resolveEnvironment(action),
+    ...(action.repository?.branch === undefined
+      ? {}
+      : { branch: action.repository.branch }),
+    ...(action.repository?.remoteHost === undefined
+      ? {}
+      : { remoteHost: action.repository.remoteHost }),
     mode: decision.mode,
     effect: decision.effect,
     effectiveEffect: decision.effectiveEffect,

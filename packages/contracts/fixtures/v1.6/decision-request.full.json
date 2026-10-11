@@ -1,0 +1,22 @@
+{
+  "action": {
+    "id": "act_01J8ZC2N6Q4T7V9X3B5D8F0H2N",
+    "projectId": "prj_reflex-demo",
+    "agent": { "host": "codex", "hostVersion": "0.42.0" },
+    "tool": { "name": "shell" },
+    "operation": "execute",
+    "arguments": { "command": ["terraform", "apply", "-auto-approve"] },
+    "resource": {
+      "type": "terraform-workspace",
+      "identifier": "acme-prod",
+      "environment": "production",
+      "isProduction": true
+    },
+    "sideEffectClass": "destructive",
+    "createdAt": "2026-09-18T10:20:00Z"
+  },
+  "mode": "autopilot",
+  "failureMode": "fail-closed",
+  "policySetHash": "sha256:9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08",
+  "deadlineMs": 400
+}

@@ -44,13 +44,14 @@ import { decisionCacheKey, fingerprintAction } from "./fingerprint.js";
 import { effectiveEffectOf } from "./modes.js";
 import type { OverrideStore } from "./overrides.js";
 import { reasonForClass, riskOf } from "./risk.js";
-import type {
-  DecisionObserver,
-  PrimaryEvaluation,
-  SemanticStage,
-  ShadowObservation,
-  ShadowObserver,
-  ShadowProvider,
+import {
+  observedActionOf,
+  type DecisionObserver,
+  type PrimaryEvaluation,
+  type SemanticStage,
+  type ShadowObservation,
+  type ShadowObserver,
+  type ShadowProvider,
 } from "./semantic-stage.js";
 
 /**
@@ -361,6 +362,7 @@ export function createDecisionEngine(
   /** RFX-143: the record's observer, after the answer, never on the path. */
   function observeDecision(
     decision: ReflexDecision,
+    action: CanonicalAction,
     verdict: Pick<
       Verdict,
       "request" | "primary" | "shadows" | "resolvedByPolicy" | "humanOverride"
@@ -374,6 +376,7 @@ export function createDecisionEngine(
     try {
       observe({
         decision,
+        action: observedActionOf(action),
         ...(verdict.request === undefined ? {} : { request: verdict.request }),
         ...(verdict.primary === undefined ? {} : { primary: verdict.primary }),
         shadows: [...(verdict.shadows ?? []), ...more],
@@ -674,7 +677,7 @@ export function createDecisionEngine(
           );
           remember(served, print, startedAt);
           setImmediate(() => {
-            observeDecision(served, { shadows: [] });
+            observeDecision(served, request.action, { shadows: [] });
           });
           return served;
         }
@@ -773,7 +776,7 @@ export function createDecisionEngine(
             // A compiler that throws off the path changes nothing.
           }
         }
-        observeDecision(decision, verdict, more);
+        observeDecision(decision, action, verdict, more);
       });
 
       if (

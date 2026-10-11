@@ -15,6 +15,7 @@ export {
   type AgentId,
   type DecisionId,
   type IdPrefix,
+  type KeyId,
   type OpaqueId,
   type OrganizationId,
   type PolicyId,
@@ -47,9 +48,14 @@ export { CONTRACT_LIMITS } from "./limits.js";
 export {
   parseActionOutcome,
   parseCanonicalAction,
+  parseClaimRequest,
+  parseClaimResult,
   parseDecisionFeedback,
   parseDecisionRecord,
   parseDecisionRequest,
+  parseDecisionSummary,
+  parseIngestRequest,
+  parseIngestResult,
   parseReflexDecision,
   parseSemanticAssessment,
 } from "./parse.js";
@@ -143,3 +149,23 @@ export {
   type RecordedEvaluation,
   type RecordedEvaluationBase,
 } from "./record.js";
+
+export {
+  CLAIM_CODE_FORM,
+  CLOUD_KEY_FORM,
+  CLOUD_KEY_SCOPES,
+  INGEST_REJECTION_REASONS,
+  type ActionSummary,
+  type ClaimRequest,
+  type ClaimResult,
+  type CloudKeyScope,
+  type DecisionIngestEntry,
+  type DecisionSummary,
+  type FeedbackIngestEntry,
+  type IngestEntry,
+  type IngestRejection,
+  type IngestRejectionReason,
+  type IngestRequest,
+  type IngestResult,
+  type OutcomeIngestEntry,
+} from "./cloud.js";
