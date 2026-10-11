@@ -7,6 +7,7 @@ import {
   readFile,
   realpath,
   rm,
+  stat,
   writeFile,
 } from "node:fs/promises";
 import { tmpdir } from "node:os";
@@ -1516,4 +1517,365 @@ environments:
     expect(gone.code).toBe(0);
     expect(gone.stdout).toContain("Unsubscribed");
   }, 30_000);
+});
+
+describe("rfx claim: an account, when you want one (RFX-061, ADR-019)", () => {
+  let home: string;
+  let project: string;
+  let plane: FakeControlPlane | undefined;
+
+  interface FakeControlPlane {
+    readonly endpoint: string;
+    readonly claims: Record<string, unknown>[];
+    readonly ingests: { key: string; body: Record<string, unknown> }[];
+    close(): Promise<void>;
+  }
+
+  const CODE = "RFX-7K3M-9PQ2-X4ZB";
+  const KEY = "rfk_key_0123456789abcdef_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx";
+
+  /** A control plane on the loopback: the claim and the ingest, by the contract. */
+  async function controlPlane(): Promise<FakeControlPlane> {
+    const { createServer } = await import("node:http");
+    const { parseClaimRequest, parseIngestRequest } =
+      await import("@reflex-control/contracts");
+    const claims: Record<string, unknown>[] = [];
+    const ingests: { key: string; body: Record<string, unknown> }[] = [];
+    const server = createServer((request, response) => {
+      let text = "";
+      request.on("data", (chunk: Buffer) => (text += chunk.toString()));
+      request.on("end", () => {
+        const answer = (status: number, body: unknown): void => {
+          response.writeHead(status, { "content-type": "application/json" });
+          response.end(JSON.stringify(body));
+        };
+        let body: unknown;
+        try {
+          body = JSON.parse(text);
+        } catch {
+          answer(400, { error: "not json" });
+          return;
+        }
+        if (request.method === "POST" && request.url === "/v1/claims") {
+          const parsed = parseClaimRequest(body);
+          if (!parsed.ok) {
+            answer(422, { issues: parsed.issues });
+            return;
+          }
+          if (parsed.value.code !== CODE) {
+            answer(404, { error: "unknown code" });
+            return;
+          }
+          claims.push(body as Record<string, unknown>);
+          answer(201, {
+            organization: { id: "org_a1b2c3d4e5f60718", name: "Example Co" },
+            project: { id: parsed.value.project.id },
+            key: { id: "key_0123456789abcdef", secret: KEY, scope: "ingest" },
+            claimedAt: "2026-10-10T12:00:00.000Z",
+          });
+          return;
+        }
+        if (request.method === "POST" && request.url === "/v1/ingest") {
+          const key = (request.headers.authorization ?? "").replace(
+            /^Bearer /,
+            "",
+          );
+          if (key !== KEY) {
+            answer(401, { error: "bad key" });
+            return;
+          }
+          const parsed = parseIngestRequest(body);
+          if (!parsed.ok) {
+            answer(422, { issues: parsed.issues });
+            return;
+          }
+          ingests.push({ key, body: body as Record<string, unknown> });
+          answer(200, {
+            accepted: parsed.value.entries.length,
+            duplicates: 0,
+            rejected: [],
+          });
+          return;
+        }
+        answer(404, { error: "no such route" });
+      });
+    });
+    await new Promise<void>((resolve) => {
+      server.listen(0, "127.0.0.1", resolve);
+    });
+    const address = server.address();
+    const port =
+      typeof address === "object" && address !== null ? address.port : 0;
+    return {
+      endpoint: `http://127.0.0.1:${String(port)}`,
+      claims,
+      ingests,
+      close: () =>
+        new Promise<void>((resolve) => {
+          server.close(() => {
+            resolve();
+          });
+        }),
+    };
+  }
+
+  beforeEach(async () => {
+    home = join(root, "claim-home");
+    await mkdir(join(root, "claim-project"), { recursive: true });
+    project = await realpath(join(root, "claim-project"));
+    await mkdir(home, { recursive: true, mode: 0o700 });
+    await writeFile(
+      join(home, "installs.json"),
+      JSON.stringify({
+        version: 1,
+        installs: [
+          {
+            host: "claude-code",
+            scope: "local",
+            settingsPath: join(project, ".claude", "settings.local.json"),
+            projectDir: project,
+            projectId: "prj_00000000000000000000000000000007",
+            manifestPath: join(home, "backups", "manifest.json"),
+            installedAt: "2026-10-10T10:00:00.000Z",
+            mode: "autopilot",
+            failureMode: "fail-ask",
+          },
+        ],
+        projects: [],
+      }),
+    );
+    await writeFile(
+      join(home, "identity.json"),
+      JSON.stringify({
+        version: 1,
+        agentId: "agt_0f1e2d3c4b5a69788796a5b4c3d2e1f0",
+        createdAt: "2026-10-01T08:00:00.000Z",
+      }),
+    );
+    await writeFile(join(home, "policy.yaml"), POLICY_FOR_FIXTURES);
+    plane = await controlPlane();
+  });
+
+  afterEach(async () => {
+    const { stopDaemon } = await import("./daemon/lifecycle.js");
+    await stopDaemon(home, { graceMs: 2_000 });
+    await plane?.close();
+    plane = undefined;
+  });
+
+  /** A hook call in the claimed project, with a fresh tool_use_id. */
+  let call = 0;
+  function hookPayload(): string {
+    call += 1;
+    const payload = JSON.parse(fixture("pre-tool-use.bash")) as Record<
+      string,
+      unknown
+    >;
+    return JSON.stringify({
+      ...payload,
+      cwd: project,
+      tool_use_id: `toolu_claim_${String(call)}`,
+    });
+  }
+
+  async function until(
+    condition: () => boolean,
+    timeoutMs: number,
+  ): Promise<void> {
+    const deadline = Date.now() + timeoutMs;
+    while (!condition() && Date.now() < deadline) {
+      await new Promise((resolve) => setTimeout(resolve, 100));
+    }
+  }
+
+  it("sends nothing before the yes, keeps the local ids, enqueues the history, and the daemon uploads", async () => {
+    if (plane === undefined) {
+      throw new Error("no control plane");
+    }
+    // A decision before the claim: the history the account starts with.
+    const before = await rfx(["hook", "claude-code"], {
+      stdin: hookPayload(),
+      env: { REFLEX_HOME: home },
+      cwd: project,
+    });
+    expect(answerOf(before)).toMatchObject({
+      hookSpecificOutput: { permissionDecision: "allow" },
+    });
+
+    // Without a terminal and without --consent: the statement, and nothing sent.
+    const shown = await rfx(["claim", CODE, "--endpoint", plane.endpoint], {
+      env: { REFLEX_HOME: home },
+      cwd: project,
+    });
+    expect(shown.code).toBe(0);
+    expect(shown.stdout).toContain("What is uploaded, per decision:");
+    expect(shown.stdout).toContain("Nothing was sent");
+    expect(shown.stdout).toContain("History      1 decision(s)");
+    expect(plane.claims).toEqual([]);
+    expect(existsSync(join(home, "cloud.json"))).toBe(false);
+
+    // A bad code never reaches the network either.
+    const bad = await rfx(
+      ["claim", "not-a-code", "--endpoint", plane.endpoint, "--consent"],
+      { env: { REFLEX_HOME: home }, cwd: project },
+    );
+    expect(bad.code).toBe(2);
+    expect(plane.claims).toEqual([]);
+
+    // With the yes: one request, the ids kept, the key on disk, mode 600.
+    const claimed = await rfx(
+      [
+        "claim",
+        CODE,
+        "--endpoint",
+        plane.endpoint,
+        "--consent",
+        "--name",
+        "demo",
+      ],
+      { env: { REFLEX_HOME: home }, cwd: project },
+    );
+    expect(claimed.code).toBe(0);
+    expect(claimed.stdout).toContain("Claimed demo into Example Co");
+    expect(claimed.stdout).toContain("1 local decision(s) queued");
+    expect(plane.claims).toHaveLength(1);
+    expect(plane.claims[0]).toMatchObject({
+      code: CODE,
+      agent: { id: "agt_0f1e2d3c4b5a69788796a5b4c3d2e1f0" },
+      project: { id: "prj_00000000000000000000000000000007", name: "demo" },
+      hosts: ["claude-code"],
+    });
+    const cloudFile = join(home, "cloud.json");
+    const cloud = JSON.parse(await readFile(cloudFile, "utf8")) as {
+      organizationId: string;
+      projects: { projectId: string; projectDir: string }[];
+      key: { id: string };
+    };
+    expect(cloud.organizationId).toBe("org_a1b2c3d4e5f60718");
+    expect(cloud.projects).toEqual([
+      expect.objectContaining({
+        projectId: "prj_00000000000000000000000000000007",
+        projectDir: project,
+      }),
+    ]);
+    expect((await stat(cloudFile)).mode & 0o777).toBe(0o600);
+    // The identity and the registry are untouched: the ids are kept.
+    expect(
+      (
+        JSON.parse(await readFile(join(home, "identity.json"), "utf8")) as {
+          agentId: string;
+        }
+      ).agentId,
+    ).toBe("agt_0f1e2d3c4b5a69788796a5b4c3d2e1f0");
+
+    // The next decision starts a daemon that uploads: the history and the
+    // new decision, each a summary by name with the project id.
+    const after = await rfx(["hook", "claude-code"], {
+      stdin: hookPayload(),
+      env: { REFLEX_HOME: home },
+      cwd: project,
+    });
+    expect(answerOf(after)).toMatchObject({
+      hookSpecificOutput: { permissionDecision: "allow" },
+    });
+    const current = plane;
+    await until(
+      () =>
+        current.ingests.flatMap((ingest) => ingest.body.entries as unknown[])
+          .length >= 2,
+      8_000,
+    );
+    const entries = plane.ingests.flatMap(
+      (ingest) => ingest.body.entries as Record<string, unknown>[],
+    );
+    const decisions = entries.filter((entry) => entry.kind === "decision");
+    expect(decisions.length).toBeGreaterThanOrEqual(2);
+    for (const entry of decisions) {
+      expect(entry).toMatchObject({
+        summary: {
+          agentId: "agt_0f1e2d3c4b5a69788796a5b4c3d2e1f0",
+          projectId: "prj_00000000000000000000000000000007",
+          action: { host: "claude-code", toolName: "Bash" },
+          effect: "allow",
+          matchedRuleIds: ["allow-touch"],
+        },
+      });
+    }
+    const uploaded = JSON.stringify(plane.ingests);
+    // The command's arguments and the project's path are nowhere in what
+    // was uploaded; the rule id that matched (`allow-touch`) is, by design.
+    expect(uploaded).not.toContain("marker");
+    expect(uploaded).not.toContain("touch marker");
+    expect(uploaded).not.toContain(project);
+    expect(uploaded).not.toContain('"arguments"');
+    expect(uploaded).not.toContain('"cwd"');
+    expect(plane.ingests.every((ingest) => ingest.key === KEY)).toBe(true);
+
+    // Status and doctor say so.
+    const status = await rfx(["status"], {
+      env: { REFLEX_HOME: home },
+      cwd: project,
+    });
+    expect(status.stdout).toContain(
+      "Cloud        demo is claimed into Example Co",
+    );
+    expect(status.stdout).toContain("claimed into Example Co)");
+    const doctor = await rfx(["doctor"], {
+      env: { REFLEX_HOME: home },
+      cwd: project,
+    });
+    expect(doctor.stdout).toMatch(
+      /ok\s+cloud\s+cloud: demo is claimed into Example Co/,
+    );
+
+    // Unclaim: the claim and the outbox are gone, and nothing more is sent.
+    const removed = await rfx(["unclaim", "--yes"], {
+      env: { REFLEX_HOME: home },
+      cwd: project,
+    });
+    expect(removed.code).toBe(0);
+    expect(removed.stdout).toContain("Unclaimed");
+    expect(existsSync(cloudFile)).toBe(false);
+    expect(existsSync(join(home, "cloud", "outbox.jsonl"))).toBe(false);
+    const sentBefore = plane.ingests.length;
+    await rfx(["hook", "claude-code"], {
+      stdin: hookPayload(),
+      env: { REFLEX_HOME: home },
+      cwd: project,
+    });
+    await new Promise((resolve) => setTimeout(resolve, 1_500));
+    expect(plane.ingests).toHaveLength(sentBefore);
+    const audit = await readFile(join(home, "audit.jsonl"), "utf8");
+    expect(audit).toContain('"kind":"claim"');
+    expect(audit).toContain('"kind":"unclaim"');
+    expect(audit).not.toContain(KEY);
+  }, 30_000);
+
+  it("refuses a code the control plane does not know, and writes nothing", async () => {
+    if (plane === undefined) {
+      throw new Error("no control plane");
+    }
+    const run = await rfx(
+      [
+        "claim",
+        "RFX-AAAA-BBBB-CCCC",
+        "--endpoint",
+        plane.endpoint,
+        "--consent",
+      ],
+      { env: { REFLEX_HOME: home }, cwd: project },
+    );
+    expect(run.code).toBe(1);
+    expect(run.stdout).toContain("Not claimed: the code was not accepted");
+    expect(existsSync(join(home, "cloud.json"))).toBe(false);
+  });
+
+  it("refuses an endpoint that is not https off this machine, before any I/O", async () => {
+    const run = await rfx(
+      ["claim", CODE, "--endpoint", "http://cloud.example", "--consent"],
+      { env: { REFLEX_HOME: home }, cwd: project },
+    );
+    expect(run.code).toBe(2);
+    expect(run.stdout).toContain("must be an https: URL");
+  });
 });

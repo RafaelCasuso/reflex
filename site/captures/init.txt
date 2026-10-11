@@ -4,7 +4,7 @@ REFLEX will observe Claude Code in this project. Plan:
   create  ~/work/api/.claude/settings.local.json
           add one hook to each of: PreToolUse, PermissionRequest, PostToolUse, PostToolUseFailure, PermissionDenied, Stop
           command: REFLEX_MANAGED=1 '/usr/local/bin/node' '~/reflex-public/packages/cli/dist/bin.js' hook claude-code
-  backup  every file it changes, under ~/.reflex/backups/20261006T221412054Z-claude-code
+  backup  every file it changes, under ~/.reflex/backups/20261011T150248439Z-claude-code
   create  an anonymous local identity (random, never sent anywhere)
 
 Observe mode: REFLEX records which tools run and what happened to them.
@@ -18,7 +18,7 @@ REFLEX will observe Codex in this project. Plan:
   modify  ~/.codex/config.toml
           set features.hooks = true (Codex runs no hook without it); nothing else in it changes
   read    ~/.codex/config.toml: approval policy default, sandbox default, this project not listed
-  backup  every file it changes, under ~/.reflex/backups/20261006T221412090Z-codex
+  backup  every file it changes, under ~/.reflex/backups/20261011T150248478Z-codex
   create  an anonymous local identity (random, never sent anywhere)
 
 Observe mode: REFLEX records which tools run and what happened to them.

@@ -6,7 +6,8 @@ rfx doctor
         daemon   daemon: not running; it starts on the first decision it is asked for
   ok    policy   user policy: ~/.reflex/policy.yaml loads
   ok    policy   project policy: ~/work/api/.reflex/policy.yaml is trusted
-  ok    policy   team policy: 2026.10 (sha256:782905915a6d...) from ~/team/reflex-policy.json, fetched 2026-10-06T22:14:12.712Z
+  ok    policy   team policy: 2026.10 (sha256:782905915a6d...) from ~/team/reflex-policy.json, fetched 2026-10-11T15:02:49.129Z
   ok    provider provider: none: policy alone, nothing leaves this machine
+        cloud    cloud: not claimed: everything stays on this machine ("rfx claim <code> --endpoint <url>" links this project to an account)
 
 Everything checks out.

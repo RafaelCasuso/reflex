@@ -15,6 +15,7 @@ import {
   pausePath,
   type PauseRecord,
 } from "../pause.js";
+import { readCloud, type CloudReport } from "./cloud.js";
 import { readProvider, type ProviderReport } from "./provider.js";
 import type { SubscriptionState } from "@reflex-control/decision-gateway/policy.js";
 
@@ -87,6 +88,8 @@ export interface StatusReport {
   readonly projectPolicy: ProjectPolicyStatus;
   /** RFX-083: the team's snapshot in force, from the local files. */
   readonly teamPolicy: SubscriptionState;
+  /** ADR-019: whether this installation and project are claimed, and the uploads. */
+  readonly cloud: CloudReport;
   readonly adapters: readonly AdapterStatus[];
   readonly lastAction: ObservedActionRecord | undefined;
   readonly summary: OutcomeSummary;
@@ -137,6 +140,7 @@ export async function collectStatus(
   );
   const projectPolicy = await readProjectPolicy(environment, fileSystem);
   const teamPolicy = await readTeamPolicy(environment);
+  const cloud = await readCloud(environment, fileSystem, daemon.health);
   const registry = parseRegistry(
     (await fileSystem.read(paths.installs))?.content.toString("utf8"),
   );
@@ -216,6 +220,7 @@ export async function collectStatus(
     pause,
     projectPolicy,
     teamPolicy,
+    cloud,
     adapters,
     lastAction: actions.at(-1),
     summary: summarize(assembleOutcomes(records)),

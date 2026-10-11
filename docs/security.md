@@ -130,13 +130,16 @@ allowed. REFLEX governs the call, not the server.
 Someone on the path between the user's machine and a remote service: the
 semantic provider, the decision gateway, the control plane.
 
-| Mitigation                                                                                                                | Ticket                    |
-| ------------------------------------------------------------------------------------------------------------------------- | ------------------------- |
-| The deterministic path is local and needs no network; tool arguments of an action policy resolves never leave the machine | ADR-010                   |
-| Only redacted, minimal context leaves the machine, and only after consent                                                 | ADR-006, RFX-031, RFX-123 |
-| A provider that cannot be reached, or answers garbage, is a fallback and never an allow                                   | ADR-003, RFX-020          |
-| Policy that arrives over the network is a signed, immutable snapshot                                                      | RFX-083, RFX-016          |
-| The gateway authenticates callers, isolates tenants and limits rate and request size                                      | RFX-078, RFX-122, RFX-119 |
+| Mitigation                                                                                                                 | Ticket                    |
+| -------------------------------------------------------------------------------------------------------------------------- | ------------------------- |
+| The deterministic path is local and needs no network; tool arguments of an action policy resolves never leave the machine  | ADR-010                   |
+| Only redacted, minimal context leaves the machine, and only after consent                                                  | ADR-006, RFX-031, RFX-123 |
+| A provider that cannot be reached, or answers garbage, is a fallback and never an allow                                    | ADR-003, RFX-020          |
+| Policy that arrives over the network is a signed, immutable snapshot                                                       | RFX-083, RFX-016          |
+| The gateway authenticates callers, isolates tenants and limits rate and request size                                       | RFX-078, RFX-122, RFX-119 |
+| A claimed machine holds one upload-only key, hashed at rest on the control plane, revocable without touching the machine   | RFX-078, RFX-061          |
+| What is uploaded is a decision summary by name and the redacted record, after a consent, and after a second redaction pass | RFX-060, RFX-123          |
+| Every organization-scoped table refuses another tenant's rows on its own, whatever the query forgot                        | RFX-122, RFX-059          |
 
 **Accepted risk:** an attacker who can break TLS. Certificate validation is
 assumed for every remote call and is not a ticket. Also accepted: a provider
@@ -171,6 +174,7 @@ operating system or the user's account. REFLEX runs inside all three.
 | Machine to remote services         | redacted, minimal context                               | only for actions policy did not resolve, only after consent (ADR-006, RFX-123)                      |
 | Provider to the engine             | an assessment                                           | untrusted input: parsed strictly, all or nothing (ADR-005, ADR-009)                                 |
 | Control plane to the machine       | policy snapshots                                        | signed and immutable (RFX-083)                                                                      |
+| Machine to control plane           | decision summaries by name, redacted records, outcomes  | only after the claim's consent, with an upload-only key, never an argument or a path (RFX-061)      |
 | Learned suggestions to enforcement | a proposed rule                                         | nothing is enforced until a human accepts it (`CLAUDE.md` principle 8, RFX-071)                     |
 
 ## Non-goals

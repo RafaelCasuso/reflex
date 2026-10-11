@@ -41,6 +41,11 @@ const USAGE = `rfx — REFLEX, the autonomy control layer for AI agents
       Compile and sign the team's policy into one snapshot to publish.
   rfx policy subscribe <https URL | file> --key <public.pem>  |  rfx policy unsubscribe
       Apply a team's signed snapshot as the organization and environment sources, no account needed.
+  rfx claim <code> --endpoint <url> [--name <project name>] [--consent]
+      Link this installation and this project to an organization. Shows what
+      would be uploaded and asks for your consent first; sends nothing before.
+  rfx unclaim [--yes]
+      Remove the claim and the outbox; nothing more is uploaded.
   rfx pause --for <30m|2h|1d> [--reason <text>]  |  rfx resume
       Suspend enforcement for a bounded time; REFLEX keeps observing.
   rfx doctor [--json]
@@ -286,6 +291,7 @@ const VALUED_OPTIONS = new Set([
   "label",
   "policy",
   "environment",
+  "name",
 ]);
 
 /**
@@ -335,6 +341,7 @@ function parseArguments(args: readonly string[]) {
       model: { type: "string" },
       endpoint: { type: "string" },
       consent: { type: "boolean", default: false },
+      name: { type: "string" },
       tool: { type: "string" },
       path: { type: "string" },
       for: { type: "string" },
@@ -873,6 +880,91 @@ async function main(): Promise<number> {
       }
       write("Could not write the policy file.\n");
       return 1;
+    }
+
+    case "claim": {
+      const cloud = await import("./commands/cloud.js");
+      if (argument === undefined || values.endpoint === undefined) {
+        write(
+          "Usage: rfx claim <code> --endpoint <url> [--name <project name>] [--consent]\n",
+        );
+        return 2;
+      }
+      const inspected = await cloud.inspectClaim(env, nodeFileSystem, {
+        code: argument,
+        endpoint: values.endpoint,
+        ...(values.name === undefined ? {} : { name: values.name }),
+      });
+      if (!inspected.ok) {
+        write(`Not claimed: ${render.safe(inspected.detail)}\n`);
+        return inspected.reason === "bad-code" ||
+          inspected.reason === "bad-endpoint"
+          ? 2
+          : 1;
+      }
+      const { plan } = inspected;
+      // ADR-019 §3: the statement, then the yes, then the one request.
+      write(
+        [
+          cloud.cloudConsentStatement(),
+          "",
+          `Endpoint     ${render.safe(plan.endpoint)}`,
+          `Project      ${render.safe(plan.projectName)}  (${plan.projectId}, kept)`,
+          `Installation ${plan.agentId}  (kept)`,
+          `History      ${String(plan.history.length)} decision(s) recorded here by this version go up with the first batch`,
+          "",
+          "",
+        ].join("\n"),
+      );
+      const consented = values.consent
+        ? true
+        : await confirm("Do you agree to this?", false);
+      if (!consented) {
+        write(
+          process.stdin.isTTY || values.consent
+            ? "Declined. Nothing was sent; REFLEX keeps working locally.\n"
+            : 'Re-run with "--consent" to agree to the statement above. Nothing was sent.\n',
+        );
+        return 0;
+      }
+      const outcome = await cloud.performClaim(env, nodeFileSystem, plan);
+      if (outcome.kind === "refused") {
+        write(`Not claimed: ${render.safe(outcome.detail)}\n`);
+        return 1;
+      }
+      if (outcome.kind === "write-failed") {
+        write("Could not write the claim.\n");
+        return 1;
+      }
+      const { reflexHome } = await import("./state.js");
+      write(
+        `Claimed ${render.safe(plan.projectName)} into ${render.safe(outcome.record.organizationName)} (${outcome.record.organizationId}) at ${render.safe(outcome.record.endpoint)}. ${String(outcome.enqueued)} local decision(s) queued; uploads start with the next decision, and "rfx status" shows them. Key ${outcome.record.key.id} is in ${render.safe(reflexHome(env))}/cloud.json, mode 600; it can only upload this installation's own decisions.\n`,
+      );
+      return 0;
+    }
+
+    case "unclaim": {
+      const cloud = await import("./commands/cloud.js");
+      const current = await cloud.readCloud(env, nodeFileSystem);
+      if (current.record === undefined) {
+        write("Not claimed; nothing to do.\n");
+        return 0;
+      }
+      write(
+        `This removes the claim into ${render.safe(current.record.organizationName)} and the ${String(current.pending)} decision(s) waiting to upload. What was already uploaded stays with the organization until it deletes it.\n`,
+      );
+      if (!(await confirm("Remove the claim?", values.yes))) {
+        return 0;
+      }
+      const outcome = await cloud.unclaim(env, nodeFileSystem);
+      write(
+        outcome.kind === "unclaimed"
+          ? "Unclaimed. Nothing more leaves this machine.\n"
+          : outcome.kind === "not-claimed"
+            ? "Not claimed; nothing to do.\n"
+            : "Could not remove the claim.\n",
+      );
+      return outcome.kind === "write-failed" ? 1 : 0;
     }
 
     case "pause": {
