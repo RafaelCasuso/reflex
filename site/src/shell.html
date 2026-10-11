@@ -6,7 +6,7 @@
     <title>{{title}}</title>
     <meta name="description" content="{{description}}" />
     <meta name="color-scheme" content="dark" />
-    <meta name="theme-color" content="#2a2219" />
+    <meta name="theme-color" content="#120d06" />
     <link rel="stylesheet" href="{{css}}" />
     <link
       rel="preload"
@@ -19,8 +19,7 @@
   </head>
   <body data-section="{{section}}">
     <a class="skip" href="#main">Skip to content</a>
-    <div class="bezel">
-      <div class="screen">
+    <div class="screen">
         <header class="strip">
           <a class="wordmark" href="/">REFLEX</a>
           <ul class="lamps" aria-label="The three verdicts">
@@ -29,9 +28,9 @@
             <li class="deny">deny</li>
           </ul>
           <nav aria-label="Site">
-            <a href="/install/" data-command="install"><kbd>F1</kbd> Install</a>
-            <a href="/pricing/" data-command="plans"><kbd>F2</kbd> Plans</a>
-            <a href="/docs/" data-command="docs"><kbd>F3</kbd> Docs</a>
+            <a href="/install/" data-command="install">Install</a>
+            <a href="/pricing/" data-command="plans">Plans</a>
+            <a href="/docs/" data-command="docs">Docs</a>
             <a href="{{repository}}" rel="noopener">Source</a>
             <a href="https://www.npmjs.com/org/reflex-control" rel="noopener">npm</a>
           </nav>
@@ -55,18 +54,23 @@
               This page runs one script of its own and sends nothing anywhere.
             </p>
           </footer>
-          <div id="transcript" class="transcript" role="log" aria-live="polite" aria-label="Console output"></div>
         </main>
+        <div id="transcript" class="transcript" role="log" aria-live="polite" aria-label="Console output" hidden></div>
+        <div id="menu" class="menu" aria-label="What the prompt takes" hidden></div>
         <form class="console-prompt" autocomplete="off">
           <label for="command" class="prompt-text">operator@reflex:~$</label>
-          <input id="command" name="command" type="text" spellcheck="false" autocapitalize="off" autocorrect="off" placeholder="type help" aria-describedby="prompt-hint" />
-          <span id="prompt-hint" class="hint">help</span>
+          <input id="command" name="command" type="text" spellcheck="false" autocapitalize="off" autocorrect="off" placeholder="type a command, or ? for the list" aria-describedby="prompt-keys" aria-controls="menu" />
+          <button type="button" class="prompt-help" data-command="help" aria-label="List the commands">?</button>
         </form>
-      </div>
-      <div class="panel">
-        <span class="model">REFLEX &middot; AUTONOMY CONTROL LAYER</span>
-        <span class="model">ROM 0.2 &middot; no network</span>
-      </div>
+        <div class="keys" id="prompt-keys">
+          <span><kbd>F1</kbd> Install</span>
+          <span><kbd>F2</kbd> Plans</span>
+          <span><kbd>F3</kbd> Docs</span>
+          <span><kbd>F4</kbd> Help</span>
+          <span><kbd>Tab</kbd> Complete</span>
+          <span><kbd>&uarr;&darr;</kbd> History</span>
+          <span><kbd>Esc</kbd> Close</span>
+        </div>
     </div>
   </body>
 </html>
