@@ -1,20 +1,19 @@
 <!-- title: REFLEX: one policy for every agent, auditable -->
 <!-- description: REFLEX decides, before your coding agent acts, whether an action executes, asks you, or stops. One policy a team wrote, applied to Claude Code and Codex, every decision on the record. Open source; the hosted control plane by early access. -->
-<div class="console" data-verdict="deny" role="group" aria-label="A real REFLEX session on the console">
+<pre class="banner" aria-hidden="true">
+ ____   _____  _____  _      _____ __  __
+|  _ \ | ____||  ___|| |    | ____|\ \/ /
+| |_) ||  _|  | |_   | |    |  _|   \  /
+|  _ < | |___ |  _|  | |___ | |___  /  \
+|_| \_\|_____||_|    |_____||_____|/_/\_\
+</pre>
+<h1 id="reflex">One policy for every agent, auditable.</h1>
+<p class="lede">{{positioning}}</p>
+
+<div class="hero typed" role="group" aria-label="A real REFLEX session, as the console printed it">
 {{{captures.explain.html}}}
-<div class="panel">
-  <ul class="lamps" aria-label="The three verdicts; the lit one is this session's">
-    <li class="allow">allow</li>
-    <li class="ask">ask</li>
-    <li class="deny">deny</li>
-  </ul>
-  <span class="model">REFLEX &middot; AUTONOMY CONTROL LAYER</span>
-</div>
 </div>
 <p class="quiet">A real session, typed as it ran. The team's policy says never force-push; the developer's own policy says git is fine; the repository's branch maps to production. The mandate holds, the record says which rule decided and why, and the developer can read every line of it.</p>
-
-<h1>One policy for every agent, auditable.</h1>
-<p class="lede">{{positioning}}</p>
 
 <p class="install-line"><code>{{install.command}}</code></p>
 <p class="quiet">Two minutes, no account, nothing leaves your machine. REFLEX starts in Observe and records what your agent does; you switch it to deciding when you have read the policy. <a href="/install/">What the install does, step by step.</a></p>
