@@ -794,7 +794,7 @@
 
   /* The boot, once per visit. It prints on a panel of its own over the
      page, which is already laid out underneath; when the panel is removed
-     nothing on the page has moved, and the boot lines land in the drawer. */
+     nothing on the page has moved, and one line lands in the drawer. */
   const booted = (() => {
     try {
       return sessionStorage.getItem("reflex-booted") === "1";
@@ -826,9 +826,7 @@
           panel.appendChild(element);
           if (last) {
             panel.remove();
-            boot.forEach((kept, position) => {
-              line(kept, position === boot.length - 1 ? "" : "dim");
-            });
+            line(`${boot[0]}  \u00b7  ${READY}`);
             try {
               sessionStorage.setItem("reflex-booted", "1");
             } catch {
