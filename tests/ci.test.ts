@@ -12,6 +12,7 @@ import {
   RELEASE_REQUIREMENTS,
   SECURITY_REQUIREMENTS,
   SITE_REQUIREMENTS,
+  CLOUDFLARE_REQUIREMENTS,
 } from "./support/ci.js";
 import { readJson, readText, repoPath } from "./support/repo.js";
 
@@ -334,6 +335,46 @@ describe("RFX-127 signed releases", () => {
 });
 
 /** RFX-150, RFX-137 — the site is checked on every change and deployed from main only. */
+describe("RFX-136 the Cloudflare Pages workflow", () => {
+  const workflow = readText(".github", "workflows", "cloudflare-pages.yml");
+  const audit = (text: string) => auditWorkflow(text, CLOUDFLARE_REQUIREMENTS);
+
+  it("passes the audit as committed, and deploys from main only", () => {
+    expect(audit(workflow)).toEqual([]);
+    expect(workflow).toMatch(/^on:\n {2}push:\n {4}branches: \[main\]/m);
+    expect(workflow).not.toContain("pull_request");
+  });
+
+  it("is skipped until the Pages project is named, so main carries it before the account exists", () => {
+    expect(workflow).toContain(
+      "if: ${{ vars.CLOUDFLARE_PAGES_PROJECT != '' }}",
+    );
+    expect(workflow).toContain("secrets.CLOUDFLARE_API_TOKEN");
+    expect(workflow).toContain("secrets.CLOUDFLARE_ACCOUNT_ID");
+  });
+
+  it("builds for the root of the origin and checks the links before deploying", () => {
+    expect(workflow.indexOf("node site/src/build.mjs")).toBeLessThan(
+      workflow.indexOf("cloudflare/wrangler-action@"),
+    );
+    expect(workflow.indexOf("node site/src/check-links.mjs")).toBeLessThan(
+      workflow.indexOf("cloudflare/wrangler-action@"),
+    );
+    expect(workflow).toContain("SITE_BASE_PATH: /");
+    expect(workflow).toContain("pages deploy site/dist");
+  });
+
+  it("serves security headers from the site itself", () => {
+    const headers = readText("site", "public", "_headers");
+    expect(headers).toContain("Content-Security-Policy: default-src 'none'");
+    expect(headers).toContain("style-src 'self'");
+    expect(headers).toContain("font-src 'self'");
+    expect(headers).toContain("X-Content-Type-Options: nosniff");
+    expect(headers).toContain("frame-ancestors 'none'");
+    expect(headers).not.toContain("unsafe-inline");
+  });
+});
+
 describe("RFX-150 site and pages workflows", () => {
   const site = readText(".github", "workflows", "site.yml");
   const pages = readText(".github", "workflows", "pages.yml");

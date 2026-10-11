@@ -86,6 +86,7 @@ describe("RFX-150 the public landing and install page", () => {
     for (const path of [
       "",
       "install",
+      "pricing",
       "docs",
       "docs/quick-start",
       "docs/policy-language",
@@ -300,7 +301,7 @@ describe("RFX-150 the public landing and install page", () => {
       };
     };
     expect(lighthouse.ci.collect.staticDistDir).toBe("./site/dist");
-    expect(lighthouse.ci.collect.url).toEqual(["/", "/install/"]);
+    expect(lighthouse.ci.collect.url).toEqual(["/", "/install/", "/pricing/"]);
     for (const category of [
       "performance",
       "accessibility",
@@ -315,6 +316,69 @@ describe("RFX-150 the public landing and install page", () => {
     expect(pages).toContain("node site/src/build.mjs");
     expect(pages).toContain("node site/src/check-links.mjs");
     expect(pages).toContain("actions/deploy-pages@");
+  });
+});
+
+describe("RFX-136 the plans and early access", () => {
+  function hypothesis(): { name: string; price: string; features: string[] }[] {
+    const product = readText(SITE_SOURCES.product);
+    const section = product
+      .slice(product.indexOf("## Pricing hypothesis"))
+      .split("\n## ")[0];
+    return section
+      .split("\n### ")
+      .slice(1)
+      .map((block) => {
+        const [heading, ...rest] = block.split("\n");
+        const match = /^(.+?) — (?:from )?\$([\d,]+)/.exec(heading ?? "");
+        return {
+          name: match?.[1] ?? "",
+          price: match?.[2] ?? "",
+          features: rest
+            .filter((line) => line.startsWith("- "))
+            .map((line) => line.slice(2).trim()),
+        };
+      });
+  }
+
+  it("shows every tier of the pricing hypothesis in docs/product.md, with its price and its features, and no other price", () => {
+    const tiers = hypothesis();
+    expect(tiers.length).toBeGreaterThanOrEqual(3);
+    for (const path of ["", "pricing"]) {
+      const html = page(path);
+      for (const tier of tiers) {
+        expect(html, tier.name).toContain(`<h3>${escape(tier.name)}</h3>`);
+        expect(html, tier.price).toContain(`$${tier.price}`);
+        for (const feature of tier.features) {
+          expect(html, feature).toContain(escape(feature));
+        }
+      }
+      // Adversarial: a dollar figure typed by hand, with no tier behind it.
+      const allowed = new Set(tiers.map((tier) => `$${tier.price}`));
+      for (const [figure] of html.matchAll(/\$[\d,]+/g)) {
+        expect(allowed.has(figure), `${figure} is not in docs/product.md`).toBe(
+          true,
+        );
+      }
+    }
+  });
+
+  it("says that nothing is billed yet and offers early access by mail, never a purchase", () => {
+    const pricing = page("pricing");
+    expect(pricing).toContain("Nothing is charged today");
+    expect(pricing).toContain("Request early access");
+    expect(pricing).toContain('href="mailto:');
+    expect(pricing).not.toMatch(/buy now|checkout|credit card|stripe/i);
+    expect(page("")).toContain("nothing is billed yet");
+    expect(page("")).toContain('href="/reflex/pricing/"');
+  });
+
+  it("names the meter the hypothesis names, and that it is still being decided", () => {
+    const product = readText(SITE_SOURCES.product);
+    expect(product).toContain("Meter:\n`governed_action`");
+    const pricing = page("pricing");
+    expect(pricing).toContain("governed action");
+    expect(pricing).toContain("still being decided");
   });
 });
 

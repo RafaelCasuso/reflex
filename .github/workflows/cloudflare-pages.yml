@@ -1,0 +1,78 @@
+# RFX-136 — the public site on Cloudflare Pages, from main, and from nowhere
+# else.
+#
+# A push to main rebuilds the site from the repository's files for the root
+# of its own origin, checks every internal link, and deploys the built
+# directory with wrangler. The job runs only once the repository variable
+# CLOUDFLARE_PAGES_PROJECT names a Pages project and the secrets
+# CLOUDFLARE_API_TOKEN and CLOUDFLARE_ACCOUNT_ID exist (site/README.md);
+# until then it is skipped and GitHub Pages (pages.yml) stays the deploy.
+#
+# Rules guarded by tests/ci.test.ts:
+#   - install is lockfile-frozen
+#   - the build and the link check can each fail the job, before any deploy
+#   - no `continue-on-error`, no `|| true`
+#   - third-party actions are pinned to a full commit SHA
+name: Cloudflare Pages
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: cloudflare-pages
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    name: Deploy to Cloudflare Pages
+    if: ${{ vars.CLOUDFLARE_PAGES_PROJECT != '' }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    env:
+      TURBO_TELEMETRY_DISABLED: "1"
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
+
+      - name: Set up Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+
+      - name: Install (frozen lockfile)
+        run: pnpm install --frozen-lockfile
+
+      - name: Build the packages
+        run: pnpm build
+
+      # Cloudflare serves the site at the root of its own origin; the origin
+      # is the repository variable SITE_ORIGIN (the pages.dev address, or the
+      # custom domain once it is attached), used for the sitemap and robots.
+      - name: Build the site
+        run: node site/src/build.mjs
+        env:
+          SITE_BASE_PATH: /
+          SITE_ORIGIN: ${{ vars.SITE_ORIGIN }}
+
+      - name: Check every internal link
+        run: node site/src/check-links.mjs
+        env:
+          SITE_BASE_PATH: /
+
+      - name: Deploy
+        uses: cloudflare/wrangler-action@953926a2e2182532811c01a25e53647d93bf07c0 # v4.1.3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          command: pages deploy site/dist --project-name=${{ vars.CLOUDFLARE_PAGES_PROJECT }} --branch=main --commit-dirty=true

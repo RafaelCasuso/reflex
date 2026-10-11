@@ -9,7 +9,8 @@
  * package (built first), every number from the benchmark record, the hook
  * cost table and the corpus files, every terminal block from a capture
  * that tools/site/capture.sh made by running the CLI. The reference pages
- * (policy language, threat model) are docs/ files rendered as they are.
+ * (policy language, threat model) are docs/ files rendered as they are, and
+ * the plans come from the pricing hypothesis in docs/product.md (RFX-136).
  * tests/site.test.ts builds this and holds each of those to its source.
  *
  * The output is static HTML and CSS, self-hosted fonts, no script: nothing
@@ -33,7 +34,14 @@ import { Marked } from "marked";
 export const SITE_ROOT = fileURLToPath(new URL("../", import.meta.url));
 export const REPO_ROOT = resolve(SITE_ROOT, "..");
 export const REPOSITORY_URL = "https://github.com/RafaelCasuso/reflex";
-export const SITE_ORIGIN = "https://rafaelcasuso.github.io";
+/** The origin written into the sitemap and robots; Cloudflare's or a domain's when set. */
+export const SITE_ORIGIN =
+  process.env.SITE_ORIGIN !== undefined && process.env.SITE_ORIGIN !== ""
+    ? process.env.SITE_ORIGIN.replace(/\/+$/, "")
+    : "https://rafaelcasuso.github.io";
+/** Where early access is requested (RFX-136). One address, one place. */
+export const CONTACT_EMAIL = "rafael@calliope.so";
+export const CONTACT_MAILTO = `mailto:${CONTACT_EMAIL}?subject=${encodeURIComponent("REFLEX early access")}`;
 /**
  * Where the site is served from under its origin. GitHub Pages serves a
  * project site under `/<repository>/`; a local check or Lighthouse serves
@@ -176,6 +184,69 @@ export function readPositioning() {
   return after.replaceAll("\n", " ").trim();
 }
 
+/**
+ * The plans, from the pricing hypothesis in docs/product.md (RFX-136): the
+ * tier headings `### Name — $price/month` and the bullets under each, read
+ * as they are. A price on the page that is not in that file does not exist.
+ */
+export function readPricing() {
+  const product = read("docs/product.md");
+  const start = product.indexOf("## Pricing hypothesis");
+  if (start === -1) {
+    fail("docs/product.md has no pricing hypothesis");
+  }
+  const section = product.slice(start).split("\n## ")[0];
+  const plans = [];
+  for (const block of section.split("\n### ").slice(1)) {
+    const [heading, ...rest] = block.split("\n");
+    const match = /^(.+?) — (?:from )?\$([\d,]+)(?:\/month)?$/.exec(
+      heading.trim(),
+    );
+    if (match === null) {
+      fail(
+        `docs/product.md has a tier heading the build cannot read: ${heading}`,
+      );
+    }
+    plans.push({
+      name: match[1].trim(),
+      price: match[2],
+      from: heading.includes("from "),
+      features: rest
+        .filter((line) => line.startsWith("- "))
+        .map((line) => line.slice(2).trim()),
+    });
+  }
+  if (plans.length === 0) {
+    fail("docs/product.md has no tiers");
+  }
+  const meter = /^Meter:\s*`([a-z_]+)`$/m.exec(section);
+  return { plans, meter: meter === null ? "governed_action" : meter[1] };
+}
+
+export function plansHtml(pricing) {
+  const items = pricing.plans.map((plan) => {
+    const price =
+      plan.price === "0"
+        ? `<p class="price">$0<small> forever</small></p>`
+        : `<p class="price">${plan.from ? "<small>from </small>" : ""}$${escapeHtml(plan.price)}<small>/month</small></p>`;
+    const [first, ...rest] = plan.features;
+    const action =
+      plan.price === "0"
+        ? `<a class="button-paper" href="/install/">Install</a>`
+        : `<a class="button" href="${CONTACT_MAILTO}">Request early access</a>`;
+    return [
+      `<li class="plan">`,
+      `<h3>${escapeHtml(plan.name)}</h3>`,
+      price,
+      first === undefined ? "" : `<p class="meter">${escapeHtml(first)}</p>`,
+      `<ul>${rest.map((feature) => `<li>${escapeHtml(feature)}</li>`).join("")}</ul>`,
+      action,
+      `</li>`,
+    ].join("");
+  });
+  return `<ul class="plans">${items.join("\n")}</ul>`;
+}
+
 export async function readConsentStatement() {
   const built = join(REPO_ROOT, "packages/semantic-provider/dist/consent.js");
   if (!existsSync(built)) {
@@ -196,11 +267,13 @@ export function readCliVersion() {
 const VERDICT = /\b(allow|ask|deny)\b/g;
 
 function highlightCapture(text) {
+  // One element per line, so that the console can show the session line by
+  // line as it ran; the text content stays the capture, newline for newline.
   return escapeHtml(text)
     .split("\n")
     .map((line, index) => {
       if (index === 0 && line.startsWith("$ ")) {
-        return `<span class="prompt">$</span> <span class="command">${line.slice(2)}</span>`;
+        return `<span class="l"><span class="prompt">$</span> <span class="command">${line.slice(2)}</span></span>`;
       }
       // The verdict words of the product, in their colour, where the CLI
       // prints them as verdicts: the Matched rows, the Effect line, the
@@ -210,12 +283,12 @@ function highlightCapture(text) {
         /^(Effect|By mode) /.test(line) ||
         line.includes("permissionDecision")
       ) {
-        return line.replace(
+        return `<span class="l">${line.replace(
           VERDICT,
           (word) => `<span class="v-${word}">${word}</span>`,
-        );
+        )}</span>`;
       }
-      return line;
+      return `<span class="l">${line}</span>`;
     })
     .join("\n");
 }
@@ -377,6 +450,7 @@ export async function build(outputDirectory) {
   const consent = await readConsentStatement();
   const captures = readCaptures();
   const cliVersion = readCliVersion();
+  const pricing = readPricing();
   const shell = readFileSync(join(SITE_ROOT, "src", "shell.html"), "utf8");
   const css = readFileSync(join(SITE_ROOT, "src", "site.css"), "utf8");
   const cssHash = createHash("sha256").update(css).digest("hex").slice(0, 8);
@@ -387,6 +461,10 @@ export async function build(outputDirectory) {
   mkdirSync(out, { recursive: true });
   writeFileSync(join(out, cssFile), withBasePath(css));
   cpSync(join(SITE_ROOT, "fonts"), join(out, "fonts"), { recursive: true });
+  // Files served as they are: the Cloudflare Pages headers (RFX-136).
+  if (existsSync(join(SITE_ROOT, "public"))) {
+    cpSync(join(SITE_ROOT, "public"), out, { recursive: true });
+  }
   writeFileSync(join(out, ".nojekyll"), "");
   writeFileSync(
     join(out, "robots.txt"),
@@ -420,12 +498,15 @@ export async function build(outputDirectory) {
     captures,
     install: { command: INSTALL_COMMAND, version: cliVersion },
     repository: REPOSITORY_URL,
+    pricing: { plans: plansHtml(pricing), meter: pricing.meter },
+    contact: { email: CONTACT_EMAIL, mailto: CONTACT_MAILTO },
   };
 
   // The landing and the install page: hand-set, filled from the sources.
   for (const [path, file, section] of [
     ["/", "index.html", "home"],
     ["/install", "install.html", "install"],
+    ["/pricing", "pricing.html", "pricing"],
   ]) {
     const template = readFileSync(
       join(SITE_ROOT, "src", "pages", file),
@@ -499,6 +580,7 @@ export async function build(outputDirectory) {
     numbers,
     captures: Object.keys(captures),
     docs: docs.map((doc) => doc.slug),
+    plans: pricing.plans.map((plan) => plan.name),
   };
 }
 
